@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  CIUDADANO
+  ADMINISTRADOR
+  REFUGIO
+  VETERINARIA
+}
+
+enum UserStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+enum ReportType {
+  PERDIDA
+  HALLAZGO
+}
+
+enum ReportStatus {
+  PENDIENTE
+  PUBLICO
+  RECHAZADO
+  RESUELTO
+  CERRADO
+}
+
+enum EvidenceStatus {
+  PENDIENTE
+  VALIDADO
+  RECHAZADO
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  nombre      RoleName @unique
+  descripcion String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  usuarios User[]
+
+  @@map("roles")
+}
+
+model User {
+  id             String     @id @default(uuid()) @db.Uuid
+  roleId         String     @map("role_id") @db.Uuid
+  nombreCompleto String     @map("nombre_completo") @db.VarChar(150)
+  email          String     @unique @db.VarChar(150)
+  passwordHash   String     @map("password_hash") @db.VarChar(255)
+  telefono       String     @db.VarChar(20)
+  activo         Boolean    @default(true)
+  estado         UserStatus @default(PENDIENTE)
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  role               Role                @relation(fields: [roleId], references: [id])
+  mascotas           Pet[]
+  reportes           Report[]            @relation("UsuarioReportes")
+  evidencias         Evidence[]          @relation("UsuarioEvidencias")
+  notificaciones     Notification[]
+  passwordResetCodes PasswordResetCode[]
+  refugio            Shelter?
+  veterinaria        Veterinary?
+
+  @@map("usuarios")
+}
+
+model Location {
+  id        String   @id @default(uuid()) @db.Uuid
+  direccion String   @db.VarChar(255)
+  comuna    String   @db.VarChar(100)
+  barrio    String   @db.VarChar(100)
+  latitud   Decimal  @db.Decimal(10, 8)
+  longitud  Decimal  @db.Decimal(11, 8)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reportes     Report[]
+  refugios     Shelter[]
+  veterinarias Veterinary[]
+
+  @@map("ubicaciones")
+}
+
+model Pet {
+  id              String   @id @default(uuid()) @db.Uuid
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  nombre          String   @db.VarChar(100)
+  especie         String   @db.VarChar(50)
+  raza            String   @db.VarChar(50)
+  edadAprox       Int      @map("edad_aprox")
+  color           String   @db.VarChar(50)
+  caracteristicas String   @db.Text
+  fotoUrl         String   @map("foto_url") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  usuario  User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  reportes Report[]
+
+  @@map("mascotas")
+}
+
+model Report {
+  id                  String       @id @default(uuid()) @db.Uuid
+  usuarioId           String       @map("usuario_id") @db.Uuid
+  mascotaId           String?      @map("mascota_id") @db.Uuid
+  ubicacionId         String       @map("ubicacion_id") @db.Uuid
+  tipo                ReportType
+  estado              ReportStatus @default(PENDIENTE)
+  titulo              String       @db.VarChar(150)
+  descripcion         String       @db.Text
+  fechaAcontecimiento DateTime     @map("fecha_acontecimiento")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  usuario    User            @relation("UsuarioReportes", fields: [usuarioId], references: [id])
+  mascota    Pet?            @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  ubicacion  Location        @relation(fields: [ubicacionId], references: [id])
+  imagenes   Image[]
+  evidencias Evidence[]
+  historial  ReportHistory[]
+
+  @@map("reportes")
+}
+
+model Image {
+  id        String   @id @default(uuid()) @db.Uuid
+  reporteId String   @map("reporte_id") @db.Uuid
+  url       String   @db.Text
+  publicId  String   @map("public_id") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  reporte Report @relation(fields: [reporteId], references: [id], onDelete: Cascade)
+
+  @@map("imagenes")
+}
+
+model Evidence {
+  id          String         @id @default(uuid()) @db.Uuid
+  reporteId   String         @map("reporte_id") @db.Uuid
+  usuarioId   String         @map("usuario_id") @db.Uuid
+  descripcion String         @db.Text
+  fotoUrl     String         @map("foto_url") @db.Text
+  estado      EvidenceStatus @default(PENDIENTE)
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  reporte Report @relation(fields: [reporteId], references: [id], onDelete: Cascade)
+  usuario User   @relation("UsuarioEvidencias", fields: [usuarioId], references: [id])
+
+  @@map("evidencias")
+}
+
+model ReportHistory {
+  id             String       @id @default(uuid()) @db.Uuid
+  reporteId      String       @map("reporte_id") @db.Uuid
+  estadoAnterior ReportStatus @map("estado_anterior")
+  estadoNuevo    ReportStatus @map("estado_nuevo")
+  observacion    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  reporte Report @relation(fields: [reporteId], references: [id], onDelete: Cascade)
+
+  @@map("historial_reportes")
+}
+
+model Shelter {
+  id          String   @id @default(uuid()) @db.Uuid
+  usuarioId   String   @unique @map("usuario_id") @db.Uuid
+  ubicacionId String   @map("ubicacion_id") @db.Uuid
+  nombre      String   @db.VarChar(150)
+  capacidad   Int
+  horario     String   @db.VarChar(100)
+  sitioWeb    String?  @map("sitio_web") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  usuario   User     @relation(fields: [usuarioId], references: [id])
+  ubicacion Location @relation(fields: [ubicacionId], references: [id])
+
+  @@map("refugios")
+}
+
+model Veterinary {
+  id           String   @id @default(uuid()) @db.Uuid
+  usuarioId    String   @unique @map("usuario_id") @db.Uuid
+  ubicacionId  String   @map("ubicacion_id") @db.Uuid
+  nombre       String   @db.VarChar(150)
+  urgencias24h Boolean  @default(false) @map("urgencias_24h")
+  horario      String   @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  usuario   User     @relation(fields: [usuarioId], references: [id])
+  ubicacion Location @relation(fields: [ubicacionId], references: [id])
+
+  @@map("veterinarias")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  titulo    String   @db.VarChar(150)
+  mensaje   String   @db.Text
+  leida     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("notificaciones")
+}
+
+model PasswordResetCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  codigo    String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  usado     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_codes")
+}
