@@ -26,6 +26,12 @@ async function bootstrap() {
   // Puerto del backend
   const port = process.env.PORT || 4000;
 
+  // Comprobar si JWT_SECRET está cargado
+  console.log(
+    'JWT_SECRET cargado:',
+    !!process.env.JWT_SECRET,
+  );
+
   await app.listen(port);
 
   console.log(

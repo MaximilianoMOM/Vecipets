@@ -6,14 +6,21 @@ import {
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReporteDto } from './dto/create-reporte.dto';
-import { ReportStatus, RoleName } from '@prisma/client';
+import {
+  ReportStatus,
+  ReportType,
+  RoleName,
+} from '@prisma/client';
 
 @Injectable()
 export class ReportesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // =========================================================
+  // CREAR REPORTE
+  // =========================================================
+
   async create(usuarioId: string, dto: CreateReporteDto) {
-    // Verificar que la mascota existe
     const mascota = await this.prisma.pet.findUnique({
       where: {
         id: dto.mascotaId,
@@ -24,7 +31,6 @@ export class ReportesService {
       throw new NotFoundException('Mascota no encontrada');
     }
 
-    // Crear el reporte
     const reporte = await this.prisma.report.create({
       data: {
         usuarioId,
@@ -56,95 +62,299 @@ export class ReportesService {
     return reporte;
   }
 
-  async findAll() {
-    return this.prisma.report.findMany({
+  // =========================================================
+  // OBTENER TODOS LOS REPORTES
+  // =========================================================
+
+  async findAll(
+    tipo?: string,
+    especie?: string,
+    q?: string,
+  ) {
+    let reportType: ReportType | undefined;
+
+    // Validar tipo
+    if (tipo) {
+      if (
+        !Object.values(ReportType).includes(
+          tipo as ReportType,
+        )
+      ) {
+        throw new ForbiddenException(
+          'El tipo de reporte debe ser PERDIDA o HALLAZGO',
+        );
+      }
+
+      reportType = tipo as ReportType;
+    }
+
+    const busqueda = q?.trim();
+
+    const reportes = await this.prisma.report.findMany({
+      where: {
+        // Filtro por tipo
+        ...(reportType
+          ? {
+              tipo: reportType,
+            }
+          : {}),
+
+        // Filtro por especie
+        ...(especie
+          ? {
+              mascota: {
+                especie: {
+                  equals: especie,
+                  mode: 'insensitive',
+                },
+              },
+            }
+          : {}),
+
+        // Búsqueda general
+        ...(busqueda
+          ? {
+              OR: [
+                {
+                  titulo: {
+                    contains: busqueda,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  descripcion: {
+                    contains: busqueda,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  mascota: {
+                    nombre: {
+                      contains: busqueda,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  mascota: {
+                    raza: {
+                      contains: busqueda,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  ubicacion: {
+                    direccion: {
+                      contains: busqueda,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  ubicacion: {
+                    barrio: {
+                      contains: busqueda,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  ubicacion: {
+                    comuna: {
+                      contains: busqueda,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+
       include: {
         mascota: true,
         ubicacion: true,
         imagenes: true,
       },
+
       orderBy: {
         createdAt: 'desc',
       },
     });
+
+    // Convertir la información de Prisma
+    // al formato que utiliza el frontend
+    return reportes.map((reporte) => ({
+      id: reporte.id,
+
+      titulo: reporte.titulo,
+
+      nombreMascota:
+        reporte.mascota?.nombre || 'Sin nombre',
+
+      especie:
+        reporte.mascota?.especie || 'OTRO',
+
+      raza:
+        reporte.mascota?.raza || '',
+
+      color:
+        reporte.mascota?.color || '',
+
+      tipo: reporte.tipo,
+
+      estado: reporte.estado,
+
+      descripcion: reporte.descripcion,
+
+      fotoUrl:
+        reporte.imagenes?.[0]?.url || '',
+
+      ubicacion:
+        reporte.ubicacion?.direccion ||
+        reporte.ubicacion?.barrio ||
+        reporte.ubicacion?.comuna ||
+        'Ubicación no disponible',
+
+      ciudad:
+        reporte.ubicacion?.comuna || '',
+
+      latitud:
+        reporte.ubicacion?.latitud
+          ? Number(reporte.ubicacion.latitud)
+          : 0,
+
+      longitud:
+        reporte.ubicacion?.longitud
+          ? Number(reporte.ubicacion.longitud)
+          : 0,
+
+      fechaEvento:
+        reporte.fechaAcontecimiento,
+
+      contactoTelefono: '',
+
+      contactoEmail: '',
+
+      recompensa: 0,
+
+      usuarioId:
+        reporte.usuarioId,
+
+      createdAt:
+        reporte.createdAt,
+    }));
   }
 
-  async marcarComoResuelto(
-    reporteId: string,
-    usuarioId: string,
-  ) {
-    // Buscar el reporte junto con la mascota y el dueño
+  // =========================================================
+  // OBTENER UN REPORTE
+  // =========================================================
+
+  async findOne(reporteId: string) {
     const reporte = await this.prisma.report.findUnique({
       where: {
         id: reporteId,
       },
+
       include: {
-        mascota: {
-          include: {
-            usuario: {
-              include: {
-                role: true,
-              },
-            },
+        mascota: true,
+        ubicacion: true,
+        imagenes: true,
+        evidencias: true,
+
+        usuario: {
+          select: {
+            id: true,
+            nombreCompleto: true,
+            email: true,
+            telefono: true,
           },
         },
       },
     });
 
     if (!reporte) {
-      throw new NotFoundException('Reporte no encontrado');
-    }
-
-    // Verificar que la mascota exista
-    if (!reporte.mascota) {
       throw new NotFoundException(
-        'El reporte no tiene una mascota asociada',
+        'Reporte no encontrado',
       );
     }
 
-    const usuarioActual = await this.prisma.user.findUnique({
+    return reporte;
+  }
+
+  // =========================================================
+  // MARCAR REPORTE COMO RESUELTO
+  // =========================================================
+
+  async marcarComoResuelto(
+    reporteId: string,
+    usuarioId: string,
+  ) {
+    const reporte = await this.prisma.report.findUnique({
+      where: {
+        id: reporteId,
+      },
+
+      include: {
+        mascota: true,
+      },
+    });
+
+    if (!reporte) {
+      throw new NotFoundException(
+        'Reporte no encontrado',
+      );
+    }
+
+    const usuario = await this.prisma.user.findUnique({
       where: {
         id: usuarioId,
       },
+
       include: {
         role: true,
       },
     });
 
-    if (!usuarioActual) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    const esDueno =
-      reporte.mascota.usuarioId === usuarioId;
-
-    const esRefugio =
-      usuarioActual.role.nombre === RoleName.REFUGIO;
-
-    const esVeterinaria =
-      usuarioActual.role.nombre === RoleName.VETERINARIA;
-
-    // Solamente dueño, refugio o veterinaria
-    if (!esDueno && !esRefugio && !esVeterinaria) {
-      throw new ForbiddenException(
-        'No tienes permisos para marcar esta mascota como encontrada',
+    if (!usuario) {
+      throw new NotFoundException(
+        'Usuario no encontrado',
       );
     }
 
-    return this.prisma.report.update({
-      where: {
-        id: reporteId,
-      },
+    // El dueño de la mascota puede resolver
+    // su propio reporte
+    const esDueno =
+      reporte.mascota?.usuarioId === usuarioId;
 
-      data: {
-        estado: ReportStatus.RESUELTO,
-      },
+    // El administrador también puede resolverlo
+    const esAdministrador =
+      usuario.role.nombre === RoleName.ADMINISTRADOR;
 
-      include: {
-        mascota: true,
-        ubicacion: true,
-        imagenes: true,
-      },
-    });
+    if (!esDueno && !esAdministrador) {
+      throw new ForbiddenException(
+        'No tienes permisos para marcar este reporte como resuelto',
+      );
+    }
+
+    const reporteActualizado =
+      await this.prisma.report.update({
+        where: {
+          id: reporteId,
+        },
+
+        data: {
+          estado: ReportStatus.RESUELTO,
+        },
+
+        include: {
+          mascota: true,
+          ubicacion: true,
+          imagenes: true,
+        },
+      });
+
+    return reporteActualizado;
   }
 }

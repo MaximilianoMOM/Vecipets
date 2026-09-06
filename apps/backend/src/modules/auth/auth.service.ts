@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   BadRequestException,
@@ -5,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+
 import * as bcrypt from 'bcrypt';
 import { RoleName } from '@prisma/client';
 
@@ -25,9 +28,12 @@ export class AuthService {
   // =========================
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    const email = dto.email.trim().toLowerCase();
+
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
 
     if (existingUser) {
       throw new BadRequestException(
@@ -35,45 +41,285 @@ export class AuthService {
       );
     }
 
-    const ciudadanoRole = await this.prisma.role.findUnique({
-      where: { nombre: RoleName.CIUDADANO },
+    const role = await this.prisma.role.findUnique({
+      where: {
+        nombre: dto.rol,
+      },
     });
 
-    if (!ciudadanoRole) {
+    if (!role) {
       throw new BadRequestException(
-        'El rol inicial de CIUDADANO no se encuentra disponible',
+        `El rol ${dto.rol} no se encuentra disponible`,
       );
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-
-    const user = await this.prisma.user.create({
-      data: {
-        nombreCompleto: dto.nombreCompleto,
-        email: dto.email,
-        passwordHash,
-        telefono: dto.telefono,
-        roleId: ciudadanoRole.id,
-      },
-      select: {
-        id: true,
-        nombreCompleto: true,
-        email: true,
-        telefono: true,
-        createdAt: true,
-      },
-    });
-
-    const tokens = await this.generateTokens(
-      user.id,
-      user.email,
-      RoleName.CIUDADANO,
+    const passwordHash = await bcrypt.hash(
+      dto.password,
+      12,
     );
 
+    // =========================
+    // CIUDADANO
+    // =========================
+
+    if (dto.rol === RoleName.CIUDADANO) {
+      const user =
+        await this.prisma.user.create({
+          data: {
+            nombreCompleto:
+              dto.nombreCompleto,
+            email,
+            passwordHash,
+            telefono: dto.telefono,
+            roleId: role.id,
+            estado: 'APROBADO',
+            activo: true,
+          },
+
+          select: {
+            id: true,
+            nombreCompleto: true,
+            email: true,
+            telefono: true,
+            estado: true,
+            createdAt: true,
+          },
+        });
+
+      const tokens =
+        await this.generateTokens(
+          user.id,
+          user.email,
+          RoleName.CIUDADANO,
+        );
+
+      return {
+        message:
+          'Usuario registrado exitosamente',
+        user,
+        ...tokens,
+      };
+    }
+
+    // =========================
+    // REFUGIO / VETERINARIA
+    // =========================
+
+    if (
+      dto.rol !== RoleName.REFUGIO &&
+      dto.rol !== RoleName.VETERINARIA
+    ) {
+      throw new BadRequestException(
+        'El rol seleccionado no es válido',
+      );
+    }
+
+    // =========================
+    // VALIDAR UBICACIÓN
+    // =========================
+
+    if (
+      !dto.direccion ||
+      !dto.comuna ||
+      !dto.barrio ||
+      !dto.latitud ||
+      !dto.longitud
+    ) {
+      throw new BadRequestException(
+        'La dirección, comuna, barrio, latitud y longitud son obligatorios',
+      );
+    }
+
+    const latitud = Number(dto.latitud);
+    const longitud = Number(dto.longitud);
+
+    if (
+      Number.isNaN(latitud) ||
+      Number.isNaN(longitud)
+    ) {
+      throw new BadRequestException(
+        'La latitud y longitud deben ser números válidos',
+      );
+    }
+
+    // =========================
+    // CREAR SOLICITUD
+    // =========================
+
+    const resultado =
+      await this.prisma.$transaction(
+        async (tx) => {
+          // Crear usuario pendiente
+          const user =
+            await tx.user.create({
+              data: {
+                nombreCompleto:
+                  dto.nombreCompleto,
+                email,
+                passwordHash,
+                telefono: dto.telefono,
+                roleId: role.id,
+                estado: 'PENDIENTE',
+                activo: true,
+              },
+            });
+
+          // Crear ubicación
+          const ubicacion =
+            await tx.location.create({
+              data: {
+                direccion:
+                  dto.direccion,
+                comuna: dto.comuna,
+                barrio: dto.barrio,
+                latitud,
+                longitud,
+              },
+            });
+
+          // =========================
+          // CREAR REFUGIO
+          // =========================
+
+          if (
+            dto.rol === RoleName.REFUGIO
+          ) {
+            if (
+              !dto.nombreRefugio ||
+              !dto.capacidadRefugio ||
+              !dto.horarioRefugio
+            ) {
+              throw new BadRequestException(
+                'Faltan datos obligatorios del refugio',
+              );
+            }
+
+            await tx.shelter.create({
+              data: {
+                usuarioId: user.id,
+                ubicacionId:
+                  ubicacion.id,
+                nombre:
+                  dto.nombreRefugio,
+                capacidad:
+                  dto.capacidadRefugio,
+                horario:
+                  dto.horarioRefugio,
+                sitioWeb:
+                  dto.sitioWebRefugio ||
+                  null,
+              },
+            });
+          }
+
+          // =========================
+          // CREAR VETERINARIA
+          // =========================
+
+          if (
+            dto.rol ===
+            RoleName.VETERINARIA
+          ) {
+            if (
+              !dto.nombreVeterinaria ||
+              !dto.horarioVeterinaria
+            ) {
+              throw new BadRequestException(
+                'Faltan datos obligatorios de la veterinaria',
+              );
+            }
+
+            await tx.veterinary.create({
+              data: {
+                usuarioId: user.id,
+                ubicacionId:
+                  ubicacion.id,
+                nombre:
+                  dto.nombreVeterinaria,
+                urgencias24h:
+                  dto.urgencias24h ??
+                  false,
+                horario:
+                  dto.horarioVeterinaria,
+              },
+            });
+          }
+
+          // =========================
+          // BUSCAR ADMINISTRADORES
+          // =========================
+
+          const administradores =
+            await tx.user.findMany({
+              where: {
+                role: {
+                  nombre:
+                    RoleName.ADMINISTRADOR,
+                },
+                activo: true,
+              },
+
+              select: {
+                id: true,
+              },
+            });
+
+          // =========================
+          // NOTIFICAR ADMINISTRADORES
+          // =========================
+
+          if (
+            administradores.length > 0
+          ) {
+            await tx.notification.createMany(
+              {
+                data: administradores.map(
+                  (administrador) => ({
+                    usuarioId:
+                      administrador.id,
+
+                    titulo:
+                      dto.rol ===
+                      RoleName.REFUGIO
+                        ? 'Nueva solicitud de refugio'
+                        : 'Nueva solicitud de veterinaria',
+
+                    mensaje:
+                      dto.rol ===
+                      RoleName.REFUGIO
+                        ? `El refugio "${dto.nombreRefugio}" ha enviado una solicitud de registro y está pendiente de aprobación.`
+                        : `La veterinaria "${dto.nombreVeterinaria}" ha enviado una solicitud de registro y está pendiente de aprobación.`,
+                  }),
+                ),
+              },
+            );
+          }
+
+          return {
+            id: user.id,
+            nombreCompleto:
+              user.nombreCompleto,
+            email: user.email,
+            telefono: user.telefono,
+            rol: dto.rol,
+            estado: user.estado,
+            createdAt:
+              user.createdAt,
+          };
+        },
+      );
+
+    // =========================
+    // RESPUESTA
+    // =========================
+
     return {
-      message: 'Usuario registrado exitosamente',
-      user,
-      ...tokens,
+      message:
+        dto.rol === RoleName.REFUGIO
+          ? 'Solicitud de refugio enviada correctamente. Está pendiente de aprobación por un administrador.'
+          : 'Solicitud de veterinaria enviada correctamente. Está pendiente de aprobación por un administrador.',
+
+      user: resultado,
     };
   }
 
@@ -82,38 +328,93 @@ export class AuthService {
   // =========================
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-      include: { role: true },
-    });
+    const email = dto.email.trim().toLowerCase();
+
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+        include: {
+          role: true,
+        },
+      });
 
     if (!user) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException(
+        'Credenciales inválidas',
+      );
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      dto.password,
-      user.passwordHash,
-    );
+    if (!user.activo) {
+      throw new UnauthorizedException(
+        'Tu cuenta se encuentra desactivada',
+      );
+    }
+
+    const isPasswordValid =
+      await bcrypt.compare(
+        dto.password,
+        user.passwordHash,
+      );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException(
+        'Credenciales inválidas',
+      );
     }
 
-    const tokens = await this.generateTokens(
-      user.id,
-      user.email,
-      user.role.nombre,
-    );
+    // =========================
+    // CONTROL DE APROBACIÓN
+    // =========================
+
+    if (
+      user.role.nombre !==
+        RoleName.CIUDADANO &&
+      user.role.nombre !==
+        RoleName.ADMINISTRADOR &&
+      user.estado !== 'APROBADO'
+    ) {
+      if (
+        user.estado === 'PENDIENTE'
+      ) {
+        throw new UnauthorizedException(
+          'Tu cuenta está pendiente de aprobación por el administrador',
+        );
+      }
+
+      if (
+        user.estado === 'RECHAZADO'
+      ) {
+        throw new UnauthorizedException(
+          'Tu solicitud fue rechazada por el administrador',
+        );
+      }
+
+      throw new UnauthorizedException(
+        'Tu cuenta no está habilitada para iniciar sesión',
+      );
+    }
+
+    const tokens =
+      await this.generateTokens(
+        user.id,
+        user.email,
+        user.role.nombre,
+      );
 
     return {
-      message: 'Inicio de sesión exitoso',
+      message:
+        'Inicio de sesión exitoso',
 
       usuario: {
         id: user.id,
-        nombre: user.nombreCompleto,
+        nombre:
+          user.nombreCompleto,
         email: user.email,
+        telefono:
+          user.telefono,
         rol: user.role.nombre,
+        estado: user.estado,
+        activo: user.activo,
       },
 
       ...tokens,
@@ -121,15 +422,54 @@ export class AuthService {
   }
 
   // =========================
-  // SOLICITAR RECUPERACIÓN
+  // PERFIL
   // =========================
 
-  async forgotPassword(dto: ForgotPasswordDto) {
-    const email = dto.email.trim().toLowerCase();
+  async perfil(userId: string) {
+    const usuario =
+      await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+        include: {
+          role: true,
+        },
+      });
+
+    if (!usuario) {
+      throw new UnauthorizedException(
+        'Usuario no encontrado',
+      );
+    }
+
+    return {
+      id: usuario.id,
+      nombre:
+        usuario.nombreCompleto,
+      email: usuario.email,
+      telefono:
+        usuario.telefono,
+      rol: usuario.role.nombre,
+      estado: usuario.estado,
+      activo: usuario.activo,
+    };
+  }
+
+  // =========================
+  // RECUPERAR CONTRASEÑA
+  // =========================
+
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ) {
+    const email =
+      dto.email.trim().toLowerCase();
+
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
 
     if (!user) {
       throw new BadRequestException(
@@ -137,45 +477,58 @@ export class AuthService {
       );
     }
 
-    // Invalidar códigos anteriores
-    await this.prisma.passwordResetCode.updateMany({
-      where: {
-        usuarioId: user.id,
-        usado: false,
-      },
-      data: {
-        usado: true,
-      },
-    });
+    await this.prisma.passwordResetCode.updateMany(
+      {
+        where: {
+          usuarioId: user.id,
+          usado: false,
+        },
 
-    // Generar código aleatorio de 6 dígitos
-    const codigo = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
-
-    // El código dura 10 minutos
-    const expiresAt = new Date(
-      Date.now() + 10 * 60 * 1000,
+        data: {
+          usado: true,
+        },
+      },
     );
 
-    await this.prisma.passwordResetCode.create({
-      data: {
-        usuarioId: user.id,
-        codigo,
-        expiresAt,
-      },
-    });
+    const codigo = Math.floor(
+      100000 +
+        Math.random() * 900000,
+    ).toString();
 
-    // TEMPORAL:
-    // Lo mostramos en consola para comprobar que funciona.
-    // Después lo enviaremos al correo electrónico.
+    const expiresAt = new Date(
+      Date.now() +
+        10 * 60 * 1000,
+    );
+
+    await this.prisma.passwordResetCode.create(
+      {
+        data: {
+          usuarioId: user.id,
+          codigo,
+          expiresAt,
+        },
+      },
+    );
+
     console.log('');
-    console.log('====================================');
-    console.log('🔐 CÓDIGO DE RECUPERACIÓN');
-    console.log(`📧 Correo: ${user.email}`);
-    console.log(`🔢 Código: ${codigo}`);
-    console.log(`⏰ Expira: ${expiresAt.toLocaleString()}`);
-    console.log('====================================');
+    console.log(
+      '====================================',
+    );
+    console.log(
+      '🔐 CÓDIGO DE RECUPERACIÓN',
+    );
+    console.log(
+      `📧 Correo: ${user.email}`,
+    );
+    console.log(
+      `🔢 Código: ${codigo}`,
+    );
+    console.log(
+      `⏰ Expira: ${expiresAt.toLocaleString()}`,
+    );
+    console.log(
+      '====================================',
+    );
     console.log('');
 
     return {
@@ -188,12 +541,16 @@ export class AuthService {
   // VERIFICAR CÓDIGO
   // =========================
 
-  async verifyResetCode(dto: VerifyResetCodeDto) {
-    const email = dto.email.trim().toLowerCase();
+  async verifyResetCode(
+    dto: VerifyResetCodeDto,
+  ) {
+    const email =
+      dto.email.trim().toLowerCase();
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
 
     if (!user) {
       throw new BadRequestException(
@@ -202,16 +559,19 @@ export class AuthService {
     }
 
     const resetCode =
-      await this.prisma.passwordResetCode.findFirst({
-        where: {
-          usuarioId: user.id,
-          codigo: dto.codigo,
-          usado: false,
+      await this.prisma.passwordResetCode.findFirst(
+        {
+          where: {
+            usuarioId: user.id,
+            codigo: dto.codigo,
+            usado: false,
+          },
+
+          orderBy: {
+            createdAt: 'desc',
+          },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      );
 
     if (!resetCode) {
       throw new BadRequestException(
@@ -219,14 +579,17 @@ export class AuthService {
       );
     }
 
-    if (resetCode.expiresAt < new Date()) {
+    if (
+      resetCode.expiresAt < new Date()
+    ) {
       throw new BadRequestException(
         'El código de recuperación ha expirado',
       );
     }
 
     return {
-      message: 'Código verificado correctamente',
+      message:
+        'Código verificado correctamente',
       valido: true,
     };
   }
@@ -235,12 +598,16 @@ export class AuthService {
   // CAMBIAR CONTRASEÑA
   // =========================
 
-  async resetPassword(dto: ResetPasswordDto) {
-    const email = dto.email.trim().toLowerCase();
+  async resetPassword(
+    dto: ResetPasswordDto,
+  ) {
+    const email =
+      dto.email.trim().toLowerCase();
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
 
     if (!user) {
       throw new BadRequestException(
@@ -249,16 +616,19 @@ export class AuthService {
     }
 
     const resetCode =
-      await this.prisma.passwordResetCode.findFirst({
-        where: {
-          usuarioId: user.id,
-          codigo: dto.codigo,
-          usado: false,
+      await this.prisma.passwordResetCode.findFirst(
+        {
+          where: {
+            usuarioId: user.id,
+            codigo: dto.codigo,
+            usado: false,
+          },
+
+          orderBy: {
+            createdAt: 'desc',
+          },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      );
 
     if (!resetCode) {
       throw new BadRequestException(
@@ -266,22 +636,26 @@ export class AuthService {
       );
     }
 
-    if (resetCode.expiresAt < new Date()) {
+    if (
+      resetCode.expiresAt < new Date()
+    ) {
       throw new BadRequestException(
         'El código de recuperación ha expirado',
       );
     }
 
-    const passwordHash = await bcrypt.hash(
-      dto.password,
-      12,
-    );
+    const passwordHash =
+      await bcrypt.hash(
+        dto.password,
+        12,
+      );
 
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: {
           id: user.id,
         },
+
         data: {
           passwordHash,
         },
@@ -291,6 +665,7 @@ export class AuthService {
         where: {
           id: resetCode.id,
         },
+
         data: {
           usado: true,
         },
@@ -298,7 +673,8 @@ export class AuthService {
     ]);
 
     return {
-      message: 'Contraseña actualizada correctamente',
+      message:
+        'Contraseña actualizada correctamente',
     };
   }
 
@@ -318,19 +694,29 @@ export class AuthService {
     };
 
     const accessToken =
-      await this.jwtService.signAsync(payload, {
-        secret:
-          process.env.JWT_SECRET || 'SecretKey',
-        expiresIn: '15m',
-      });
+      await this.jwtService.signAsync(
+        payload,
+        {
+          secret:
+            process.env.JWT_SECRET ||
+            'SecretKey',
+
+          expiresIn: '15m',
+        },
+      );
 
     const refreshToken =
-      await this.jwtService.signAsync(payload, {
-        secret:
-          process.env.REFRESH_TOKEN_SECRET ||
-          'RefreshSecretKey',
-        expiresIn: '7d',
-      });
+      await this.jwtService.signAsync(
+        payload,
+        {
+          secret:
+            process.env
+              .REFRESH_TOKEN_SECRET ||
+            'RefreshSecretKey',
+
+          expiresIn: '7d',
+        },
+      );
 
     return {
       accessToken,
@@ -338,3 +724,4 @@ export class AuthService {
     };
   }
 }
+

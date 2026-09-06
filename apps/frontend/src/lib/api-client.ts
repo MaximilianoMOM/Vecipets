@@ -1,4 +1,10 @@
-const BASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) || 'http://localhost:4000/api/v1';
+const BASE_URL = 'http://localhost:4000/api/v1';
+
+console.log('🔥 BASE_URL DEL FRONTEND:', BASE_URL);
+
+// ============================================================
+// TIPOS GENERALES
+// ============================================================
 
 export interface APIErrorResponse {
   message?: string | string[];
@@ -6,101 +12,9 @@ export interface APIErrorResponse {
   statusCode?: number;
 }
 
-/**
- * Cliente HTTP modular universal fetchAPI para la plataforma VeciPets
- */
-export async function fetchAPI<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = `${BASE_URL}${cleanEndpoint}`;
-
-  const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  // Autenticación por token JWT en localStorage
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token') || localStorage.getItem('vecipets_access_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  // Si el cuerpo NO es FormData, establecer Content-Type por defecto como application/json
-  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
-  if (!isFormData && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    let data: any;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
-    }
-
-    if (!response.ok) {
-      const errorMessage =
-        (typeof data === 'object' && data !== null && (data.message || data.error))
-          ? Array.isArray(data.message)
-            ? data.message.join(', ')
-            : data.message || data.error
-          : `Error HTTP ${response.status}: ${response.statusText}`;
-
-      throw new Error(errorMessage);
-    }
-
-    return data as T;
-  } catch (error: any) {
-    // Si la conexión fue rechazada porque el backend local no está encendido, relanzar un mensaje comprensible
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('NETWORK_OFFLINE');
-    }
-    throw error;
-  }
-}
-
-/**
- * Objeto de compatibilidad retroactiva para servicios legacy
- */
-export const apiClient = {
-  get: async (endpoint: string, options: any = {}) => {
-    const query = options.params ? `?${new URLSearchParams(options.params).toString()}` : '';
-    const data = await fetchAPI<any>(`${endpoint}${query}`, { method: 'GET' });
-    return { data };
-  },
-  post: async (endpoint: string, data: any) => {
-    const resData = await fetchAPI<any>(endpoint, {
-      method: 'POST',
-      body: data instanceof FormData ? data : JSON.stringify(data),
-    });
-    return { data: resData };
-  },
-  patch: async (endpoint: string, data: any) => {
-    const resData = await fetchAPI<any>(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-    return { data: resData };
-  },
-  delete: async (endpoint: string) => {
-    const resData = await fetchAPI<any>(endpoint, { method: 'DELETE' });
-    return { data: resData };
-  },
-};
-
-// -------------------------------------------------------------
-// SERVICIOS Y HELPER METHODS PARA ENDPOINTS REST ESPECÍFICOS
-// -------------------------------------------------------------
+// ============================================================
+// USUARIO
+// ============================================================
 
 export interface Usuario {
   id: string;
@@ -108,179 +22,984 @@ export interface Usuario {
   email: string;
   telefono?: string;
   rol?: string;
+  estado?: string;
+  activo?: boolean;
   avatarUrl?: string;
 }
 
+// ============================================================
+// RESPUESTA LOGIN / REGISTRO
+// ============================================================
+
 export interface AuthLoginResponse {
   message: string;
+
   accessToken: string;
+
   refreshToken?: string;
+
   token?: string;
+
   usuario?: {
     id: string;
     nombre: string;
     email: string;
+    telefono?: string;
     rol?: string;
+    estado?: string;
+    activo?: boolean;
+    avatarUrl?: string;
   };
+
   user?: {
     id: string;
     nombreCompleto?: string;
+    nombre?: string;
     email: string;
     telefono?: string;
+    rol?: string;
+    estado?: string;
+    activo?: boolean;
+    avatarUrl?: string;
   };
 }
 
+// ============================================================
+// REPORTES
+// ============================================================
+
 export interface Reporte {
   id: string;
+
   titulo: string;
+
   nombreMascota?: string;
-  especie: 'PERRO' | 'GATO' | 'OTRO';
+
+  especie:
+    | 'PERRO'
+    | 'GATO'
+    | 'OTRO';
+
   raza?: string;
+
   color?: string;
-  tipo: 'PERDIDO' | 'ENCONTRADO' | 'ADOPCION';
-  estado: 'PERDIDO' | 'ENCONTRADO' | 'REUNIDO' | 'EN_ADOPCION' | 'ADOPTADO';
+
+  tipo:
+    | 'PERDIDA'
+    | 'HALLAZGO';
+
+  estado:
+    | 'PENDIENTE'
+    | 'PUBLICO'
+    | 'RECHAZADO'
+    | 'RESUELTO'
+    | 'CERRADO';
+
   descripcion: string;
+
   fotoUrl: string;
+
   ubicacion: string;
+
   ciudad?: string;
+
   latitud: number;
+
   longitud: number;
+
   fechaEvento: string;
+
   contactoTelefono: string;
+
   contactoEmail?: string;
+
   recompensa?: number;
+
   usuarioId?: string;
+
   usuario?: Usuario;
+
   createdAt: string;
 }
 
+// ============================================================
+// REFUGIOS / VETERINARIAS
+// ============================================================
+
 export interface Refugio {
   id: string;
+
   nombre: string;
-  tipo: 'REFUGIO' | 'VETERINARIA' | 'CLINICA';
+
+  tipo:
+    | 'REFUGIO'
+    | 'VETERINARIA'
+    | 'CLINICA';
+
   direccion: string;
+
   telefono: string;
+
   email?: string;
+
   horario?: string;
+
   servicios?: string[];
+
   latitud: number;
+
   longitud: number;
+
   imagenUrl?: string;
 }
 
-export const authAPI = {
-  // Coincide exactamente con NestJS LoginDto: { email, password }
-  login: async (data: { email: string; password: string }): Promise<AuthLoginResponse> => {
-    try {
-      return await fetchAPI<AuthLoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-    } catch (err: any) {
-      if (err.message === 'NETWORK_OFFLINE') {
-        // Fallback local si el backend no está encendido en el puerto 4000
-        const mockToken = 'mock-jwt-token-' + Math.random().toString(36).substring(2);
-        const mockUser = {
-          id: 'local-user-id',
-          nombre: data.email.split('@')[0],
-          email: data.email,
-          rol: 'CIUDADANO',
-        };
-        return {
-          message: 'Inicio de sesión simulado (Modo Cliente)',
-          accessToken: mockToken,
-          usuario: mockUser,
-        };
-      }
-      throw err;
+// ============================================================
+// CLIENTE HTTP PRINCIPAL
+// ============================================================
+
+export async function fetchAPI<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const cleanEndpoint =
+    endpoint.startsWith('/')
+      ? endpoint
+      : `/${endpoint}`;
+
+  const url =
+    `${BASE_URL}${cleanEndpoint}`;
+
+  const headers =
+    new Headers(options.headers);
+
+  // ==========================================================
+  // AGREGAR JWT AUTOMÁTICAMENTE
+  // ==========================================================
+
+  if (
+    typeof window !== 'undefined'
+  ) {
+    const token =
+      localStorage.getItem(
+        'token',
+      ) ||
+      localStorage.getItem(
+        'vecipets_access_token',
+      );
+
+    if (token) {
+      headers.set(
+        'Authorization',
+        `Bearer ${token}`,
+      );
     }
+  }
+
+  // ==========================================================
+  // CONTENT TYPE
+  // ==========================================================
+
+  const isFormData =
+    typeof FormData !== 'undefined' &&
+    options.body instanceof FormData;
+
+  if (
+    !isFormData &&
+    !headers.has('Content-Type')
+  ) {
+    headers.set(
+      'Content-Type',
+      'application/json',
+    );
+  }
+
+  try {
+    const response =
+      await fetch(url, {
+        ...options,
+        headers,
+      });
+
+    const contentType =
+      response.headers.get(
+        'content-type',
+      ) || '';
+
+    let data: any = null;
+
+    // ========================================================
+    // LEER RESPUESTA
+    // ========================================================
+
+    if (
+      contentType.includes(
+        'application/json',
+      )
+    ) {
+      data =
+        await response.json();
+    } else {
+      const text =
+        await response.text();
+
+      if (text.trim()) {
+        try {
+          data =
+            JSON.parse(text);
+        } catch {
+          data = text;
+        }
+      }
+    }
+
+    // ========================================================
+    // ERRORES HTTP
+    // ========================================================
+
+    if (!response.ok) {
+      let errorMessage =
+        `Error HTTP ${response.status}`;
+
+      if (
+        data &&
+        typeof data === 'object'
+      ) {
+        if (
+          Array.isArray(
+            data.message,
+          )
+        ) {
+          errorMessage =
+            data.message.join(', ');
+        } else if (
+          data.message
+        ) {
+          errorMessage =
+            data.message;
+        } else if (
+          data.error
+        ) {
+          errorMessage =
+            data.error;
+        }
+      } else if (
+        typeof data === 'string' &&
+        data.trim()
+      ) {
+        errorMessage = data;
+      }
+
+      // ======================================================
+      // SESIÓN NO AUTORIZADA
+      // ======================================================
+
+      if (
+        response.status === 401
+      ) {
+        throw new Error(
+          `UNAUTHORIZED: ${errorMessage}`,
+        );
+      }
+
+      // ======================================================
+      // SIN PERMISOS
+      // ======================================================
+
+      if (
+        response.status === 403
+      ) {
+        throw new Error(
+          `FORBIDDEN: ${errorMessage}`,
+        );
+      }
+
+      throw new Error(
+        errorMessage,
+      );
+    }
+
+    return data as T;
+  } catch (error: any) {
+    // ========================================================
+    // ERROR REAL DE CONEXIÓN
+    // ========================================================
+
+    if (
+      error?.name === 'TypeError' &&
+      (
+        error?.message?.includes(
+          'fetch',
+        ) ||
+        error?.message?.includes(
+          'Failed to fetch',
+        ) ||
+        error?.message?.includes(
+          'NetworkError',
+        )
+      )
+    ) {
+      throw new Error(
+        'NETWORK_OFFLINE',
+      );
+    }
+
+    throw error;
+  }
+}
+
+// ============================================================
+// CLIENTE LEGACY
+// ============================================================
+
+export const apiClient = {
+  get: async (
+    endpoint: string,
+    options: any = {},
+  ) => {
+    const query =
+      options.params
+        ? `?${new URLSearchParams(
+            options.params,
+          ).toString()}`
+        : '';
+
+    const data =
+      await fetchAPI<any>(
+        `${endpoint}${query}`,
+        {
+          method: 'GET',
+        },
+      );
+
+    return { data };
   },
 
-  // Coincide exactamente con NestJS RegisterDto: { nombreCompleto, email, password, telefono, rol }
-  register: async (data: {
-    nombreCompleto: string;
-    email: string;
-    password: string;
-    telefono: string;
-    rol?: string;
-  }): Promise<AuthLoginResponse> => {
-    // Garantizar envío estricto de campos requeridos por RegisterDto en NestJS
+  post: async (
+    endpoint: string,
+    data: any,
+  ) => {
+    const response =
+      await fetchAPI<any>(
+        endpoint,
+        {
+          method: 'POST',
+          body:
+            data instanceof FormData
+              ? data
+              : JSON.stringify(data),
+        },
+      );
+
+    return {
+      data: response,
+    };
+  },
+
+  patch: async (
+    endpoint: string,
+    data: any,
+  ) => {
+    const response =
+      await fetchAPI<any>(
+        endpoint,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        },
+      );
+
+    return {
+      data: response,
+    };
+  },
+
+  delete: async (
+    endpoint: string,
+  ) => {
+    const response =
+      await fetchAPI<any>(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+      );
+
+    return {
+      data: response,
+    };
+  },
+};
+
+// ============================================================
+// AUTENTICACIÓN
+// ============================================================
+
+export const authAPI = {
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
+
+  login: async (
+    data: {
+      email: string;
+      password: string;
+    },
+  ): Promise<AuthLoginResponse> => {
     const payload = {
-      nombreCompleto: data.nombreCompleto.trim(),
-      email: data.email.trim().toLowerCase(),
-      password: data.password,
-      telefono: data.telefono.trim(),
-      rol: data.rol || 'CIUDADANO',
+      email:
+        data.email
+          .trim()
+          .toLowerCase(),
+
+      password:
+        data.password,
     };
 
-    try {
-      return await fetchAPI<AuthLoginResponse>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-    } catch (err: any) {
-      if (err.message === 'NETWORK_OFFLINE') {
-        // Fallback local si el servidor backend aún no está iniciado
-        const mockToken = 'mock-jwt-token-' + Math.random().toString(36).substring(2);
-        const mockUser = {
-          id: 'user-' + Date.now(),
-          nombreCompleto: payload.nombreCompleto,
-          email: payload.email,
-          telefono: payload.telefono,
-          rol: payload.rol,
+    const response =
+      await fetchAPI<AuthLoginResponse>(
+        '/auth/login',
+        {
+          method: 'POST',
+          body: JSON.stringify(
+            payload,
+          ),
+        },
+      );
+
+    // ======================================================
+    // GUARDAR SESIÓN
+    // ======================================================
+
+    if (
+      typeof window !== 'undefined'
+    ) {
+      const token =
+        response.accessToken ||
+        response.token;
+
+      if (token) {
+        localStorage.setItem(
+          'token',
+          token,
+        );
+
+        localStorage.setItem(
+          'vecipets_access_token',
+          token,
+        );
+      }
+
+      // ====================================================
+      // NORMALIZAR USUARIO
+      // ====================================================
+
+      let usuario: Usuario | null =
+        null;
+
+      if (
+        response.usuario
+      ) {
+        usuario = {
+          id:
+            response.usuario.id,
+
+          nombre:
+            response.usuario.nombre,
+
+          email:
+            response.usuario.email,
+
+          telefono:
+            response.usuario.telefono,
+
+          rol:
+            response.usuario.rol,
+
+          estado:
+            response.usuario.estado,
+
+          activo:
+            response.usuario.activo,
+
+          avatarUrl:
+            response.usuario.avatarUrl,
         };
-        return {
-          message: 'Registro exitoso (Modo Cliente)',
-          accessToken: mockToken,
-          user: mockUser,
+      } else if (
+        response.user
+      ) {
+        usuario = {
+          id:
+            response.user.id,
+
+          nombre:
+            response.user.nombre ||
+            response.user.nombreCompleto ||
+            '',
+
+          email:
+            response.user.email,
+
+          telefono:
+            response.user.telefono,
+
+          rol:
+            response.user.rol,
+
+          estado:
+            response.user.estado,
+
+          activo:
+            response.user.activo,
+
+          avatarUrl:
+            response.user.avatarUrl,
         };
       }
-      throw err;
+
+      // ====================================================
+      // GUARDAR USUARIO
+      // ====================================================
+
+      if (usuario) {
+        localStorage.setItem(
+          'vecipets_user',
+          JSON.stringify(usuario),
+        );
+      }
     }
+
+    return response;
   },
 
-  getPerfil: async (): Promise<Usuario> => {
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('vecipets_user');
+  // ==========================================================
+  // REGISTRO
+  // ==========================================================
+
+  register: async (
+    data: {
+      nombreCompleto: string;
+      email: string;
+      password: string;
+      telefono: string;
+      rol?: string;
+
+      // DATOS REFUGIO
+      nombreRefugio?: string;
+      capacidadRefugio?: number;
+      horarioRefugio?: string;
+      sitioWebRefugio?: string;
+
+      // DATOS VETERINARIA
+      nombreVeterinaria?: string;
+      urgencias24h?: boolean;
+      horarioVeterinaria?: string;
+
+      // UBICACIÓN
+      direccion?: string;
+      comuna?: string;
+      barrio?: string;
+      latitud?: string;
+      longitud?: string;
+    },
+  ): Promise<AuthLoginResponse> => {
+    // ========================================================
+    // DATOS BÁSICOS
+    // ========================================================
+
+    const payload: any = {
+      nombreCompleto:
+        data.nombreCompleto.trim(),
+
+      email:
+        data.email
+          .trim()
+          .toLowerCase(),
+
+      password:
+        data.password,
+
+      telefono:
+        data.telefono.trim(),
+
+      rol:
+        data.rol ||
+        'CIUDADANO',
+    };
+
+    // ========================================================
+    // DATOS REFUGIO
+    // ========================================================
+
+    if (data.rol === 'REFUGIO') {
+      payload.nombreRefugio =
+        data.nombreRefugio?.trim();
+
+      payload.capacidadRefugio =
+        data.capacidadRefugio;
+
+      payload.horarioRefugio =
+        data.horarioRefugio?.trim();
+
+      if (
+        data.sitioWebRefugio?.trim()
+      ) {
+        payload.sitioWebRefugio =
+          data.sitioWebRefugio.trim();
+      }
+
+      // ------------------------------------------------------
+      // UBICACIÓN DEL REFUGIO
+      // ------------------------------------------------------
+
+      payload.direccion =
+        data.direccion?.trim();
+
+      payload.comuna =
+        data.comuna?.trim();
+
+      payload.barrio =
+        data.barrio?.trim();
+
+      payload.latitud =
+        data.latitud?.trim();
+
+      payload.longitud =
+        data.longitud?.trim();
+    }
+
+    // ========================================================
+    // DATOS VETERINARIA
+    // ========================================================
+
+    if (data.rol === 'VETERINARIA') {
+      payload.nombreVeterinaria =
+        data.nombreVeterinaria?.trim();
+
+      payload.urgencias24h =
+        data.urgencias24h ?? false;
+
+      payload.horarioVeterinaria =
+        data.horarioVeterinaria?.trim();
+
+      // ------------------------------------------------------
+      // UBICACIÓN DE LA VETERINARIA
+      // ------------------------------------------------------
+
+      payload.direccion =
+        data.direccion?.trim();
+
+      payload.comuna =
+        data.comuna?.trim();
+
+      payload.barrio =
+        data.barrio?.trim();
+
+      payload.latitud =
+        data.latitud?.trim();
+
+      payload.longitud =
+        data.longitud?.trim();
+    }
+
+    // ========================================================
+    // MOSTRAR DATOS QUE SE ENVIARÁN
+    // ========================================================
+
+    console.log(
+      'PAYLOAD FINAL QUE SE ENVÍA AL BACKEND:',
+      payload,
+    );
+
+    // ========================================================
+    // ENVIAR REGISTRO
+    // ========================================================
+
+    return await fetchAPI<AuthLoginResponse>(
+      '/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify(
+          payload,
+        ),
+      },
+    );
+  },
+
+  // ==========================================================
+  // PERFIL
+  // ==========================================================
+
+  getPerfil:
+    async (): Promise<Usuario> => {
+      if (
+        typeof window === 'undefined'
+      ) {
+        throw new Error(
+          'NO_SESSION',
+        );
+      }
+
+      // ======================================================
+      // USUARIO GUARDADO
+      // ======================================================
+
+      const storedUser =
+        localStorage.getItem(
+          'vecipets_user',
+        );
+
       if (storedUser) {
         try {
-          return JSON.parse(storedUser);
-        } catch (e) {}
+          const usuario =
+            JSON.parse(
+              storedUser,
+            ) as Usuario;
+
+          if (
+            usuario &&
+            usuario.id &&
+            usuario.email
+          ) {
+            return usuario;
+          }
+        } catch (error) {
+          console.error(
+            'Error leyendo vecipets_user:',
+            error,
+          );
+
+          localStorage.removeItem(
+            'vecipets_user',
+          );
+        }
       }
-    }
-    try {
-      return await fetchAPI<Usuario>('/auth/perfil');
-    } catch (e) {
-      if (typeof window !== 'undefined') {
-        const storedUser = localStorage.getItem('vecipets_user');
-        if (storedUser) return JSON.parse(storedUser);
+
+      // ======================================================
+      // RECUPERAR DATOS DEL JWT
+      // ======================================================
+
+      const token =
+        localStorage.getItem(
+          'token',
+        ) ||
+        localStorage.getItem(
+          'vecipets_access_token',
+        );
+
+      if (!token) {
+        throw new Error(
+          'NO_SESSION',
+        );
       }
-      throw new Error('No hay usuario autenticado');
+
+      try {
+        const partes =
+          token.split('.');
+
+        if (
+          partes.length !== 3
+        ) {
+          throw new Error(
+            'TOKEN_INVALIDO',
+          );
+        }
+
+        const base64Payload =
+          partes[1]
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+
+        const payload =
+          JSON.parse(
+            decodeURIComponent(
+              atob(
+                base64Payload,
+              )
+                .split('')
+                .map(
+                  (char) =>
+                    '%' +
+                    (
+                      '00' +
+                      char
+                        .charCodeAt(
+                          0,
+                        )
+                        .toString(16)
+                    ).slice(-2),
+                )
+                .join(''),
+            ),
+          );
+
+        const usuario: Usuario = {
+          id:
+            payload.sub || '',
+
+          nombre:
+            payload.nombre ||
+            payload.name ||
+            payload.email?.split(
+              '@',
+            )[0] ||
+            'Usuario',
+
+          email:
+            payload.email ||
+            '',
+
+          rol:
+            payload.role ||
+            payload.rol,
+
+          estado:
+            payload.estado ||
+            'APROBADO',
+
+          activo:
+            true,
+        };
+
+        if (
+          !usuario.id ||
+          !usuario.email
+        ) {
+          throw new Error(
+            'TOKEN_SIN_USUARIO',
+          );
+        }
+
+        localStorage.setItem(
+          'vecipets_user',
+          JSON.stringify(usuario),
+        );
+
+        return usuario;
+      } catch (error) {
+        console.error(
+          'No se pudo recuperar el usuario desde el token:',
+          error,
+        );
+
+        throw new Error(
+          'NO_PROFILE_DATA',
+        );
+      }
+    },
+
+  // ==========================================================
+  // CERRAR SESIÓN
+  // ==========================================================
+
+  logout: () => {
+    if (
+      typeof window !== 'undefined'
+    ) {
+      localStorage.removeItem(
+        'token',
+      );
+
+      localStorage.removeItem(
+        'vecipets_access_token',
+      );
+
+      localStorage.removeItem(
+        'vecipets_user',
+      );
     }
   },
 };
+
+// ============================================================
+// REPORTES
+// ============================================================
 
 export const reportesAPI = {
-  getReportes: (params?: Record<string, string>) => {
-    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return fetchAPI<Reporte[]>(`/reportes${query}`);
+  // ==========================================================
+  // OBTENER TODOS LOS REPORTES
+  // ==========================================================
+
+  getReportes: (
+    params?: Record<string, string>,
+  ) => {
+    const query =
+      params &&
+      Object.keys(params).length > 0
+        ? `?${new URLSearchParams(
+            params,
+          ).toString()}`
+        : '';
+
+    return fetchAPI<Reporte[]>(
+      `/reportes${query}`,
+      {
+        method: 'GET',
+      },
+    );
   },
 
-  getReporteById: (id: string) => fetchAPI<Reporte>(`/reportes/${id}`),
+  // ==========================================================
+  // OBTENER UN REPORTE
+  // ==========================================================
 
-  crearReporte: (formData: FormData) =>
-    fetchAPI<Reporte>('/reportes', {
-      method: 'POST',
-      body: formData,
-    }),
+  getReporteById: (
+    id: string,
+  ) => {
+    return fetchAPI<Reporte>(
+      `/reportes/${id}`,
+      {
+        method: 'GET',
+      },
+    );
+  },
 
-  cambiarEstado: (id: string, estado: string) =>
-    fetchAPI<Reporte>(`/reportes/${id}/resolver`, {
-      method: 'PATCH',
-      body: JSON.stringify({ estado }),
-    }),
+  // ==========================================================
+  // CREAR REPORTE
+  // ==========================================================
+
+  crearReporte: (
+    formData: FormData,
+  ) => {
+    return fetchAPI<Reporte>(
+      '/reportes',
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+  },
+
+  // ==========================================================
+  // MARCAR COMO RESUELTO
+  // ==========================================================
+
+  cambiarEstado: (
+    id: string,
+    estado: string,
+  ) => {
+    return fetchAPI<Reporte>(
+      `/reportes/${id}/resolver`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          estado,
+        }),
+      },
+    );
+  },
 };
 
+// ============================================================
+// REFUGIOS
+// ============================================================
+
 export const refugiosAPI = {
-  getRefugios: () => fetchAPI<Refugio[]>('/refugios'),
+  getRefugios: () => {
+    return fetchAPI<Refugio[]>(
+      '/refugios',
+      {
+        method: 'GET',
+      },
+    );
+  },
 };

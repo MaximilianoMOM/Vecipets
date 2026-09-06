@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   NotFoundException,
@@ -11,9 +12,18 @@ import { ReportType } from '@prisma/client';
 
 @Injectable()
 export class MascotasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
-  async create(usuarioId: string, dto: CreateMascotaDto) {
+  // =====================================================
+  // CREAR MASCOTA
+  // =====================================================
+
+  async create(
+    usuarioId: string,
+    dto: CreateMascotaDto,
+  ) {
     return this.prisma.pet.create({
       data: {
         usuarioId,
@@ -28,6 +38,10 @@ export class MascotasService {
     });
   }
 
+  // =====================================================
+  // OBTENER LAS MASCOTAS DEL USUARIO
+  // =====================================================
+
   async findByUsuario(usuarioId: string) {
     return this.prisma.pet.findMany({
       where: {
@@ -39,7 +53,14 @@ export class MascotasService {
     });
   }
 
-  async findOne(id: string, usuarioId: string) {
+  // =====================================================
+  // OBTENER UNA MASCOTA DEL USUARIO
+  // =====================================================
+
+  async findOne(
+    id: string,
+    usuarioId: string,
+  ) {
     const mascota = await this.prisma.pet.findFirst({
       where: {
         id,
@@ -48,11 +69,135 @@ export class MascotasService {
     });
 
     if (!mascota) {
-      throw new NotFoundException('Mascota no encontrada');
+      throw new NotFoundException(
+        'Mascota no encontrada',
+      );
     }
 
     return mascota;
   }
+
+  // =====================================================
+  // ACTUALIZAR MASCOTA DEL USUARIO
+  // =====================================================
+
+  async update(
+    id: string,
+    usuarioId: string,
+    dto: UpdateMascotaDto,
+  ) {
+    const mascota = await this.prisma.pet.findFirst({
+      where: {
+        id,
+        usuarioId,
+      },
+    });
+
+    if (!mascota) {
+      throw new NotFoundException(
+        'Mascota no encontrada',
+      );
+    }
+
+    return this.prisma.pet.update({
+      where: {
+        id,
+      },
+      data: {
+        ...(dto.nombre !== undefined && {
+          nombre: dto.nombre,
+        }),
+
+        ...(dto.especie !== undefined && {
+          especie: dto.especie,
+        }),
+
+        ...(dto.raza !== undefined && {
+          raza: dto.raza,
+        }),
+
+        ...(dto.edadAprox !== undefined && {
+          edadAprox: dto.edadAprox,
+        }),
+
+        ...(dto.color !== undefined && {
+          color: dto.color,
+        }),
+
+        ...(dto.caracteristicas !== undefined && {
+          caracteristicas: dto.caracteristicas,
+        }),
+
+        ...(dto.fotoUrl !== undefined && {
+          fotoUrl: dto.fotoUrl,
+        }),
+      },
+    });
+  }
+
+  // =====================================================
+  // ELIMINAR MASCOTA DEL USUARIO
+  // =====================================================
+
+  async remove(
+    id: string,
+    usuarioId: string,
+  ) {
+    const mascota = await this.prisma.pet.findFirst({
+      where: {
+        id,
+        usuarioId,
+      },
+    });
+
+    if (!mascota) {
+      throw new NotFoundException(
+        'Mascota no encontrada',
+      );
+    }
+
+    await this.prisma.pet.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      message: 'Mascota eliminada correctamente',
+    };
+  }
+
+  // =====================================================
+  // ELIMINAR CUALQUIER MASCOTA - ADMINISTRADOR
+  // =====================================================
+
+  async removeByAdmin(id: string) {
+    const mascota = await this.prisma.pet.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!mascota) {
+      throw new NotFoundException(
+        'Mascota no encontrada',
+      );
+    }
+
+    await this.prisma.pet.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      message: 'Mascota eliminada correctamente por el administrador',
+    };
+  }
+
+  // =====================================================
+  // MASCOTAS REPORTADAS
+  // =====================================================
 
   async findReportedPets(
     tipo?: string,
@@ -64,7 +209,11 @@ export class MascotasService {
     let reportType: ReportType | undefined;
 
     if (tipo) {
-      if (!Object.values(ReportType).includes(tipo as ReportType)) {
+      if (
+        !Object.values(ReportType).includes(
+          tipo as ReportType,
+        )
+      ) {
         throw new BadRequestException(
           'El tipo de reporte debe ser PERDIDA o HALLAZGO',
         );
@@ -76,11 +225,15 @@ export class MascotasService {
     const fechaFilter: any = {};
 
     if (fechaDesde) {
-      fechaFilter.gte = new Date(`${fechaDesde}T00:00:00`);
+      fechaFilter.gte = new Date(
+        `${fechaDesde}T00:00:00`,
+      );
     }
 
     if (fechaHasta) {
-      fechaFilter.lte = new Date(`${fechaHasta}T23:59:59`);
+      fechaFilter.lte = new Date(
+        `${fechaHasta}T23:59:59`,
+      );
     }
 
     return this.prisma.pet.findMany({
@@ -152,3 +305,4 @@ export class MascotasService {
     });
   }
 }
+

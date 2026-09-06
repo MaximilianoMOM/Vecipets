@@ -1,17 +1,24 @@
+
 import {
   Body,
   Controller,
+  Get,
   Post,
   HttpCode,
   HttpStatus,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
+
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -19,18 +26,10 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
-  // =========================
-  // REGISTRO
-  // =========================
-
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
-
-  // =========================
-  // LOGIN
-  // =========================
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -38,9 +37,11 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  // =========================
-  // RECUPERAR CONTRASEÑA
-  // =========================
+  @Get('perfil')
+  @UseGuards(JwtAuthGuard)
+  async perfil(@Req() req: any) {
+    return this.authService.perfil(req.user.id);
+  }
 
   @Post('forgot-password')
   async forgotPassword(
@@ -48,10 +49,6 @@ export class AuthController {
   ) {
     return this.authService.forgotPassword(dto);
   }
-
-  // =========================
-  // VERIFICAR CÓDIGO
-  // =========================
 
   @Post('verify-reset-code')
   @HttpCode(HttpStatus.OK)
@@ -61,10 +58,6 @@ export class AuthController {
     return this.authService.verifyResetCode(dto);
   }
 
-  // =========================
-  // NUEVA CONTRASEÑA
-  // =========================
-
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(
@@ -73,3 +66,4 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 }
+
