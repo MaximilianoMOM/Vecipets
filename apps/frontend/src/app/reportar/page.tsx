@@ -17,7 +17,7 @@ export default function ReportarPage() {
   const [titulo, setTitulo] = useState('');
   const [nombreMascota, setNombreMascota] = useState('');
   const [especie, setEspecie] = useState<'PERRO' | 'GATO' | 'OTRO'>('PERRO');
-  const [tipo, setTipo] = useState<'PERDIDO' | 'ENCONTRADO' | 'ADOPCION'>('PERDIDO');
+  const [tipo, setTipo] = useState<'PERDIDA' | 'HALLAZGO'>('PERDIDA');
   const [descripcion, setDescripcion] = useState('');
   const [contactoTelefono, setContactoTelefono] = useState('');
   const [recompensa, setRecompensa] = useState('');
@@ -129,9 +129,8 @@ export default function ReportarPage() {
                     onChange={(e: any) => setTipo(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#5E7BC4]"
                   >
-                    <option value="PERDIDO">🚨 Mascota Perdida</option>
-                    <option value="ENCONTRADO">🔍 Mascota Encontrada</option>
-                    <option value="ADOPCION">🏠 En Adopción</option>
+                    <option value="PERDIDA">🚨 Mascota Perdida</option>
+                    <option value="HALLAZGO">🔍 Mascota Encontrada</option>
                   </select>
                 </div>
 

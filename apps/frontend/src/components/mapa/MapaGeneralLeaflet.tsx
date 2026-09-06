@@ -11,15 +11,12 @@ const createCustomIcon = (tipo: string, especie: string) => {
   let bgColor = '#F3B26C'; // Naranja
   let emoji = '🐾';
 
-  if (tipo === 'PERDIDO') {
+  if (tipo === 'PERDIDA') {
     bgColor = '#EF4444'; // Red
     emoji = '🚨';
-  } else if (tipo === 'ENCONTRADO') {
+  } else if (tipo === 'HALLAZGO') {
     bgColor = '#10B981'; // Green
     emoji = '🔍';
-  } else if (tipo === 'ADOPCION') {
-    bgColor = '#8B5CF6'; // Purple
-    emoji = '🏠';
   }
 
   if (especie === 'PERRO') emoji = '🐶';
@@ -126,9 +123,9 @@ export default function MapaGeneralLeaflet({
                   <div className="flex items-center gap-1 mb-1">
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase text-white ${
-                        rep.tipo === 'PERDIDO'
+                        rep.tipo === 'PERDIDA'
                           ? 'bg-rose-500'
-                          : rep.tipo === 'ENCONTRADO'
+                          : rep.tipo === 'HALLAZGO'
                           ? 'bg-emerald-500'
                           : 'bg-purple-500'
                       }`}

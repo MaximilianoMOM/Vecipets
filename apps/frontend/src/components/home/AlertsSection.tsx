@@ -12,7 +12,7 @@ export default function AlertsSection() {
   useEffect(() => {
     const cargarAlertas = async () => {
       try {
-        const datos = await reportesAPI.getReportes({ estado: 'PERDIDO' });
+        const datos = await reportesAPI.getReportes({ tipo: 'PERDIDA' });
         setReportes(datos.slice(0, 3));
       } catch (err) {
         // Datos mock de respaldo si el backend aún no está iniciado localmente
@@ -22,8 +22,8 @@ export default function AlertsSection() {
             titulo: 'Perro extraviado en el norte',
             nombreMascota: 'Max',
             especie: 'PERRO',
-            tipo: 'PERDIDO',
-            estado: 'PERDIDO',
+            tipo: 'PERDIDA',
+            estado: 'PUBLICO',
             descripcion: 'Se extravió cerca a la estación principal. Lleva collar azul.',
             fotoUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
             ubicacion: 'Zona Norte, Calle 127',
@@ -38,8 +38,8 @@ export default function AlertsSection() {
             titulo: 'Gata mestiza encontrada',
             nombreMascota: 'Luna',
             especie: 'GATO',
-            tipo: 'ENCONTRADO',
-            estado: 'ENCONTRADO',
+            tipo: 'HALLAZGO',
+            estado: 'PUBLICO',
             descripcion: 'Encontrada refugiada bajo un automóvil. Es muy cariñosa.',
             fotoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80',
             ubicacion: 'Barrio Palermo',
@@ -51,14 +51,14 @@ export default function AlertsSection() {
           },
           {
             id: '3',
-            titulo: 'Perrita en adopción responsable',
+            titulo: 'Perrita extraviada en el centro',
             nombreMascota: 'Kira',
             especie: 'PERRO',
-            tipo: 'ADOPCION',
-            estado: 'EN_ADOPCION',
-            descripcion: 'Buscamos una familia amorosa. Ya cuenta con vacunas completas.',
+            tipo: 'PERDIDA',
+            estado: 'PUBLICO',
+            descripcion: 'Buscamos a Kira, se perdió cerca del parque central.',
             fotoUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80',
-            ubicacion: 'Refugio Los Pinos',
+            ubicacion: 'Parque Central, Bogotá',
             latitud: 4.6500,
             longitud: -74.0900,
             fechaEvento: '2026-09-01',

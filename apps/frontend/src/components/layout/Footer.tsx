@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useToast } from '@/context/ToastContext';
 
 export default function Footer() {
@@ -30,12 +31,14 @@ export default function Footer() {
           {/* COLUMNA 1: INFO DE LA PLATAFORMA */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#5E7BC4] rounded-xl flex items-center justify-center text-xl text-white">
-                🐾
-              </div>
-              <span className="text-2xl font-black text-white tracking-tight">
-                Veci<span className="text-[#F3B26C]">Pets</span>
-              </span>
+              <Image
+                src="/logo-vecipets.png"
+                alt="VeciPets Logo"
+                width={762}
+                height={840}
+                priority
+                className="w-auto h-12 object-contain bg-transparent"
+              />
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed">
               Plataforma comunitaria dedicada a conectar personas para proteger, cuidar y encontrar animales perdidos o en adopción en tu ciudad.

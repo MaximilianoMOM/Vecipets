@@ -6,9 +6,8 @@ import L from 'leaflet';
 
 const createStaticIcon = (tipo: string) => {
   let bgColor = '#5E7BC4';
-  if (tipo === 'PERDIDO') bgColor = '#EF4444';
-  if (tipo === 'ENCONTRADO') bgColor = '#10B981';
-  if (tipo === 'ADOPCION') bgColor = '#8B5CF6';
+  if (tipo === 'PERDIDA') bgColor = '#EF4444';
+  if (tipo === 'HALLAZGO') bgColor = '#10B981';
 
   const html = `
     <div style="

@@ -27,8 +27,8 @@ export default function MapaPage() {
             titulo: 'Perro Beagle extraviado',
             nombreMascota: 'Bruno',
             especie: 'PERRO',
-            tipo: 'PERDIDO',
-            estado: 'PERDIDO',
+            tipo: 'PERDIDA',
+            estado: 'PUBLICO',
             descripcion: 'Se extravió en el Parque Virrey.',
             fotoUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
             ubicacion: 'Parque Virrey, Bogotá',
@@ -43,8 +43,8 @@ export default function MapaPage() {
             titulo: 'Gata mestiza en parqueadero',
             nombreMascota: 'Luna',
             especie: 'GATO',
-            tipo: 'ENCONTRADO',
-            estado: 'ENCONTRADO',
+            tipo: 'HALLAZGO',
+            estado: 'PUBLICO',
             descripcion: 'Apareció en un parqueadero cubierto.',
             fotoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80',
             ubicacion: 'Barrio Palermo, Bogotá',
@@ -119,7 +119,7 @@ export default function MapaPage() {
                     <div className="flex items-center gap-1 mb-1">
                       <span
                         className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase text-white ${
-                          rep.tipo === 'PERDIDO' ? 'bg-rose-500' : 'bg-emerald-500'
+                          rep.tipo === 'PERDIDA' ? 'bg-rose-500' : 'bg-emerald-500'
                         }`}
                       >
                         {rep.tipo}

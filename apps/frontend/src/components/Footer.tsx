@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -31,13 +32,15 @@ export default function Footer() {
         {/* COLUMNA 1: VECIPETS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Logo Blanco/Verde/Naranja */}
-          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '28px' }}>🐾</span>
-            <span style={{ fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px' }}>
-              <span style={{ color: '#ffffff' }}>Veci</span>
-              <span style={{ color: '#4ade80' }}>Pets</span>
-              <span style={{ color: '#fb923c' }}>.</span>
-            </span>
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+            <Image
+              src="/logo-vecipets.png"
+              alt="VeciPets Logo"
+              width={762}
+              height={840}
+              priority
+              style={{ height: '48px', width: 'auto', objectFit: 'contain', backgroundColor: 'transparent' }}
+            />
           </Link>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -68,7 +71,7 @@ export default function Footer() {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <Link href="/" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Inicio</Link>
             <Link href="/reportar" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Reportar mascota</Link>
-            <Link href="/mascotas" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Mascotas perdidas</Link>
+            <Link href="/reportes" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Mascotas perdidas</Link>
             <Link href="/veterinarias" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Veterinarias</Link>
             <Link href="/refugios" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Refugios</Link>
             <Link href="/consejos" style={{ color: '#bbf7d0', textDecoration: 'none', fontSize: '14px' }}>Consejos</Link>

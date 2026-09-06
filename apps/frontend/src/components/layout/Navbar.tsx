@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import { authAPI, Usuario } from '@/lib/api-client';
@@ -52,7 +53,7 @@ export default function Navbar() {
     { name: 'Inicio', href: '/' },
     { name: 'Mapa Explorador', href: '/mapa' },
     { name: 'Reportes', href: '/reportes' },
-    { name: 'Refugios y Clícas', href: '/refugios' },
+    { name: 'Refugios y Clínicas', href: '/refugios' },
     { name: 'Moderación', href: '/moderacion' },
   ];
 
@@ -61,18 +62,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
         {/* LOGO & BRAND */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-11 h-11 bg-[#EEF2FC] rounded-2xl flex items-center justify-center text-2xl border border-[#5E7BC4]/20 group-hover:scale-105 transition-transform">
-            🐾
-          </div>
-          <div>
-            <span className="text-xl font-extrabold text-[#292A2F] tracking-tight block leading-tight">
-              Veci<span className="text-[#5E7BC4]">Pets</span>
-            </span>
-            <span className="text-[11px] font-semibold text-[#53627A] block tracking-wide">
-              Unidos por cada huella
-            </span>
-          </div>
+        <Link href="/" className="flex items-center group py-1">
+          <Image
+            src="/logo-vecipets.png"
+            alt="VeciPets Logo"
+            width={762}
+            height={840}
+            priority
+            className="w-auto h-12 sm:h-14 object-contain bg-transparent group-hover:scale-105 transition-transform"
+          />
         </Link>
 
         {/* NAVEGACIÓN DESKTOP */}

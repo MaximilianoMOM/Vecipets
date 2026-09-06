@@ -10,17 +10,17 @@ interface ReporteCardProps {
 
 export default function ReporteCard({ reporte }: ReporteCardProps) {
   let badgeColor = 'bg-rose-500 text-white';
-  let badgeText = 'Perdido';
+  let badgeText = 'Perdida';
 
-  if (reporte.tipo === 'ENCONTRADO' || reporte.estado === 'ENCONTRADO') {
+  if (reporte.tipo === 'HALLAZGO') {
     badgeColor = 'bg-emerald-500 text-white';
     badgeText = 'Encontrado';
-  } else if (reporte.tipo === 'ADOPCION' || reporte.estado === 'EN_ADOPCION') {
-    badgeColor = 'bg-purple-500 text-white';
-    badgeText = 'En Adopción';
-  } else if (reporte.estado === 'REUNIDO' || reporte.estado === 'ADOPTADO') {
+  } else if (reporte.estado === 'RESUELTO') {
     badgeColor = 'bg-blue-600 text-white';
-    badgeText = reporte.estado === 'REUNIDO' ? '¡Reunido!' : '¡Adoptado!';
+    badgeText = '¡Resuelto!';
+  } else if (reporte.estado === 'CERRADO') {
+    badgeColor = 'bg-slate-600 text-white';
+    badgeText = 'Cerrado';
   }
 
   const iconoEspecie =
