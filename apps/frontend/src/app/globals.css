@@ -1,8 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+@import "leaflet-geosearch/dist/geosearch.css";
 
 /* =========================================================
-   VECIPETS - ESTILOS GLOBALES
+   VECIPETS - SISTEMA DE DISEÑO Y VARIABLES DE COLOR
    ========================================================= */
+
+:root {
+  --primary-blue: #5E7BC4;
+  --primary-blue-hover: #4F6FB8;
+  --secondary-orange: #F3B26C;
+  --secondary-orange-hover: #e29e54;
+  --hero-bg: #EEF2FC;
+  --text-dark: #292A2F;
+  --text-muted: #53627A;
+  --bg-main: #F8FAFC;
+}
 
 @layer base {
   * {
@@ -18,34 +32,17 @@
     margin: 0;
     padding: 0;
     min-width: 320px;
-
-    font-family:
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      Oxygen,
-      Ubuntu,
-      Cantarell,
-      sans-serif;
-
-    background-color: #f8fafc;
-    color: #1e293b;
+    font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
     line-height: 1.5;
-
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    color: #0f172a;
+    color: var(--text-dark);
     font-weight: 700;
     line-height: 1.25;
   }
@@ -59,36 +56,71 @@
     text-decoration: none;
   }
 
-  button,
-  input,
-  select,
-  textarea {
-    font-family: inherit;
-    font-size: inherit;
-  }
-
   button {
     cursor: pointer;
+    font-family: inherit;
   }
 
   button:disabled {
     cursor: not-allowed;
+    opacity: 0.6;
   }
 
-  img,
-  video {
+  img, video {
     max-width: 100%;
     height: auto;
     display: block;
   }
+}
 
-  ::selection {
-    background-color: #0d9488;
-    color: #ffffff;
-  }
+/* =========================================================
+   ANIMACIONES KEYFRAMES Y CLASES ÚTILES
+   ========================================================= */
 
-  :focus-visible {
-    outline: 2px solid #0d9488;
-    outline-offset: 2px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Estilos de compatibilidad Leaflet */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  border-radius: 12px;
 }

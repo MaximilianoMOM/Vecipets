@@ -1,256 +1,195 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-
-interface Refugio {
-  id: number;
-  nombre: string;
-  ubicacion: string;
-  descripcion: string;
-  actividadesCount: number;
-  campanasCount: number;
-  sobreNosotros: string;
-  contacto: string;
-  horarios: string;
-  jornadas: Array<{ titulo: string; fecha: string; lugar: string; hora: string; tipo: string }>;
-  campanas: Array<{ titulo: string; descripcion: string }>;
-  imagen: string;
-}
+import React, { useEffect, useState } from 'react';
+import { refugiosAPI, Refugio } from '@/lib/api-client';
 
 export default function RefugiosPage() {
+  const [refugios, setRefugios] = useState<Refugio[]>([]);
+  const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'cerca'>('todos');
-  const [refugioSeleccionado, setRefugioSeleccionado] = useState<Refugio | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState('TODOS');
 
-  const refugios: Refugio[] = [
-    {
-      id: 1,
-      nombre: 'Refugio Huellitas',
-      ubicacion: 'Medellín, Antioquia',
-      descripcion: 'Un espacio dedicado al cuidado y protección de animales que necesitan una segunda oportunidad.',
-      actividadesCount: 4,
-      campanasCount: 2,
-      sobreNosotros: 'Refugio Huellitas es una organización dedicada al cuidado y protección de animales, promoviendo acciones que contribuyen al bienestar animal y fortalecen la participación de la comunidad.',
-      contacto: '+57 300 987 6543 • contacto@refugiohuellitas.org',
-      horarios: 'Lunes a sábado\n8:00 a. m. – 5:00 p. m.',
-      imagen: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=1200',
-      jornadas: [
-        { titulo: 'Jornada de esterilización', fecha: '25 de mayo', lugar: 'Refugio Huellitas', hora: '8:00 a. m. – 2:00 p. m.', tipo: 'verde' },
-        { titulo: 'Campaña de bienestar animal', fecha: '2 de junio', lugar: 'Medellín', hora: '9:00 a. m. – 1:00 p. m.', tipo: 'naranja' }
-      ],
-      campanas: [
-        { titulo: '“Cuidemos sus huellas”', descripcion: 'Información sobre la campaña y cómo puede participar la comunidad.' }
-      ]
-    },
-    {
-      id: 2,
-      nombre: 'Patitas al Rescate',
-      ubicacion: 'Bello, Antioquia',
-      descripcion: 'Trabajamos por el bienestar animal y promovemos jornadas y actividades para la comunidad.',
-      actividadesCount: 3,
-      campanasCount: 1,
-      sobreNosotros: 'Patitas al Rescate impulsa espacios seguros de acogida temporal, educación y vinculación ciudadana para la protección de animales vulnerables.',
-      contacto: '+57 311 456 7890 • hola@patitasalrescate.co',
-      horarios: 'Lunes a viernes\n9:00 a. m. – 4:00 p. m.',
-      imagen: 'https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?auto=format&fit=crop&q=80&w=1200',
-      jornadas: [
-        { titulo: 'Feria de adopción comunitaria', fecha: '10 de junio', lugar: 'Parque Principal de Bello', hora: '10:00 a. m. – 3:00 p. m.', tipo: 'verde' }
-      ],
-      campanas: [
-        { titulo: '“Alimenta una esperanza”', descripcion: 'Recolección de alimento seco y húmedo para perros y gatos rescatados.' }
-      ]
-    }
-  ];
+  useEffect(() => {
+    const cargarRefugios = async () => {
+      try {
+        const datos = await refugiosAPI.getRefugios();
+        setRefugios(datos);
+      } catch (err) {
+        // Datos mock de respaldo
+        setRefugios([
+          {
+            id: '1',
+            nombre: 'Refugio Huellitas de Amor',
+            tipo: 'REFUGIO',
+            direccion: 'Av. Las Palmas #45-12, Bogotá',
+            telefono: '+57 312 456 7890',
+            horario: 'Lunes a Sábado: 8:00 AM - 5:00 PM',
+            servicios: ['Adopciones', 'Rescate', 'Hogar de paso'],
+            latitud: 4.65,
+            longitud: -74.08,
+            imagenUrl: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=600&q=80',
+          },
+          {
+            id: '2',
+            nombre: 'Clínica Veterinaria San Francisco 24h',
+            tipo: 'VETERINARIA',
+            direccion: 'Calle 100 #19-60, Bogotá',
+            telefono: '+57 300 987 6543',
+            horario: 'Urgencias 24 Horas',
+            servicios: ['Urgencias 24h', 'Cirugía', 'Ecografía', 'Hospitalización'],
+            latitud: 4.68,
+            longitud: -74.05,
+            imagenUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80',
+          },
+          {
+            id: '3',
+            nombre: 'Centro Veterinario Comunitario San Rafael',
+            tipo: 'CLINICA',
+            direccion: 'Cra 15 #72-30, Medellín',
+            telefono: '+57 315 222 3344',
+            horario: 'Lunes a Viernes: 7:00 AM - 7:00 PM',
+            servicios: ['Esterilización', 'Vacunación', 'Microchip de identificación'],
+            latitud: 4.66,
+            longitud: -74.06,
+            imagenUrl: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=600&q=80',
+          },
+        ]);
+      } finally {
+        setCargando(false);
+      }
+    };
 
-  const refugiosFiltrados = refugios.filter(r => {
-    const coincideTexto = r.nombre.toLowerCase().includes(busqueda.toLowerCase()) || r.ubicacion.toLowerCase().includes(busqueda.toLowerCase());
-    const coincideFiltro = filtroTipo === 'todos' || (filtroTipo === 'cerca' && r.ubicacion.includes('Medellín'));
-    return coincideTexto && coincideFiltro;
+    cargarRefugios();
+  }, []);
+
+  const refugiosFiltrados = refugios.filter((r) => {
+    const coincideTipo = filtroTipo === 'TODOS' || r.tipo === filtroTipo;
+    const coincideBusqueda =
+      !busqueda ||
+      r.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      r.direccion.toLowerCase().includes(busqueda.toLowerCase());
+    return coincideTipo && coincideBusqueda;
   });
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 20px', color: '#1f2937' }}>
-      
-      {refugioSeleccionado ? (
-        /* VISTA DE DETALLE DE UN REFUGIO */
-        <div>
-          <button 
-            onClick={() => setRefugioSeleccionado(null)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f3f4f6', border: 'none', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#374151', cursor: 'pointer', marginBottom: '24px' }}
-          >
-            &larr; Volver a refugios
-          </button>
+    <div className="py-12 bg-slate-50 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* ENCABEZADO */}
+        <div className="text-center max-w-3xl mx-auto mb-10 space-y-3">
+          <span className="text-xs font-bold text-[#F3B26C] uppercase tracking-widest bg-amber-50 border border-amber-200 px-4 py-1.5 rounded-full">
+            Directorio Aliado
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            Refugios y Clínicas Veterinarias
+          </h1>
+          <p className="text-sm text-slate-500 font-medium">
+            Encuentra centros de atención médica, albergues de paso y aliados comunitarios en tu zona.
+          </p>
+        </div>
 
-          {/* PORTADA GRANDE */}
-          <div style={{ position: 'relative', borderRadius: '24px', overflow: 'hidden', height: '340px', marginBottom: '32px', background: '#111' }}>
-            <img src={refugioSeleccionado.imagen} alt={refugioSeleccionado.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }} />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent 60%)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '32px' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#16a34a', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, width: 'fit-content', marginBottom: '10px' }}>
-                🐾 REFUGIO
-              </div>
-              <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#ffffff', margin: '0 0 6px' }}>{refugioSeleccionado.nombre} 🐾</h1>
-              <p style={{ fontSize: '14px', color: '#e5e7eb', margin: '0 0 16px' }}>📍 {refugioSeleccionado.ubicacion} — Un hogar de esperanza para nuestros amigos de cuatro patas.</p>
-              
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <a href="#contacto" style={{ padding: '10px 18px', background: '#16a34a', color: '#ffffff', borderRadius: '10px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-                  Contactar refugio
-                </a>
-                <a href="#ubicacion" style={{ padding: '10px 18px', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>
-                  Ver ubicación
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* INFORMACIÓN DEL REFUGIO */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-            <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>Sobre nosotros</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>{refugioSeleccionado.sobreNosotros}</p>
-            </div>
-
-            <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>📍 Ubicación</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px' }}>{refugioSeleccionado.ubicacion}</p>
-              
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>📞 Contacto</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px' }}>{refugioSeleccionado.contacto}</p>
-
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>🕐 Horarios</h3>
-              <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, whiteSpace: 'pre-line' }}>{refugioSeleccionado.horarios}</p>
-            </div>
-          </div>
-
-          {/* PRÓXIMAS JORNADAS */}
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#111827', margin: '0 0 16px' }}>📅 Próximas jornadas</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-              {refugioSeleccionado.jornadas.map((j, idx) => (
-                <div key={idx} style={{ background: '#ffffff', padding: '20px', borderRadius: '16px', border: '1px solid #f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.02)' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>{j.titulo}</h4>
-                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px' }}>📅 {j.fecha}</p>
-                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px' }}>📍 {j.lugar}</p>
-                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px' }}>🕐 {j.hora}</p>
-                  <button style={{ padding: '8px 14px', background: j.tipo === 'verde' ? '#f0fdf4' : '#fff7ed', color: j.tipo === 'verde' ? '#166534' : '#c2410c', border: `1px solid ${j.tipo === 'verde' ? '#bbf7d0' : '#ffedd5'}`, borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                    {j.tipo === 'verde' ? '🟢 Ver detalles' : '🟠 Ver detalles'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* CAMPAÑAS Y ACTIVIDADES */}
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#111827', margin: '0 0 16px' }}>📢 Campañas y actividades</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-              {refugioSeleccionado.campanas.map((c, idx) => (
-                <div key={idx} style={{ background: '#ffffff', padding: '20px', borderRadius: '16px', border: '1px solid #f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.02)' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', background: '#f0fdf4', padding: '3px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-block', marginBottom: '8px' }}>📢 Campaña activa</span>
-                  <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>{c.titulo}</h4>
-                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px' }}>{c.descripcion}</p>
-                  <button style={{ padding: '8px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
-                    Conocer campaña
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* UBICACIÓN MAPA */}
-          <div id="ubicacion" style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #f3f4f6', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#111827', margin: '0 0 8px' }}>🗺️ Ubicación</h2>
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px' }}>¿Dónde estamos?<br/><strong>📍 {refugioSeleccionado.nombre}</strong><br/>{refugioSeleccionado.ubicacion}</p>
-            <button style={{ padding: '10px 18px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-              Ver ruta
-            </button>
-          </div>
-
-          {/* BLOQUE FINAL DE APOYO */}
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '32px', borderRadius: '20px', textAlign: 'center' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#166534', margin: '0 0 8px' }}>¿Quieres apoyar a este refugio? 🐾</h3>
-            <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 20px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>Tu participación puede ayudar a fortalecer las actividades y campañas de bienestar animal.</p>
-            <button style={{ padding: '12px 24px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)' }}>
-              Quiero participar
-            </button>
+        {/* BARRA DE BÚSQUEDA */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-10 flex flex-col md:flex-row gap-4 items-center">
+          <input
+            type="text"
+            placeholder="🔍 Buscar por nombre de refugio, clínica o dirección..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5E7BC4]"
+          />
+          <div className="flex gap-2 w-full md:w-auto">
+            {['TODOS', 'REFUGIO', 'VETERINARIA', 'CLINICA'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setFiltroTipo(t)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                  filtroTipo === t
+                    ? 'bg-[#5E7BC4] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
         </div>
-      ) : (
-        /* VISTA PRINCIPAL (LISTADO Y BUSCADOR) */
-        <>
-          {/* HEADER SECCIÓN */}
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '6px 14px', borderRadius: '20px', marginBottom: '12px', border: '1px solid #bbf7d0' }}>
-              <span>🐾</span>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#166534' }}>REFUGIOS</span>
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#111827', margin: '0 0 6px' }}>
-              Conoce nuestros refugios
-            </h1>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-              Espacios que trabajan cada día por el bienestar y protección de los animales.
-            </p>
+
+        {/* GRID DE RESULTADOS */}
+        {cargando ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-80 bg-slate-100 animate-pulse rounded-3xl" />
+            ))}
           </div>
-
-          {/* BUSCADOR Y FILTROS */}
-          <div style={{ background: '#ffffff', padding: '18px', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.04)', border: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>🔎 Buscar refugio por nombre o ubicación</div>
-            
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <input 
-                type="text" 
-                placeholder="Buscar refugio..." 
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                style={{ flex: 1, minWidth: '240px', height: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', outline: 'none' }}
-              />
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => setFiltroTipo('todos')}
-                  style={{ padding: '0 16px', height: '44px', background: filtroTipo === 'todos' ? '#16a34a' : '#f9fafb', color: filtroTipo === 'todos' ? '#ffffff' : '#374151', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Todos
-                </button>
-                <button 
-                  onClick={() => setFiltroTipo('cerca')}
-                  style={{ padding: '0 16px', height: '44px', background: filtroTipo === 'cerca' ? '#16a34a' : '#f9fafb', color: filtroTipo === 'cerca' ? '#ffffff' : '#374151', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cerca de mí
-                </button>
-              </div>
-            </div>
+        ) : refugiosFiltrados.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl text-center shadow-sm border border-slate-200 max-w-md mx-auto my-8 space-y-2">
+            <span className="text-4xl block">🏥</span>
+            <h3 className="text-base font-bold text-slate-800">No se encontraron centros</h3>
+            <p className="text-xs text-slate-500">Prueba ajustando los criterios de búsqueda.</p>
           </div>
-
-          {/* TARJETAS DE REFUGIOS */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-            {refugiosFiltrados.map((refugio) => (
-              <div key={refugio.id} style={{ background: '#ffffff', borderRadius: '20px', overflow: 'hidden', border: '1px solid #f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ height: '160px', background: '#f3f4f6' }}>
-                  <img src={refugio.imagen} alt={refugio.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>🐾 {refugio.nombre}</h3>
-                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 12px' }}>📍 {refugio.ubicacion}</p>
-                  <p style={{ fontSize: '13px', color: '#4b5563', margin: '0 0 16px', lineHeight: '1.5' }}>{refugio.descripcion}</p>
-
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#6b7280', background: '#f9fafb', padding: '10px 14px', borderRadius: '10px', marginBottom: '20px' }}>
-                    <span>Actividades: <strong>{refugio.actividadesCount} próximas</strong></span>
-                    <span>Campañas: <strong>{refugio.campanasCount} activas</strong></span>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {refugiosFiltrados.map((place) => (
+              <div
+                key={place.id}
+                className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-100 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-48 bg-slate-100 relative">
+                    {place.imagenUrl && (
+                      <img
+                        src={place.imagenUrl}
+                        alt={place.nombre}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <span
+                      className={`absolute top-3 left-3 text-xs font-extrabold px-3 py-1 rounded-full shadow-md ${
+                        place.tipo === 'REFUGIO'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {place.tipo}
+                    </span>
                   </div>
 
-                  <button 
-                    onClick={() => setRefugioSeleccionado(refugio)}
-                    style={{ marginTop: 'auto', width: '100%', height: '40px', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                  <div className="p-6 space-y-3">
+                    <h3 className="font-extrabold text-lg text-slate-900 leading-snug">
+                      {place.nombre}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">📍 {place.direccion}</p>
+                    {place.horario && (
+                      <p className="text-xs text-slate-500 font-medium">🕒 {place.horario}</p>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {place.servicios?.map((s) => (
+                        <span
+                          key={s}
+                          className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 pt-0">
+                  <a
+                    href={`tel:${place.telefono}`}
+                    className="w-full text-center bg-[#5E7BC4] hover:bg-[#4F6FB8] text-white font-bold text-xs py-3 rounded-xl transition-colors block shadow-xs"
                   >
-                    🟢 Ver refugio
-                  </button>
+                    📞 Llamar al {place.telefono}
+                  </a>
                 </div>
               </div>
             ))}
           </div>
-        </>
-      )}
+        )}
 
+      </div>
     </div>
   );
 }

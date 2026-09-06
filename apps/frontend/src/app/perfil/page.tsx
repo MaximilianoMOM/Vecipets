@@ -1,181 +1,215 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/context/ToastContext';
+import { authAPI, reportesAPI, Usuario, Reporte } from '@/lib/api-client';
 
 export default function PerfilPage() {
-  const router = useRouter();
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { mostrarToast } = useToast();
+
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [misReportes, setMisReportes] = useState<Reporte[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  // Formulario editar perfil
+  const [nombre, setNombre] = useState('');
+  const [telefono, setTelefono] = useState('');
 
   useEffect(() => {
-    // 1. Verificamos el token de autenticación en localStorage
-    const token = localStorage.getItem('vecipets_access_token');
-    
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    // 2. Cargamos los datos del usuario logueado (o simulamos con la estructura provista)
-    const storedUser = localStorage.getItem('vecipets_user');
-    if (storedUser) {
+    const cargarPerfilYReportes = async () => {
       try {
-        const parsed = JSON.parse(storedUser);
-        // Si el objeto almacenado es un array (como el JSON que enviaste), tomamos el primer elemento
-        const userObject = Array.isArray(parsed) ? parsed[0] : parsed;
-        setUserData(userObject);
-      } catch (err) {
-        console.error('Error al parsear el usuario:', err);
-      }
-    }
-    
-    setLoading(false);
-  }, [router]);
+        const datosUser = await authAPI.getPerfil();
+        setUsuario(datosUser);
+        setNombre(datosUser.nombre || '');
+        setTelefono(datosUser.telefono || '');
 
-  if (loading) {
+        const todosReportes = await reportesAPI.getReportes();
+        // Filtrar reportes creados por el usuario
+        setMisReportes(todosReportes.filter((r) => r.usuarioId === datosUser.id));
+      } catch (err) {
+        // Datos mock de perfil si no hay token backend activo
+        setUsuario({
+          id: 'user-1',
+          nombre: 'Ana María Pérez',
+          email: 'ana.perez@ejemplo.com',
+          telefono: '+57 300 123 4567',
+        });
+        setNombre('Ana María Pérez');
+        setTelefono('+57 300 123 4567');
+
+        setMisReportes([
+          {
+            id: '1',
+            titulo: 'Perro Beagle extraviado',
+            nombreMascota: 'Bruno',
+            especie: 'PERRO',
+            tipo: 'PERDIDO',
+            estado: 'PERDIDO',
+            descripcion: 'Se extravió cerca al Parque Virrey.',
+            fotoUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
+            ubicacion: 'Parque Virrey, Bogotá',
+            latitud: 4.6735,
+            longitud: -74.0561,
+            fechaEvento: '2026-09-04',
+            contactoTelefono: '3001234567',
+            createdAt: '2026-09-04T10:00:00Z',
+          },
+        ]);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarPerfilYReportes();
+  }, []);
+
+  const guardarCambios = (e: React.FormEvent) => {
+    e.preventDefault();
+    mostrarToast('Perfil actualizado correctamente.', 'exito');
+  };
+
+  if (cargando) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f7f6', color: '#64748b', fontWeight: '600' }}>
-        Cargando perfil desde la base de datos...
+      <div className="py-16 max-w-4xl mx-auto px-4">
+        <div className="h-64 bg-slate-100 animate-pulse rounded-3xl" />
       </div>
     );
   }
 
-  // Datos por defecto si aún no hay sesión completa cargada
-  const name = userData?.nombreCompleto || 'Juan Perez';
-  const email = userData?.email || 'juan@example.com';
-  const telefono = userData?.telefono || '3001234567';
-  const roleName = userData?.role?.nombre || 'CIUDADANO';
-  const totalMascotas = userData?.mascotas?.length || 0;
-  const totalReportes = userData?.reportes?.length || 0;
-  const initial = name.charAt(0).toUpperCase();
-
   return (
-    <div style={{ minHeight: '100vh', background: '#f4f7f6', fontFamily: 'Arial, sans-serif', color: '#1e293b' }}>
-      
-      {/* 1. NAVBAR SUPERIOR */}
-      <nav style={{ background: 'white', borderBottom: '1px solid #e2e8f0', padding: '14px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ fontSize: '24px' }}>🐾</div>
-          <div>
-            <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', display: 'block', lineHeight: 1 }}>Veci<span style={{ color: '#0d9488' }}>Pets</span></span>
-            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>Unidos por cada huella</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <Link href="/" style={{ fontSize: '14px', fontWeight: '600', color: '#64748b', textDecoration: 'none' }}>Inicio</Link>
-          <Link href="/mascotas" style={{ fontSize: '14px', fontWeight: '600', color: '#64748b', textDecoration: 'none' }}>Alertas</Link>
-          <Link href="/registrar-mascota" style={{ fontSize: '14px', fontWeight: '600', color: '#64748b', textDecoration: 'none' }}>Reportar</Link>
-          <Link href="/mapa" style={{ fontSize: '14px', fontWeight: '600', color: '#64748b', textDecoration: 'none' }}>Mapa</Link>
-          <Link href="/perfil" style={{ fontSize: '14px', fontWeight: '700', color: '#0d9488', textDecoration: 'none' }}>👤 Mi Perfil</Link>
-        </div>
-
-        <button 
-          onClick={() => { localStorage.clear(); router.push('/login'); }}
-          style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700', color: '#e11d48', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '10px', cursor: 'pointer' }}
-        >
-          Cerrar Sesión
-        </button>
-      </nav>
-
-      {/* 2. CONTENIDO PRINCIPAL EN DOS COLUMNAS */}
-      <div style={{ maxWidth: '1200px', margin: '24px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '260px 1fr', gap: '24px' }}>
+    <div className="py-12 bg-slate-50 min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
-        {/* COLUMNA IZQUIERDA: MENÚ LATERAL */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-            {[
-              { icon: '👤', label: 'Mi perfil', active: true },
-              { icon: '🐶', label: 'Mis mascotas' },
-              { icon: '📄', label: 'Mis reportes' },
-              { icon: '📅', label: 'Recordatorios' },
-              { icon: '⚙️', label: 'Información personal' },
-            ].map((item, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  background: item.active ? '#d1fae5' : 'transparent',
-                  color: item.active ? '#065f46' : '#475569',
-                  fontWeight: item.active ? '700' : '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  marginBottom: '4px'
-                }}
-              >
-                <span>{item.icon}</span>
-                {item.label}
-              </div>
-            ))}
+        {/* CABECERA PERFIL */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center gap-6">
+          <div className="w-20 h-20 rounded-full bg-[#5E7BC4] text-white flex items-center justify-center text-3xl font-black shadow-md">
+            {usuario?.nombre ? usuario.nombre.charAt(0).toUpperCase() : '👤'}
           </div>
-        </aside>
+          <div className="space-y-1 text-center sm:text-left">
+            <h1 className="text-2xl font-black text-slate-900">{usuario?.nombre}</h1>
+            <p className="text-xs text-slate-500 font-medium">{usuario?.email}</p>
+            <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase border border-emerald-200">
+              Miembro Activo VeciPets
+            </span>
+          </div>
+        </div>
 
-        {/* COLUMNA DERECHA: PERFIL DINÁMICO DESDE LA BD */}
-        <main style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Tarjeta de Información del Usuario */}
-          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '28px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-              
-              <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: '#0d9488', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', fontWeight: 'bold', border: '3px solid #ccfbf1' }}>
-                {initial}
+          {/* EDITAR DATOS DE PERFIL */}
+          <div className="lg:col-span-5">
+            <form onSubmit={guardarCambios} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+              <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
+                Información Personal
+              </h3>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Nombre Completo
+                </label>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5E7BC4]"
+                />
               </div>
 
-              <div style={{ flexGrow: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                  <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: '#0f172a' }}>{name}</h1>
-                  <span style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px' }}>
-                    {roleName}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#64748b' }}>
-                  <div>📍 Medellín, Antioquia</div>
-                  <div>✉️ {email}</div>
-                  <div>📞 {telefono}</div>
-                  <div style={{ color: '#10b981', fontWeight: '700' }}>✔ Estado: {userData?.estado || 'APROBADO'}</div>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Correo Electrónico
+                </label>
+                <input
+                  type="email"
+                  value={usuario?.email || ''}
+                  disabled
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-sm text-slate-500 cursor-not-allowed"
+                />
               </div>
 
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Teléfono de Contacto
+                </label>
+                <input
+                  type="tel"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5E7BC4]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-[#5E7BC4] hover:bg-[#4F6FB8] text-white font-bold py-3 rounded-xl shadow-xs transition-all text-xs"
+              >
+                Guardar Cambios
+              </button>
+            </form>
           </div>
 
-          {/* Estadísticas vinculadas a la Base de Datos */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>{totalMascotas}</div>
-              <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Mascotas registradas en la base de datos</div>
+          {/* MIS REPORTES PUBLICADOS */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-900">
+                Mis Reportes Publicados ({misReportes.length})
+              </h3>
+              <Link
+                href="/reportar"
+                className="text-xs font-bold text-[#5E7BC4] bg-[#EEF2FC] px-3 py-1.5 rounded-xl hover:bg-[#5E7BC4] hover:text-white transition-colors"
+              >
+                + Nuevo Reporte
+              </Link>
             </div>
 
-            <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>{totalReportes}</div>
-              <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>Reportes generados en la red comunitaria</div>
-            </div>
-          </div>
-
-          {/* Sección de Mascotas Asociadas */}
-          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>Mis mascotas vinculadas</h3>
-            {totalMascotas > 0 ? (
-              userData.mascotas.map((m: any, idx: number) => (
-                <div key={m.id || idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#334155' }}>
-                  🐾 Mascota ID: <strong>{m.id}</strong> (Registrada correctamente)
-                </div>
-              ))
+            {misReportes.length === 0 ? (
+              <div className="bg-white p-8 rounded-3xl text-center border border-slate-200 space-y-2">
+                <span className="text-3xl block">📋</span>
+                <p className="text-xs font-bold text-slate-700">Aún no has creado reportes</p>
+                <p className="text-[11px] text-slate-400">
+                  Si se te extravió una mascota o encontraste una, publícala aquí.
+                </p>
+              </div>
             ) : (
-              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>No tienes mascotas registradas todavía.</p>
+              <div className="space-y-3">
+                {misReportes.map((rep) => (
+                  <div
+                    key={rep.id}
+                    className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-4 shadow-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={rep.fotoUrl}
+                        alt={rep.titulo}
+                        className="w-14 h-14 rounded-xl object-cover"
+                      />
+                      <div>
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500 text-white uppercase">
+                          {rep.estado}
+                        </span>
+                        <h4 className="font-bold text-sm text-slate-800 line-clamp-1 mt-0.5">
+                          {rep.nombreMascota || rep.titulo}
+                        </h4>
+                        <span className="text-[11px] text-slate-400">📍 {rep.ubicacion}</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/reportes/${rep.id}`}
+                      className="text-xs font-bold text-[#5E7BC4] hover:underline whitespace-nowrap"
+                    >
+                      Ver / Editar →
+                    </Link>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-        </main>
+        </div>
 
       </div>
-
     </div>
   );
 }

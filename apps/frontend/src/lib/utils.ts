@@ -1,9 +1,6 @@
-import { ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
 /**
- * Combina clases condicionales con clsx y resuelve conflictos de Tailwind con tailwind-merge
+ * Combina clases CSS filtrando valores nulos o falsos
  */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+export function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ');
 }
