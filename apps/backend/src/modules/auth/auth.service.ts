@@ -1,9 +1,10 @@
-
 import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -14,13 +15,17 @@ import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { RoleName } from '@prisma/client';
+
+import { MailService } from './mail.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   // =========================
@@ -409,12 +414,16 @@ export class AuthService {
         id: user.id,
         nombre:
           user.nombreCompleto,
-        email: user.email,
+        email:
+          user.email,
         telefono:
           user.telefono,
-        rol: user.role.nombre,
-        estado: user.estado,
-        activo: user.activo,
+        rol:
+          user.role.nombre,
+        estado:
+          user.estado,
+        activo:
+          user.activo,
       },
 
       ...tokens,
@@ -447,12 +456,16 @@ export class AuthService {
       id: usuario.id,
       nombre:
         usuario.nombreCompleto,
-      email: usuario.email,
+      email:
+        usuario.email,
       telefono:
         usuario.telefono,
-      rol: usuario.role.nombre,
-      estado: usuario.estado,
-      activo: usuario.activo,
+      rol:
+        usuario.role.nombre,
+      estado:
+        usuario.estado,
+      activo:
+        usuario.activo,
     };
   }
 
@@ -477,63 +490,72 @@ export class AuthService {
       );
     }
 
-    await this.prisma.passwordResetCode.updateMany(
-      {
-        where: {
-          usuarioId: user.id,
-          usado: false,
-        },
-
-        data: {
-          usado: true,
-        },
+    // Invalidar códigos anteriores
+    await this.prisma.passwordResetCode.updateMany({
+      where: {
+        usuarioId: user.id,
+        usado: false,
       },
-    );
+      data: {
+        usado: true,
+      },
+    });
 
-    const codigo = Math.floor(
-      100000 +
-        Math.random() * 900000,
+    // Generar código seguro de 6 dígitos
+    const codigo = randomInt(
+      100000,
+      1000000,
     ).toString();
 
+    // El código será válido durante 10 minutos
     const expiresAt = new Date(
       Date.now() +
         10 * 60 * 1000,
     );
 
-    await this.prisma.passwordResetCode.create(
-      {
-        data: {
+    // Guardar código en la base de datos
+    await this.prisma.passwordResetCode.create({
+      data: {
+        usuarioId: user.id,
+        codigo,
+        expiresAt,
+      },
+    });
+
+    // Enviar código al correo REAL del usuario
+    try {
+      await this.mailService.sendPasswordResetCode(
+        user.email,
+        codigo,
+        expiresAt,
+      );
+    } catch (error) {
+      // Si el correo no se pudo enviar,
+      // invalidamos el código generado.
+      await this.prisma.passwordResetCode.updateMany({
+        where: {
           usuarioId: user.id,
           codigo,
-          expiresAt,
+          usado: false,
         },
-      },
-    );
+        data: {
+          usado: true,
+        },
+      });
 
-    console.log('');
-    console.log(
-      '====================================',
-    );
-    console.log(
-      '🔐 CÓDIGO DE RECUPERACIÓN',
-    );
-    console.log(
-      `📧 Correo: ${user.email}`,
-    );
-    console.log(
-      `🔢 Código: ${codigo}`,
-    );
-    console.log(
-      `⏰ Expira: ${expiresAt.toLocaleString()}`,
-    );
-    console.log(
-      '====================================',
-    );
-    console.log('');
+      console.error(
+        'Error enviando correo de recuperación:',
+        error,
+      );
+
+      throw new InternalServerErrorException(
+        'No fue posible enviar el correo de recuperación. Inténtalo nuevamente.',
+      );
+    }
 
     return {
       message:
-        'Se ha generado un código de recuperación. Revisa tu correo electrónico.',
+        'Se ha enviado un código de recuperación a tu correo electrónico.',
     };
   }
 
@@ -724,4 +746,3 @@ export class AuthService {
     };
   }
 }
-

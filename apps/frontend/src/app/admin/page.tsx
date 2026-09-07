@@ -1,7 +1,14 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
+
+interface Ubicacion {
+  direccion: string;
+  comuna: string;
+  barrio: string;
+  latitud: number | string;
+  longitud: number | string;
+}
 
 interface Solicitud {
   id: string;
@@ -9,14 +16,24 @@ interface Solicitud {
   email: string;
   telefono: string;
   estado: string;
+
   role: {
     nombre: string;
   };
+
   refugio?: {
     nombre: string;
+    capacidad?: number | null;
+    horario?: string | null;
+    sitioWeb?: string | null;
+    ubicacion?: Ubicacion | null;
   } | null;
+
   veterinaria?: {
     nombre: string;
+    urgencias24h?: boolean | null;
+    horario?: string | null;
+    ubicacion?: Ubicacion | null;
   } | null;
 }
 
@@ -24,6 +41,11 @@ export default function AdminPage() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState('');
+
+  const [solicitudSeleccionada, setSolicitudSeleccionada] =
+    useState<Solicitud | null>(null);
+
+  const [procesandoId, setProcesandoId] = useState<string | null>(null);
 
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -83,7 +105,10 @@ export default function AdminPage() {
 
       setSolicitudes(data);
     } catch (error) {
-      console.error('ERROR CARGANDO SOLICITUDES:', error);
+      console.error(
+        'ERROR CARGANDO SOLICITUDES:',
+        error,
+      );
 
       if (error instanceof Error) {
         setMensaje(error.message);
@@ -110,6 +135,7 @@ export default function AdminPage() {
   const aprobarSolicitud = async (id: string) => {
     try {
       setMensaje('');
+      setProcesandoId(id);
 
       const token =
         localStorage.getItem('token') ||
@@ -150,6 +176,8 @@ export default function AdminPage() {
         'Solicitud aprobada correctamente.',
       );
 
+      setSolicitudSeleccionada(null);
+
       await cargarSolicitudes();
     } catch (error) {
       console.error(
@@ -164,6 +192,8 @@ export default function AdminPage() {
           'No fue posible aprobar la solicitud.',
         );
       }
+    } finally {
+      setProcesandoId(null);
     }
   };
 
@@ -173,6 +203,7 @@ export default function AdminPage() {
   const rechazarSolicitud = async (id: string) => {
     try {
       setMensaje('');
+      setProcesandoId(id);
 
       const token =
         localStorage.getItem('token') ||
@@ -213,6 +244,8 @@ export default function AdminPage() {
         'Solicitud rechazada correctamente.',
       );
 
+      setSolicitudSeleccionada(null);
+
       await cargarSolicitudes();
     } catch (error) {
       console.error(
@@ -227,8 +260,22 @@ export default function AdminPage() {
           'No fue posible rechazar la solicitud.',
         );
       }
+    } finally {
+      setProcesandoId(null);
     }
   };
+
+  // ==========================================
+  // FUNCIONES AUXILIARES
+  // ==========================================
+
+  const esRefugio = (solicitud: Solicitud) =>
+    solicitud.role.nombre === 'REFUGIO';
+
+  const esVeterinaria = (solicitud: Solicitud) =>
+    solicitud.role.nombre === 'VETERINARIA';
+
+  const textoNoDisponible = 'No disponible';
 
   // ==========================================
   // INTERFAZ
@@ -237,7 +284,9 @@ export default function AdminPage() {
     <main className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="mx-auto max-w-6xl">
 
-        {/* ENCABEZADO */}
+        {/* ======================================
+            ENCABEZADO
+        ====================================== */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
             Panel de Administrador
@@ -249,17 +298,21 @@ export default function AdminPage() {
           </p>
         </div>
 
-        {/* MENSAJE */}
+        {/* ======================================
+            MENSAJE
+        ====================================== */}
         {mensaje && (
           <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-gray-700 shadow-sm">
             {mensaje}
           </div>
         )}
 
-        {/* SOLICITUDES */}
+        {/* ======================================
+            SOLICITUDES
+        ====================================== */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
 
-          {/* CABECERA DE SOLICITUDES */}
+          {/* CABECERA */}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
             <div>
@@ -273,13 +326,20 @@ export default function AdminPage() {
             </div>
 
             <span className="w-fit rounded-full bg-orange-100 px-4 py-2 text-sm font-semibold text-orange-700">
-              {solicitudes.length} pendientes
+              {solicitudes.length}{' '}
+              {solicitudes.length === 1
+                ? 'pendiente'
+                : 'pendientes'}
             </span>
           </div>
 
-          {/* CARGANDO */}
+          {/* ====================================
+              CARGANDO
+          ==================================== */}
           {cargando ? (
             <div className="py-10 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-green-600" />
+
               <p className="text-gray-500">
                 Cargando solicitudes...
               </p>
@@ -287,32 +347,52 @@ export default function AdminPage() {
 
           ) : solicitudes.length === 0 ? (
 
-            /* SIN SOLICITUDES */
+            /* ==================================
+               SIN SOLICITUDES
+            ================================== */
             <div className="rounded-lg bg-gray-50 py-10 text-center">
-              <p className="text-gray-600">
+
+              <div className="mb-3 text-4xl">
+                ✓
+              </div>
+
+              <p className="font-medium text-gray-700">
                 No hay solicitudes pendientes.
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Todas las solicitudes han sido gestionadas.
               </p>
             </div>
 
           ) : (
 
-            /* LISTA DE SOLICITUDES */
+            /* ==================================
+               LISTA
+            ================================== */
             <div className="space-y-4">
 
               {solicitudes.map((solicitud) => {
 
-                const esRefugio =
-                  solicitud.role.nombre === 'REFUGIO';
+                const refugio = esRefugio(solicitud);
+                const veterinaria =
+                  esVeterinaria(solicitud);
+
+                const procesando =
+                  procesandoId === solicitud.id;
 
                 return (
                   <div
                     key={solicitud.id}
                     className="rounded-xl border border-gray-200 p-5 transition hover:shadow-md"
                   >
+
                     <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
-                      {/* INFORMACIÓN */}
-                      <div>
+                      {/* ==============================
+                          INFORMACIÓN
+                      ============================== */}
+                      <div className="min-w-0">
 
                         <div className="mb-2 flex flex-wrap items-center gap-3">
 
@@ -320,8 +400,14 @@ export default function AdminPage() {
                             {solicitud.nombreCompleto}
                           </h3>
 
-                          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                            {esRefugio
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              refugio
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {refugio
                               ? 'REFUGIO'
                               : 'VETERINARIA'}
                           </span>
@@ -329,25 +415,27 @@ export default function AdminPage() {
                         </div>
 
                         <p className="text-sm text-gray-600">
-                          Correo: {solicitud.email}
+                          <strong>Correo:</strong>{' '}
+                          {solicitud.email}
                         </p>
 
                         <p className="text-sm text-gray-600">
-                          Teléfono: {solicitud.telefono}
+                          <strong>Teléfono:</strong>{' '}
+                          {solicitud.telefono}
                         </p>
 
-                        {esRefugio &&
+                        {refugio &&
                           solicitud.refugio && (
                             <p className="mt-1 text-sm text-gray-600">
-                              Refugio:{' '}
+                              <strong>Refugio:</strong>{' '}
                               {solicitud.refugio.nombre}
                             </p>
                           )}
 
-                        {!esRefugio &&
+                        {veterinaria &&
                           solicitud.veterinaria && (
                             <p className="mt-1 text-sm text-gray-600">
-                              Veterinaria:{' '}
+                              <strong>Veterinaria:</strong>{' '}
                               {solicitud.veterinaria.nombre}
                             </p>
                           )}
@@ -358,35 +446,58 @@ export default function AdminPage() {
 
                       </div>
 
-                      {/* BOTONES */}
+                      {/* ==============================
+                          BOTONES
+                      ============================== */}
                       <div className="flex flex-wrap gap-3">
 
+                        {/* VER DETALLES */}
                         <button
                           type="button"
+                          disabled={procesando}
+                          onClick={() =>
+                            setSolicitudSeleccionada(
+                              solicitud,
+                            )
+                          }
+                          className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Ver detalles
+                        </button>
+
+                        {/* APROBAR */}
+                        <button
+                          type="button"
+                          disabled={procesando}
                           onClick={() =>
                             aprobarSolicitud(
                               solicitud.id,
                             )
                           }
-                          className="rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white transition hover:bg-green-700"
+                          className="rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Aprobar
+                          {procesando
+                            ? 'Procesando...'
+                            : 'Aprobar'}
                         </button>
 
+                        {/* RECHAZAR */}
                         <button
                           type="button"
+                          disabled={procesando}
                           onClick={() =>
                             rechazarSolicitud(
                               solicitud.id,
                             )
                           }
-                          className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700"
+                          className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Rechazar
+                          {procesando
+                            ? 'Procesando...'
+                            : 'Rechazar'}
                         </button>
 
                       </div>
-
                     </div>
                   </div>
                 );
@@ -397,6 +508,425 @@ export default function AdminPage() {
 
         </section>
       </div>
+
+      {/* ==========================================
+          MODAL DE DETALLES
+      ========================================== */}
+      {solicitudSeleccionada && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSolicitudSeleccionada(null);
+            }
+          }}
+        >
+
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+
+            {/* ====================================
+                ENCABEZADO MODAL
+            ==================================== */}
+            <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white p-6">
+
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Detalles de la solicitud
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Revisa la información antes de tomar
+                  una decisión.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSolicitudSeleccionada(null)
+                }
+                disabled={procesandoId === solicitudSeleccionada.id}
+                className="rounded-lg px-3 py-2 text-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            <div className="space-y-5 p-6">
+
+              {/* ==================================
+                  INFORMACIÓN DEL RESPONSABLE
+              ================================== */}
+              <div className="rounded-xl border border-gray-200 p-5">
+
+                <h3 className="mb-4 text-lg font-bold text-gray-800">
+                  👤 Información del responsable
+                </h3>
+
+                <div className="grid gap-3 text-sm text-gray-600">
+
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      Nombre:
+                    </span>{' '}
+                    {solicitudSeleccionada.nombreCompleto ||
+                      textoNoDisponible}
+                  </div>
+
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      Correo:
+                    </span>{' '}
+                    {solicitudSeleccionada.email ||
+                      textoNoDisponible}
+                  </div>
+
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      Teléfono:
+                    </span>{' '}
+                    {solicitudSeleccionada.telefono ||
+                      textoNoDisponible}
+                  </div>
+
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      Rol:
+                    </span>{' '}
+                    {solicitudSeleccionada.role?.nombre ||
+                      textoNoDisponible}
+                  </div>
+
+                  <div>
+                    <span className="font-semibold text-gray-800">
+                      Estado:
+                    </span>{' '}
+                    <span className="font-medium text-orange-600">
+                      {solicitudSeleccionada.estado ||
+                        textoNoDisponible}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ==================================
+                  INFORMACIÓN VETERINARIA
+              ================================== */}
+              {esVeterinaria(
+                solicitudSeleccionada,
+              ) &&
+                solicitudSeleccionada.veterinaria && (
+
+                  <div className="rounded-xl border border-gray-200 p-5">
+
+                    <h3 className="mb-4 text-lg font-bold text-gray-800">
+                      🩺 Información de la veterinaria
+                    </h3>
+
+                    <div className="grid gap-3 text-sm text-gray-600">
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Nombre:
+                        </span>{' '}
+                        {solicitudSeleccionada.veterinaria
+                          .nombre ||
+                          textoNoDisponible}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Horario:
+                        </span>{' '}
+                        {solicitudSeleccionada.veterinaria
+                          .horario ||
+                          textoNoDisponible}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Urgencias 24 horas:
+                        </span>{' '}
+                        {solicitudSeleccionada.veterinaria
+                          .urgencias24h === true
+                          ? 'Sí'
+                          : solicitudSeleccionada
+                              .veterinaria
+                              .urgencias24h === false
+                            ? 'No'
+                            : textoNoDisponible}
+                      </div>
+
+                    </div>
+
+                    {/* UBICACIÓN */}
+                    {solicitudSeleccionada.veterinaria
+                      .ubicacion && (
+
+                      <div className="mt-5 border-t border-gray-200 pt-5">
+
+                        <h4 className="mb-3 font-semibold text-gray-800">
+                          📍 Ubicación
+                        </h4>
+
+                        <div className="grid gap-3 text-sm text-gray-600">
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Dirección:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .veterinaria
+                              .ubicacion
+                              .direccion ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Comuna:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .veterinaria
+                              .ubicacion
+                              .comuna ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Barrio:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .veterinaria
+                              .ubicacion
+                              .barrio ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Coordenadas:
+                            </span>{' '}
+                            {
+                              solicitudSeleccionada
+                                .veterinaria
+                                .ubicacion
+                                .latitud
+                            }
+                            ,{' '}
+                            {
+                              solicitudSeleccionada
+                                .veterinaria
+                                .ubicacion
+                                .longitud
+                            }
+                          </div>
+
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+              {/* ==================================
+                  INFORMACIÓN REFUGIO
+              ================================== */}
+              {esRefugio(
+                solicitudSeleccionada,
+              ) &&
+                solicitudSeleccionada.refugio && (
+
+                  <div className="rounded-xl border border-gray-200 p-5">
+
+                    <h3 className="mb-4 text-lg font-bold text-gray-800">
+                      🏠 Información del refugio
+                    </h3>
+
+                    <div className="grid gap-3 text-sm text-gray-600">
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Nombre:
+                        </span>{' '}
+                        {solicitudSeleccionada.refugio
+                          .nombre ||
+                          textoNoDisponible}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Capacidad:
+                        </span>{' '}
+                        {solicitudSeleccionada.refugio
+                          .capacidad !== null &&
+                        solicitudSeleccionada.refugio
+                          .capacidad !== undefined
+                          ? solicitudSeleccionada.refugio
+                              .capacidad
+                          : textoNoDisponible}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Horario:
+                        </span>{' '}
+                        {solicitudSeleccionada.refugio
+                          .horario ||
+                          textoNoDisponible}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          Sitio web:
+                        </span>{' '}
+                        {solicitudSeleccionada.refugio
+                          .sitioWeb ||
+                          textoNoDisponible}
+                      </div>
+
+                    </div>
+
+                    {/* UBICACIÓN */}
+                    {solicitudSeleccionada.refugio
+                      .ubicacion && (
+
+                      <div className="mt-5 border-t border-gray-200 pt-5">
+
+                        <h4 className="mb-3 font-semibold text-gray-800">
+                          📍 Ubicación
+                        </h4>
+
+                        <div className="grid gap-3 text-sm text-gray-600">
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Dirección:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .refugio
+                              .ubicacion
+                              .direccion ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Comuna:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .refugio
+                              .ubicacion
+                              .comuna ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Barrio:
+                            </span>{' '}
+                            {solicitudSeleccionada
+                              .refugio
+                              .ubicacion
+                              .barrio ||
+                              textoNoDisponible}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold text-gray-800">
+                              Coordenadas:
+                            </span>{' '}
+                            {
+                              solicitudSeleccionada
+                                .refugio
+                                .ubicacion
+                                .latitud
+                            }
+                            ,{' '}
+                            {
+                              solicitudSeleccionada
+                                .refugio
+                                .ubicacion
+                                .longitud
+                            }
+                          </div>
+
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+            </div>
+
+            {/* ====================================
+                BOTONES MODAL
+            ==================================== */}
+            <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-gray-200 bg-white p-6 sm:flex-row sm:justify-end">
+
+              <button
+                type="button"
+                disabled={
+                  procesandoId ===
+                  solicitudSeleccionada.id
+                }
+                onClick={() =>
+                  setSolicitudSeleccionada(null)
+                }
+                className="rounded-lg bg-gray-200 px-5 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cerrar
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  procesandoId ===
+                  solicitudSeleccionada.id
+                }
+                onClick={() =>
+                  aprobarSolicitud(
+                    solicitudSeleccionada.id,
+                  )
+                }
+                className="rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {procesandoId ===
+                solicitudSeleccionada.id
+                  ? 'Procesando...'
+                  : 'Aprobar solicitud'}
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  procesandoId ===
+                  solicitudSeleccionada.id
+                }
+                onClick={() =>
+                  rechazarSolicitud(
+                    solicitudSeleccionada.id,
+                  )
+                }
+                className="rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {procesandoId ===
+                solicitudSeleccionada.id
+                  ? 'Procesando...'
+                  : 'Rechazar solicitud'}
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
     </main>
   );
 }
+

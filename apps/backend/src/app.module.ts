@@ -9,6 +9,9 @@ import { AppController } from './app.controller';
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { UbicacionesModule } from './modules/ubicaciones/ubicaciones.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { RefugiosModule } from './modules/refugios/refugios.module';
+import { VeterinariasModule } from './modules/veterinarias/veterinarias.module';
+
 
 @Module({
   imports: [
@@ -19,6 +22,8 @@ import { AdminModule } from './modules/admin/admin.module';
     ReportesModule,
     UbicacionesModule,
     AdminModule,
+    RefugiosModule,
+    VeterinariasModule,
   ],
   controllers: [AppController],
 })

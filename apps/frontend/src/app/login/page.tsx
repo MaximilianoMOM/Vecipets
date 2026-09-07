@@ -89,7 +89,7 @@ export default function LoginPage() {
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Contraseña
               </label>
-              <a href="#" className="text-xs font-semibold text-[#5E7BC4] hover:underline">
+              <a href="recuperar-password" className="text-xs font-semibold text-[#5E7BC4] hover:underline">
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
