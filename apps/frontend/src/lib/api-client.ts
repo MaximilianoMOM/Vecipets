@@ -1,7 +1,11 @@
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:4000/api/v1';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-
-console.log('🔥 BASE_URL DEL FRONTEND:', BASE_URL);
+console.log(
+  '🔥 BASE_URL DEL FRONTEND:',
+  BASE_URL,
+);
 
 // ============================================================
 // TIPOS GENERALES
@@ -33,6 +37,7 @@ export interface Usuario {
     capacidad: number;
     horario: string;
     sitioWeb?: string | null;
+
     ubicacion?: {
       direccion: string;
       comuna: string;
@@ -47,6 +52,7 @@ export interface Usuario {
     nombre: string;
     urgencias24h: boolean;
     horario: string;
+
     ubicacion?: {
       direccion: string;
       comuna: string;
@@ -153,6 +159,48 @@ export interface Reporte {
 }
 
 // ============================================================
+// MASCOTAS
+// ============================================================
+
+export interface Mascota {
+  id: string;
+
+  nombre: string;
+
+  especie: string;
+
+  raza: string;
+
+  edadAprox: number;
+
+  color: string;
+
+  caracteristicas: string;
+
+  fotoUrl?: string;
+
+  usuarioId?: string;
+}
+
+// ============================================================
+// UBICACIONES
+// ============================================================
+
+export interface Ubicacion {
+  id: string;
+
+  direccion: string;
+
+  comuna: string;
+
+  barrio: string;
+
+  latitud: number;
+
+  longitud: number;
+}
+
+// ============================================================
 // REFUGIOS / VETERINARIAS
 // ============================================================
 
@@ -191,22 +239,29 @@ export async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const cleanEndpoint = endpoint.startsWith('/')
-    ? endpoint
-    : `/${endpoint}`;
+  const cleanEndpoint =
+    endpoint.startsWith('/')
+      ? endpoint
+      : `/${endpoint}`;
 
-  const url = `${BASE_URL}${cleanEndpoint}`;
+  const url =
+    `${BASE_URL}${cleanEndpoint}`;
 
-  const headers = new Headers(options.headers);
+  const headers =
+    new Headers(options.headers);
 
   // ==========================================================
   // AGREGAR JWT AUTOMÁTICAMENTE
   // ==========================================================
 
-  if (typeof window !== 'undefined') {
+  if (
+    typeof window !== 'undefined'
+  ) {
     const token =
       localStorage.getItem('token') ||
-      localStorage.getItem('vecipets_access_token');
+      localStorage.getItem(
+        'vecipets_access_token',
+      );
 
     if (token) {
       headers.set(
@@ -235,10 +290,11 @@ export async function fetchAPI<T>(
   }
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const response =
+      await fetch(url, {
+        ...options,
+        headers,
+      });
 
     const contentType =
       response.headers.get(
@@ -256,9 +312,11 @@ export async function fetchAPI<T>(
         'application/json',
       )
     ) {
-      data = await response.json();
+      data =
+        await response.json();
     } else {
-      const text = await response.text();
+      const text =
+        await response.text();
 
       if (text.trim()) {
         try {
@@ -282,7 +340,9 @@ export async function fetchAPI<T>(
         typeof data === 'object'
       ) {
         if (
-          Array.isArray(data.message)
+          Array.isArray(
+            data.message,
+          )
         ) {
           errorMessage =
             data.message.join(', ');
@@ -308,7 +368,9 @@ export async function fetchAPI<T>(
       // SESIÓN NO AUTORIZADA
       // ======================================================
 
-      if (response.status === 401) {
+      if (
+        response.status === 401
+      ) {
         throw new Error(
           `UNAUTHORIZED: ${errorMessage}`,
         );
@@ -318,13 +380,17 @@ export async function fetchAPI<T>(
       // SIN PERMISOS
       // ======================================================
 
-      if (response.status === 403) {
+      if (
+        response.status === 403
+      ) {
         throw new Error(
           `FORBIDDEN: ${errorMessage}`,
         );
       }
 
-      throw new Error(errorMessage);
+      throw new Error(
+        errorMessage,
+      );
     }
 
     return data as T;
@@ -380,7 +446,9 @@ export const apiClient = {
         },
       );
 
-    return { data };
+    return {
+      data,
+    };
   },
 
   post: async (
@@ -413,7 +481,8 @@ export const apiClient = {
         endpoint,
         {
           method: 'PATCH',
-          body: JSON.stringify(data),
+          body:
+            JSON.stringify(data),
         },
       );
 
@@ -460,7 +529,8 @@ export const authAPI = {
           .trim()
           .toLowerCase(),
 
-      password: data.password,
+      password:
+        data.password,
     };
 
     const response =
@@ -468,9 +538,8 @@ export const authAPI = {
         '/auth/login',
         {
           method: 'POST',
-          body: JSON.stringify(
-            payload,
-          ),
+          body:
+            JSON.stringify(payload),
         },
       );
 
@@ -478,7 +547,9 @@ export const authAPI = {
     // GUARDAR SESIÓN
     // ======================================================
 
-    if (typeof window !== 'undefined') {
+    if (
+      typeof window !== 'undefined'
+    ) {
       const token =
         response.accessToken ||
         response.token;
@@ -499,12 +570,15 @@ export const authAPI = {
       // NORMALIZAR USUARIO
       // ====================================================
 
-      let usuario: Usuario | null =
-        null;
+      let usuario:
+        Usuario | null = null;
 
-      if (response.usuario) {
+      if (
+        response.usuario
+      ) {
         usuario = {
-          id: response.usuario.id,
+          id:
+            response.usuario.id,
 
           nombre:
             response.usuario.nombre,
@@ -527,7 +601,9 @@ export const authAPI = {
           avatarUrl:
             response.usuario.avatarUrl,
         };
-      } else if (response.user) {
+      } else if (
+        response.user
+      ) {
         usuario = {
           id:
             response.user.id,
@@ -631,7 +707,9 @@ export const authAPI = {
     // DATOS REFUGIO
     // ========================================================
 
-    if (data.rol === 'REFUGIO') {
+    if (
+      data.rol === 'REFUGIO'
+    ) {
       payload.nombreRefugio =
         data.nombreRefugio?.trim();
 
@@ -721,9 +799,8 @@ export const authAPI = {
       '/auth/register',
       {
         method: 'POST',
-        body: JSON.stringify(
-          payload,
-        ),
+        body:
+          JSON.stringify(payload),
       },
     );
   },
@@ -851,7 +928,9 @@ export const authAPI = {
             ) {
               return usuario;
             }
-          } catch (storageError) {
+          } catch (
+            storageError
+          ) {
             console.error(
               'Error leyendo usuario guardado:',
               storageError,
@@ -938,13 +1017,25 @@ export const reportesAPI = {
   // ==========================================================
 
   crearReporte: (
-    formData: FormData,
+    data: {
+      mascotaId: string;
+      ubicacionId: string;
+      tipo:
+        | 'PERDIDA'
+        | 'HALLAZGO';
+      titulo: string;
+      descripcion: string;
+      fechaAcontecimiento: string;
+      imagenUrl?: string;
+      imagenPublicId?: string;
+    },
   ) => {
     return fetchAPI<Reporte>(
       '/reportes',
       {
         method: 'POST',
-        body: formData,
+        body:
+          JSON.stringify(data),
       },
     );
   },
@@ -961,9 +1052,70 @@ export const reportesAPI = {
       `/reportes/${id}/resolver`,
       {
         method: 'PATCH',
-        body: JSON.stringify({
-          estado,
-        }),
+        body:
+          JSON.stringify({
+            estado,
+          }),
+      },
+    );
+  },
+};
+
+// ============================================================
+// MASCOTAS
+// ============================================================
+
+export const mascotasAPI = {
+  // ==========================================================
+  // CREAR MASCOTA
+  // ==========================================================
+
+  crearMascota: (
+    data: {
+      nombre: string;
+      especie: string;
+      raza: string;
+      edadAprox: number;
+      color: string;
+      caracteristicas: string;
+      fotoUrl?: string;
+    },
+  ) => {
+    return fetchAPI<Mascota>(
+      '/mascotas',
+      {
+        method: 'POST',
+        body:
+          JSON.stringify(data),
+      },
+    );
+  },
+};
+
+// ============================================================
+// UBICACIONES
+// ============================================================
+
+export const ubicacionesAPI = {
+  // ==========================================================
+  // CREAR UBICACIÓN
+  // ==========================================================
+
+  crearUbicacion: (
+    data: {
+      direccion: string;
+      comuna: string;
+      barrio: string;
+      latitud: number;
+      longitud: number;
+    },
+  ) => {
+    return fetchAPI<Ubicacion>(
+      '/ubicaciones',
+      {
+        method: 'POST',
+        body:
+          JSON.stringify(data),
       },
     );
   },
@@ -994,4 +1146,3 @@ export const veterinariasAPI = {
     );
   },
 };
-
