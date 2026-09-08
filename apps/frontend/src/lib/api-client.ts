@@ -1,3 +1,4 @@
+
 const BASE_URL = 'http://localhost:4000/api/v1';
 
 console.log('🔥 BASE_URL DEL FRONTEND:', BASE_URL);
@@ -25,6 +26,35 @@ export interface Usuario {
   estado?: string;
   activo?: boolean;
   avatarUrl?: string;
+
+  refugio?: {
+    id: string;
+    nombre: string;
+    capacidad: number;
+    horario: string;
+    sitioWeb?: string | null;
+    ubicacion?: {
+      direccion: string;
+      comuna: string;
+      barrio: string;
+      latitud: number | string;
+      longitud: number | string;
+    } | null;
+  } | null;
+
+  veterinaria?: {
+    id: string;
+    nombre: string;
+    urgencias24h: boolean;
+    horario: string;
+    ubicacion?: {
+      direccion: string;
+      comuna: string;
+      barrio: string;
+      latitud: number | string;
+      longitud: number | string;
+    } | null;
+  } | null;
 }
 
 // ============================================================
@@ -161,31 +191,22 @@ export async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const cleanEndpoint =
-    endpoint.startsWith('/')
-      ? endpoint
-      : `/${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/')
+    ? endpoint
+    : `/${endpoint}`;
 
-  const url =
-    `${BASE_URL}${cleanEndpoint}`;
+  const url = `${BASE_URL}${cleanEndpoint}`;
 
-  const headers =
-    new Headers(options.headers);
+  const headers = new Headers(options.headers);
 
   // ==========================================================
   // AGREGAR JWT AUTOMÁTICAMENTE
   // ==========================================================
 
-  if (
-    typeof window !== 'undefined'
-  ) {
+  if (typeof window !== 'undefined') {
     const token =
-      localStorage.getItem(
-        'token',
-      ) ||
-      localStorage.getItem(
-        'vecipets_access_token',
-      );
+      localStorage.getItem('token') ||
+      localStorage.getItem('vecipets_access_token');
 
     if (token) {
       headers.set(
@@ -214,11 +235,10 @@ export async function fetchAPI<T>(
   }
 
   try {
-    const response =
-      await fetch(url, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
     const contentType =
       response.headers.get(
@@ -236,16 +256,13 @@ export async function fetchAPI<T>(
         'application/json',
       )
     ) {
-      data =
-        await response.json();
+      data = await response.json();
     } else {
-      const text =
-        await response.text();
+      const text = await response.text();
 
       if (text.trim()) {
         try {
-          data =
-            JSON.parse(text);
+          data = JSON.parse(text);
         } catch {
           data = text;
         }
@@ -265,9 +282,7 @@ export async function fetchAPI<T>(
         typeof data === 'object'
       ) {
         if (
-          Array.isArray(
-            data.message,
-          )
+          Array.isArray(data.message)
         ) {
           errorMessage =
             data.message.join(', ');
@@ -293,9 +308,7 @@ export async function fetchAPI<T>(
       // SESIÓN NO AUTORIZADA
       // ======================================================
 
-      if (
-        response.status === 401
-      ) {
+      if (response.status === 401) {
         throw new Error(
           `UNAUTHORIZED: ${errorMessage}`,
         );
@@ -305,17 +318,13 @@ export async function fetchAPI<T>(
       // SIN PERMISOS
       // ======================================================
 
-      if (
-        response.status === 403
-      ) {
+      if (response.status === 403) {
         throw new Error(
           `FORBIDDEN: ${errorMessage}`,
         );
       }
 
-      throw new Error(
-        errorMessage,
-      );
+      throw new Error(errorMessage);
     }
 
     return data as T;
@@ -451,8 +460,7 @@ export const authAPI = {
           .trim()
           .toLowerCase(),
 
-      password:
-        data.password,
+      password: data.password,
     };
 
     const response =
@@ -470,9 +478,7 @@ export const authAPI = {
     // GUARDAR SESIÓN
     // ======================================================
 
-    if (
-      typeof window !== 'undefined'
-    ) {
+    if (typeof window !== 'undefined') {
       const token =
         response.accessToken ||
         response.token;
@@ -496,12 +502,9 @@ export const authAPI = {
       let usuario: Usuario | null =
         null;
 
-      if (
-        response.usuario
-      ) {
+      if (response.usuario) {
         usuario = {
-          id:
-            response.usuario.id,
+          id: response.usuario.id,
 
           nombre:
             response.usuario.nombre,
@@ -524,9 +527,7 @@ export const authAPI = {
           avatarUrl:
             response.usuario.avatarUrl,
         };
-      } else if (
-        response.user
-      ) {
+      } else if (response.user) {
         usuario = {
           id:
             response.user.id,
@@ -671,7 +672,9 @@ export const authAPI = {
     // DATOS VETERINARIA
     // ========================================================
 
-    if (data.rol === 'VETERINARIA') {
+    if (
+      data.rol === 'VETERINARIA'
+    ) {
       payload.nombreVeterinaria =
         data.nombreVeterinaria?.trim();
 
@@ -731,6 +734,10 @@ export const authAPI = {
 
   getPerfil:
     async (): Promise<Usuario> => {
+      // ======================================================
+      // VERIFICAR NAVEGADOR
+      // ======================================================
+
       if (
         typeof window === 'undefined'
       ) {
@@ -740,42 +747,7 @@ export const authAPI = {
       }
 
       // ======================================================
-      // USUARIO GUARDADO
-      // ======================================================
-
-      const storedUser =
-        localStorage.getItem(
-          'vecipets_user',
-        );
-
-      if (storedUser) {
-        try {
-          const usuario =
-            JSON.parse(
-              storedUser,
-            ) as Usuario;
-
-          if (
-            usuario &&
-            usuario.id &&
-            usuario.email
-          ) {
-            return usuario;
-          }
-        } catch (error) {
-          console.error(
-            'Error leyendo vecipets_user:',
-            error,
-          );
-
-          localStorage.removeItem(
-            'vecipets_user',
-          );
-        }
-      }
-
-      // ======================================================
-      // RECUPERAR DATOS DEL JWT
+      // RECUPERAR TOKEN
       // ======================================================
 
       const token =
@@ -786,88 +758,63 @@ export const authAPI = {
           'vecipets_access_token',
         );
 
+      // ======================================================
+      // SI NO HAY TOKEN, USAR USUARIO GUARDADO
+      // ======================================================
+
       if (!token) {
+        const storedUser =
+          localStorage.getItem(
+            'vecipets_user',
+          );
+
+        if (storedUser) {
+          try {
+            const usuario =
+              JSON.parse(
+                storedUser,
+              ) as Usuario;
+
+            if (
+              usuario &&
+              usuario.id &&
+              usuario.email
+            ) {
+              return usuario;
+            }
+          } catch (error) {
+            console.error(
+              'Error leyendo vecipets_user:',
+              error,
+            );
+
+            localStorage.removeItem(
+              'vecipets_user',
+            );
+          }
+        }
+
         throw new Error(
           'NO_SESSION',
         );
       }
 
+      // ======================================================
+      // OBTENER PERFIL REAL DESDE BACKEND
+      // ======================================================
+
       try {
-        const partes =
-          token.split('.');
-
-        if (
-          partes.length !== 3
-        ) {
-          throw new Error(
-            'TOKEN_INVALIDO',
-          );
-        }
-
-        const base64Payload =
-          partes[1]
-            .replace(/-/g, '+')
-            .replace(/_/g, '/');
-
-        const payload =
-          JSON.parse(
-            decodeURIComponent(
-              atob(
-                base64Payload,
-              )
-                .split('')
-                .map(
-                  (char) =>
-                    '%' +
-                    (
-                      '00' +
-                      char
-                        .charCodeAt(
-                          0,
-                        )
-                        .toString(16)
-                    ).slice(-2),
-                )
-                .join(''),
-            ),
+        const usuario =
+          await fetchAPI<Usuario>(
+            '/auth/perfil',
+            {
+              method: 'GET',
+            },
           );
 
-        const usuario: Usuario = {
-          id:
-            payload.sub || '',
-
-          nombre:
-            payload.nombre ||
-            payload.name ||
-            payload.email?.split(
-              '@',
-            )[0] ||
-            'Usuario',
-
-          email:
-            payload.email ||
-            '',
-
-          rol:
-            payload.role ||
-            payload.rol,
-
-          estado:
-            payload.estado ||
-            'APROBADO',
-
-          activo:
-            true,
-        };
-
-        if (
-          !usuario.id ||
-          !usuario.email
-        ) {
-          throw new Error(
-            'TOKEN_SIN_USUARIO',
-          );
-        }
+        // ====================================================
+        // GUARDAR PERFIL ACTUALIZADO
+        // ====================================================
 
         localStorage.setItem(
           'vecipets_user',
@@ -877,13 +824,46 @@ export const authAPI = {
         return usuario;
       } catch (error) {
         console.error(
-          'No se pudo recuperar el usuario desde el token:',
+          'Error obteniendo perfil desde el backend:',
           error,
         );
 
-        throw new Error(
-          'NO_PROFILE_DATA',
-        );
+        // ====================================================
+        // RESPALDO: USUARIO GUARDADO
+        // ====================================================
+
+        const storedUser =
+          localStorage.getItem(
+            'vecipets_user',
+          );
+
+        if (storedUser) {
+          try {
+            const usuario =
+              JSON.parse(
+                storedUser,
+              ) as Usuario;
+
+            if (
+              usuario &&
+              usuario.id &&
+              usuario.email
+            ) {
+              return usuario;
+            }
+          } catch (storageError) {
+            console.error(
+              'Error leyendo usuario guardado:',
+              storageError,
+            );
+          }
+        }
+
+        // ====================================================
+        // SI NO HAY RESPALDO
+        // ====================================================
+
+        throw error;
       }
     },
 
@@ -1003,3 +983,4 @@ export const refugiosAPI = {
     );
   },
 };
+

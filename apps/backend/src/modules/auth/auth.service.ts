@@ -430,7 +430,7 @@ export class AuthService {
     };
   }
 
-  // =========================
+    // =========================
   // PERFIL
   // =========================
 
@@ -443,6 +443,20 @@ export class AuthService {
 
         include: {
           role: true,
+
+          // Datos del refugio del usuario
+          refugio: {
+            include: {
+              ubicacion: true,
+            },
+          },
+
+          // Datos de la veterinaria del usuario
+          veterinaria: {
+            include: {
+              ubicacion: true,
+            },
+          },
         },
       });
 
@@ -453,19 +467,137 @@ export class AuthService {
     }
 
     return {
+      // =========================
+      // DATOS GENERALES
+      // =========================
+
       id: usuario.id,
+
       nombre:
         usuario.nombreCompleto,
+
       email:
         usuario.email,
+
       telefono:
         usuario.telefono,
+
       rol:
         usuario.role.nombre,
+
       estado:
         usuario.estado,
+
       activo:
         usuario.activo,
+
+      // =========================
+      // DATOS DEL REFUGIO
+      // =========================
+
+      refugio: usuario.refugio
+        ? {
+            id:
+              usuario.refugio.id,
+
+            nombre:
+              usuario.refugio.nombre,
+
+            capacidad:
+              usuario.refugio.capacidad,
+
+            horario:
+              usuario.refugio.horario,
+
+            sitioWeb:
+              usuario.refugio.sitioWeb,
+
+            ubicacion:
+              usuario.refugio.ubicacion
+                ? {
+                    direccion:
+                      usuario.refugio
+                        .ubicacion
+                        .direccion,
+
+                    comuna:
+                      usuario.refugio
+                        .ubicacion
+                        .comuna,
+
+                    barrio:
+                      usuario.refugio
+                        .ubicacion
+                        .barrio,
+
+                    latitud:
+                      usuario.refugio
+                        .ubicacion
+                        .latitud,
+
+                    longitud:
+                      usuario.refugio
+                        .ubicacion
+                        .longitud,
+                  }
+                : null,
+          }
+        : null,
+
+      // =========================
+      // DATOS DE LA VETERINARIA
+      // =========================
+
+      veterinaria:
+        usuario.veterinaria
+          ? {
+              id:
+                usuario.veterinaria.id,
+
+              nombre:
+                usuario.veterinaria
+                  .nombre,
+
+              urgencias24h:
+                usuario.veterinaria
+                  .urgencias24h,
+
+              horario:
+                usuario.veterinaria
+                  .horario,
+
+              ubicacion:
+                usuario.veterinaria
+                  .ubicacion
+                  ? {
+                      direccion:
+                        usuario.veterinaria
+                          .ubicacion
+                          .direccion,
+
+                      comuna:
+                        usuario.veterinaria
+                          .ubicacion
+                          .comuna,
+
+                      barrio:
+                        usuario.veterinaria
+                          .ubicacion
+                          .barrio,
+
+                      latitud:
+                        usuario.veterinaria
+                          .ubicacion
+                          .latitud,
+
+                      longitud:
+                        usuario.veterinaria
+                          .ubicacion
+                          .longitud,
+                    }
+                  : null,
+            }
+          : null,
     };
   }
 
