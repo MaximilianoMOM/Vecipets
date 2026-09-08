@@ -1,5 +1,5 @@
 
-const BASE_URL = 'http://localhost:4000/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 console.log('🔥 BASE_URL DEL FRONTEND:', BASE_URL);
 
@@ -970,13 +970,24 @@ export const reportesAPI = {
 };
 
 // ============================================================
-// REFUGIOS
+// REFUGIOS Y VETERINARIAS
 // ============================================================
 
 export const refugiosAPI = {
   getRefugios: () => {
     return fetchAPI<Refugio[]>(
       '/refugios',
+      {
+        method: 'GET',
+      },
+    );
+  },
+};
+
+export const veterinariasAPI = {
+  getVeterinarias: () => {
+    return fetchAPI<Refugio[]>(
+      '/veterinarias',
       {
         method: 'GET',
       },

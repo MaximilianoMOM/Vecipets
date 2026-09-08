@@ -44,17 +44,17 @@ export default function ReporteCard({ reporte }: ReporteCardProps) {
         )}
 
         {/* BADGE DE TIPO DE REPORTE */}
-        <div className="absolute top-3 left-3 flex gap-2">
-          <span className={`text-xs font-extrabold px-3 py-1 rounded-full shadow-md uppercase tracking-wider ${badgeColor}`}>
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+          <span className={`text-[11px] font-black px-3 py-1 rounded-full shadow-md uppercase tracking-wider ${badgeColor}`}>
             {badgeText}
           </span>
-          <span className="bg-white/90 backdrop-blur-md text-slate-800 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+          <span className="bg-white/95 backdrop-blur-md text-slate-800 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
             {iconoEspecie} {reporte.especie}
           </span>
         </div>
 
         {reporte.recompensa && reporte.recompensa > 0 ? (
-          <span className="absolute bottom-3 right-3 bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-full shadow-md">
+          <span className="absolute bottom-3 right-3 bg-amber-400 text-slate-950 text-[11px] font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1">
             💰 Recompensa
           </span>
         ) : null}

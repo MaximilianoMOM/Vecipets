@@ -49,12 +49,14 @@ export default function Navbar() {
     router.push('/');
   };
 
+  const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'ADMIN';
+
   const navLinks = [
     { name: 'Inicio', href: '/' },
     { name: 'Mapa Explorador', href: '/mapa' },
     { name: 'Reportes', href: '/reportes' },
     { name: 'Refugios y Clínicas', href: '/refugios' },
-    { name: 'Moderación', href: '/moderacion' },
+    ...(esAdmin ? [{ name: 'Moderación', href: '/moderacion' }] : []),
   ];
 
   return (
@@ -107,40 +109,77 @@ export default function Navbar() {
             <>
               {usuario ? (
                 <div className="relative">
-                  <button
-                    onClick={() => setDropdownAbierto(!dropdownAbierto)}
-                    className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 py-2 px-3.5 rounded-xl border border-slate-200 transition-colors focus:outline-none"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[#5E7BC4] text-white flex items-center justify-center font-bold text-sm">
-                      {usuario.nombre ? usuario.nombre.charAt(0).toUpperCase() : '👤'}
-                    </div>
-                    <span className="text-sm font-semibold text-slate-800 max-w-[100px] truncate">
-                      {usuario.nombre || 'Mi Perfil'}
-                    </span>
-                    <span className="text-xs text-slate-400">▼</span>
-                  </button>
-
-                  {dropdownAbierto && (
-                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-fade-in">
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <p className="text-xs text-slate-400 font-medium">Conectado como</p>
-                        <p className="text-sm font-bold text-slate-800 truncate">{usuario.email}</p>
+                    <button
+                      onClick={() => setDropdownAbierto(!dropdownAbierto)}
+                      className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 py-2 px-3.5 rounded-xl border border-slate-200 transition-colors focus:outline-none"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#5E7BC4] text-white flex items-center justify-center font-bold text-sm">
+                        {usuario.nombre ? usuario.nombre.charAt(0).toUpperCase() : '👤'}
                       </div>
-                      <Link
-                        href="/perfil"
-                        onClick={() => setDropdownAbierto(false)}
-                        className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        👤 Mi Perfil y Mis Reportes
-                      </Link>
-                      <button
-                        onClick={cerrarSesion}
-                        className="w-full text-left px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        🚪 Cerrar Sesión
-                      </button>
-                    </div>
-                  )}
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-semibold text-slate-800 max-w-[110px] truncate leading-tight">
+                          {usuario.nombre || 'Mi Perfil'}
+                        </span>
+                        {usuario.rol && (
+                          <span className={`text-[10px] font-bold tracking-wider uppercase ${
+                            usuario.rol === 'ADMINISTRADOR' || usuario.rol === 'ADMIN'
+                              ? 'text-purple-600'
+                              : usuario.rol === 'REFUGIO'
+                              ? 'text-blue-600'
+                              : usuario.rol === 'VETERINARIA'
+                              ? 'text-emerald-600'
+                              : 'text-amber-600'
+                          }`}>
+                            {usuario.rol === 'REFUGIO' ? '🏠 Refugio' : usuario.rol === 'VETERINARIA' ? '🏥 Veterinaria' : usuario.rol === 'ADMINISTRADOR' || usuario.rol === 'ADMIN' ? '🛡️ Admin' : '🐾 Ciudadano'}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400">▼</span>
+                    </button>
+
+                    {dropdownAbierto && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-fade-in">
+                        <div className="px-4 py-2 border-b border-slate-100">
+                          <p className="text-xs text-slate-400 font-medium">Conectado como</p>
+                          <p className="text-sm font-bold text-slate-800 truncate">{usuario.email}</p>
+                          {usuario.rol && (
+                            <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              usuario.rol === 'ADMINISTRADOR' || usuario.rol === 'ADMIN'
+                                ? 'bg-purple-100 text-purple-700'
+                                : usuario.rol === 'REFUGIO'
+                                ? 'bg-blue-100 text-blue-700'
+                                : usuario.rol === 'VETERINARIA'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {usuario.rol}
+                            </span>
+                          )}
+                        </div>
+                        <Link
+                          href="/perfil"
+                          onClick={() => setDropdownAbierto(false)}
+                          className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                          👤 Mi Perfil y Mis Reportes
+                        </Link>
+                        {(usuario.rol === 'ADMINISTRADOR' || usuario.rol === 'ADMIN') && (
+                          <Link
+                            href="/moderacion"
+                            onClick={() => setDropdownAbierto(false)}
+                            className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                          >
+                            🛡️ Panel de Moderación
+                          </Link>
+                        )}
+                        <button
+                          onClick={cerrarSesion}
+                          className="w-full text-left px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          🚪 Cerrar Sesión
+                        </button>
+                      </div>
+                    )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
