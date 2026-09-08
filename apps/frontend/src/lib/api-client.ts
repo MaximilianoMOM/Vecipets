@@ -305,10 +305,15 @@ export async function fetchAPI<T>(
       }
 
       // ======================================================
-      // SESIÓN NO AUTORIZADA
+      // SESIÓN NO AUTORIZADA / TOKEN EXPIRADO
       // ======================================================
 
       if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('vecipets_access_token');
+          localStorage.removeItem('vecipets_user');
+        }
         throw new Error(
           `UNAUTHORIZED: ${errorMessage}`,
         );

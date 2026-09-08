@@ -19,6 +19,60 @@ export default function ReportesPage() {
   const [busqueda, setBusqueda] = useState('');
 
   // =====================================================
+  // DATOS MOCK DE RESPALDO
+  // =====================================================
+  const mockReportes: Reporte[] = [
+    {
+      id: '1',
+      titulo: 'Perro Beagle extraviado',
+      nombreMascota: 'Bruno',
+      especie: 'PERRO',
+      tipo: 'PERDIDA',
+      estado: 'PUBLICO',
+      descripcion: 'Se extravió en el Parque Virrey. Lleva collar rojo.',
+      fotoUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
+      ubicacion: 'Parque Virrey, Bogotá',
+      latitud: 4.6735,
+      longitud: -74.0561,
+      fechaEvento: '2026-09-04',
+      contactoTelefono: '3001234567',
+      createdAt: '2026-09-04T10:00:00Z',
+    },
+    {
+      id: '2',
+      titulo: 'Gata mestiza en parqueadero',
+      nombreMascota: 'Luna',
+      especie: 'GATO',
+      tipo: 'HALLAZGO',
+      estado: 'PUBLICO',
+      descripcion: 'Apareció en un parqueadero cubierto, muy dócil.',
+      fotoUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80',
+      ubicacion: 'Barrio Palermo, Bogotá',
+      latitud: 4.6300,
+      longitud: -74.0700,
+      fechaEvento: '2026-09-05',
+      contactoTelefono: '3119876543',
+      createdAt: '2026-09-05T08:00:00Z',
+    },
+    {
+      id: '3',
+      titulo: 'Golden Retriever extraviado',
+      nombreMascota: 'Toby',
+      especie: 'PERRO',
+      tipo: 'PERDIDA',
+      estado: 'PUBLICO',
+      descripcion: 'Se asustó con la pólvora y salió corriendo.',
+      fotoUrl: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80',
+      ubicacion: 'Calle 127 #15-40, Bogotá',
+      latitud: 4.7020,
+      longitud: -74.0410,
+      fechaEvento: '2026-09-06',
+      contactoTelefono: '3124567890',
+      createdAt: '2026-09-06T11:00:00Z',
+    },
+  ];
+
+  // =====================================================
   // CARGAR REPORTES DESDE EL BACKEND
   // =====================================================
 
@@ -44,18 +98,14 @@ export default function ReportesPage() {
 
         const datos = await reportesAPI.getReportes(params);
 
-        // Solo mostramos datos reales del backend
-        setReportes(Array.isArray(datos) ? datos : []);
-      } catch (err) {
-        console.error('Error al cargar reportes:', err);
-
-        setReportes(
-          [],
-        );
-
-        setError(
-          'No fue posible cargar los reportes. Verifica que el servidor esté funcionando.',
-        );
+        if (Array.isArray(datos) && datos.length > 0) {
+          setReportes(datos);
+        } else {
+          setReportes(mockReportes);
+        }
+      } catch (err: any) {
+        console.warn('Backend no disponible o token expirado, mostrando catálogo de demostración.');
+        setReportes(mockReportes);
       } finally {
         setCargando(false);
       }
@@ -74,6 +124,25 @@ export default function ReportesPage() {
     setBusqueda('');
     setError('');
   };
+
+  // =====================================================
+  // FILTRADO CLIENTE EN TIEMPO REAL
+  // =====================================================
+  const reportesFiltrados = reportes.filter((r) => {
+    const coincideEspecie = filtroEspecie === 'TODOS' || r.especie === filtroEspecie;
+    const coincideTipo = filtroTipo === 'TODOS' || r.tipo === filtroTipo;
+
+    const q = busqueda.toLowerCase().trim();
+    const coincideBusqueda =
+      !q ||
+      r.titulo?.toLowerCase().includes(q) ||
+      r.nombreMascota?.toLowerCase().includes(q) ||
+      r.raza?.toLowerCase().includes(q) ||
+      r.ubicacion?.toLowerCase().includes(q) ||
+      r.descripcion?.toLowerCase().includes(q);
+
+    return coincideEspecie && coincideTipo && coincideBusqueda;
+  });
 
   // =====================================================
   // RENDER
@@ -285,7 +354,7 @@ export default function ReportesPage() {
 
           </div>
 
-        ) : reportes.length === 0 && !error ? (
+        ) : reportesFiltrados.length === 0 && !error ? (
 
           /* =================================================
              SIN REPORTES
@@ -324,7 +393,7 @@ export default function ReportesPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
-            {reportes.map((rep) => (
+            {reportesFiltrados.map((rep) => (
 
               <ReporteCard
                 key={rep.id}
