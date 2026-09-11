@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import { MapaSelectorDynamic } from '@/components/mapa/MapDynamicWrapper';
+import BuscadorDireccion from '@/components/mapa/BuscadorDireccion';
 import { reportesAPI } from '@/lib/api-client';
 
 export default function ReportarPage() {
@@ -26,10 +27,10 @@ export default function ReportarPage() {
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
-  // Coordenadas y dirección seleccionada
-  const [latitud, setLatitud] = useState(4.6097);
-  const [longitud, setLongitud] = useState(-74.0817);
-  const [ubicacionText, setUbicacionText] = useState('Bogotá, Colombia');
+  // Coordenadas y dirección seleccionada (Medellín por defecto)
+  const [latitud, setLatitud] = useState(6.2442);
+  const [longitud, setLongitud] = useState(-75.5812);
+  const [ubicacionText, setUbicacionText] = useState('Medellín, Antioquia, Colombia');
 
   const manejarSeleccionImagen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,8 +41,10 @@ export default function ReportarPage() {
   };
 
   const manejarUbicacionChange = (lat: number, lng: number, direccion?: string) => {
-    setLatitud(lat);
-    setLongitud(lng);
+    if (lat && lng) {
+      setLatitud(lat);
+      setLongitud(lng);
+    }
     if (direccion) {
       setUbicacionText(direccion);
     }
@@ -275,25 +278,31 @@ export default function ReportarPage() {
                 )}
               </div>
 
-              {/* SELECTOR DE UBICACIÓN EN MAPA */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Ubicación Exacta en el Mapa (Clic o Búsqueda)
-                </label>
-                <div className="mb-2">
-                  <input
-                    type="text"
-                    value={ubicacionText}
-                    onChange={(e) => setUbicacionText(e.target.value)}
-                    placeholder="Barrio, calle o referencia de ciudad..."
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5E7BC4]"
+              {/* SELECTOR DE UBICACIÓN Y BÚSQUEDA POR DIRECCIÓN */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    📍 Dirección y Ubicación en el Mapa (Medellín) *
+                  </label>
+                  <span className="text-[11px] font-extrabold text-[#5E7BC4] bg-[#EEF2FC] px-2.5 py-0.5 rounded-full">
+                    Medellín, CO
+                  </span>
+                </div>
+                
+                <BuscadorDireccion
+                  direccionInicial={ubicacionText}
+                  onSeleccionarUbicacion={(lat, lng, direccion) => {
+                    manejarUbicacionChange(lat, lng, direccion);
+                  }}
+                />
+
+                <div className="w-full h-80 sm:h-96 rounded-2xl overflow-hidden shadow-sm border border-slate-200">
+                  <MapaSelectorDynamic
+                    latitud={latitud}
+                    longitud={longitud}
+                    onUbicacionChange={manejarUbicacionChange}
                   />
                 </div>
-                <MapaSelectorDynamic
-                  latitud={latitud}
-                  longitud={longitud}
-                  onUbicacionChange={manejarUbicacionChange}
-                />
               </div>
 
               <div className="flex gap-4 pt-4 border-t border-slate-100">
