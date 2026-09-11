@@ -4,17 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import { MapaSelectorDynamic } from '@/components/mapa/MapDynamicWrapper';
-<<<<<<< HEAD
 import BuscadorDireccion from '@/components/mapa/BuscadorDireccion';
-import { reportesAPI } from '@/lib/api-client';
-=======
 import {
   reportesAPI,
   mascotasAPI,
   ubicacionesAPI,
   authAPI,
 } from '@/lib/api-client';
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
 
 export default function ReportarPage() {
   const router = useRouter();
@@ -99,18 +95,10 @@ export default function ReportarPage() {
   // UBICACIÓN
   // ============================================================
 
-<<<<<<< HEAD
   // Coordenadas y dirección seleccionada (Medellín por defecto)
   const [latitud, setLatitud] = useState(6.2442);
   const [longitud, setLongitud] = useState(-75.5812);
   const [ubicacionText, setUbicacionText] = useState('Medellín, Antioquia, Colombia');
-=======
-  const [latitud, setLatitud] = useState(4.6097);
-  const [longitud, setLongitud] = useState(-74.0817);
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
-
-  const [ubicacionText, setUbicacionText] =
-    useState('Bogotá, Colombia');
 
   // ============================================================
   // SELECCIONAR IMAGEN
@@ -133,26 +121,15 @@ export default function ReportarPage() {
     setFotoPreview(URL.createObjectURL(file));
   };
 
-<<<<<<< HEAD
-  const manejarUbicacionChange = (lat: number, lng: number, direccion?: string) => {
-    if (lat && lng) {
-      setLatitud(lat);
-      setLongitud(lng);
-    }
-=======
-  // ============================================================
-  // CAMBIO DE UBICACIÓN
-  // ============================================================
-
   const manejarUbicacionChange = (
     lat: number,
     lng: number,
     direccion?: string,
   ) => {
-    setLatitud(lat);
-    setLongitud(lng);
-
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
+    if (lat && lng) {
+      setLatitud(lat);
+      setLongitud(lng);
+    }
     if (direccion) {
       setUbicacionText(direccion);
     }
@@ -962,12 +939,11 @@ export default function ReportarPage() {
 
               </div>
 
-<<<<<<< HEAD
               {/* SELECTOR DE UBICACIÓN Y BÚSQUEDA POR DIRECCIÓN */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    📍 Dirección y Ubicación en el Mapa (Medellín) *
+                    📍 Dirección y Ubicación en el Mapa *
                   </label>
                   <span className="text-[11px] font-extrabold text-[#5E7BC4] bg-[#EEF2FC] px-2.5 py-0.5 rounded-full">
                     Medellín, CO
@@ -986,43 +962,8 @@ export default function ReportarPage() {
                     latitud={latitud}
                     longitud={longitud}
                     onUbicacionChange={manejarUbicacionChange}
-=======
-              {/* UBICACIÓN */}
-
-              <div>
-
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Ubicación Exacta en el Mapa (Clic o Búsqueda)
-                </label>
-
-                <div className="mb-2">
-
-                  <input
-                    type="text"
-                    value={ubicacionText}
-                    onChange={(e) =>
-                      setUbicacionText(
-                        e.target.value,
-                      )
-                    }
-                    placeholder="Barrio, calle o referencia de ciudad..."
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:border-[#5E7BC4]"
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
                   />
-
                 </div>
-<<<<<<< HEAD
-=======
-
-                <MapaSelectorDynamic
-                  latitud={latitud}
-                  longitud={longitud}
-                  onUbicacionChange={
-                    manejarUbicacionChange
-                  }
-                />
-
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
               </div>
 
               {/* BOTONES */}

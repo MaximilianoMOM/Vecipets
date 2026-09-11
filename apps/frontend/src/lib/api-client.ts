@@ -368,18 +368,12 @@ export async function fetchAPI<T>(
       // SESIÓN NO AUTORIZADA / TOKEN EXPIRADO
       // ======================================================
 
-<<<<<<< HEAD
       if (response.status === 401) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
           localStorage.removeItem('vecipets_access_token');
           localStorage.removeItem('vecipets_user');
         }
-=======
-      if (
-        response.status === 401
-      ) {
->>>>>>> ccb32ab9b5d77229d88162b77453513429738fdb
         throw new Error(
           `UNAUTHORIZED: ${errorMessage}`,
         );
