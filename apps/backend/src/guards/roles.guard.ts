@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { ROLES_KEY } from '../decorators/roles.decorator';
+import { ROLES_KEY } from '../usuarios/decorators/roles.decorator';
 
 interface UsuarioAutenticado {
   sub: number;

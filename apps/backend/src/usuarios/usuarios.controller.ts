@@ -23,8 +23,8 @@ import { VerificarCorreoDto } from './dto/verificar-correo.dto';
 import { LoginDto } from './dto/login.dto';
 import { SolicitarRecuperacionDto } from './dto/solicitar-recuperacion.dto';
 import { RestablecerContrasenaDto } from './dto/restablecer-contrasena.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { UsuarioAutenticado } from './decorators/usuario-autenticado.decorator';
 
