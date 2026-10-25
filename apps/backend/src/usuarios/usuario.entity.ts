@@ -16,6 +16,16 @@ export class Usuario {
   @Column({ unique: true, length: 255 })
   correo: string;
 
+  // Identificador de la cuenta de Google
+  @Column({
+    name: 'google_id',
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    nullable: true,
+  })
+  googleId: string | null;
+
   @Column({
     name: 'password_hash',
     type: 'varchar',

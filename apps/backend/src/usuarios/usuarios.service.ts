@@ -17,6 +17,7 @@ import {
 } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import type { Response } from 'express';
 
 import { Usuario } from './usuario.entity';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
@@ -369,5 +370,102 @@ async obtenerTodos() {
   // ELIMINAR USUARIO
   async eliminar(id: number): Promise<void> {
     await this.usuariosRepository.delete(id);
+  }
+  
+  // INICIO DE SESIÓN CON GOOGLE
+  async iniciarSesionGoogle(
+    datos: {
+      googleId: string;
+      nombre: string;
+      correo: string;
+    },
+    respuesta: Response,
+  ) {
+    const correo = datos.correo.trim().toLowerCase();
+
+    let usuario = await this.usuariosRepository.findOneBy({
+      googleId: datos.googleId,
+    });
+
+    if (!usuario) {
+      usuario = await this.usuariosRepository.findOneBy({
+        correo,
+      });
+    }
+
+    // Si no existe, crear una cuenta ciudadana verificada por Google.
+    if (!usuario) {
+      usuario = this.usuariosRepository.create({
+        nombre: datos.nombre.trim().slice(0, 100),
+        correo,
+        googleId: datos.googleId,
+        passwordHash: null,
+        rol: 'CIUDADANO',
+        estadoAprobacion: 'APROBADO',
+        correoVerificado: true,
+        codigoVerificacionHash: null,
+        codigoVerificacionExpira: null,
+        intentosVerificacion: 0,
+      });
+
+      usuario = await this.usuariosRepository.save(usuario);
+    } else {
+      // Evitar vincular una cuenta de Google diferente.
+      if (
+        usuario.googleId &&
+        usuario.googleId !== datos.googleId
+      ) {
+        throw new ConflictException(
+          'Este correo ya está vinculado a otra cuenta de Google.',
+        );
+      }
+
+      // No permitir que Google active una cuenta local
+      // cuyo correo todavía no ha sido verificado.
+      if (!usuario.googleId && !usuario.correoVerificado) {
+        throw new ForbiddenException(
+          'Primero debes verificar el correo de tu cuenta existente.',
+        );
+      }
+
+      if (!usuario.googleId) {
+        usuario.googleId = datos.googleId;
+        usuario = await this.usuariosRepository.save(usuario);
+      }
+    }
+
+    // Respetar la aprobación de refugios y veterinarias.
+    if (usuario.estadoAprobacion !== 'APROBADO') {
+      throw new ForbiddenException(
+        'Tu cuenta está pendiente de aprobación por el administrador.',
+      );
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: usuario.id,
+        correo: usuario.correo,
+        rol: usuario.rol,
+      },
+      { expiresIn: '15m' },
+    );
+
+    respuesta.cookie('vecipets_access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000,
+    });
+
+    return {
+      mensaje: 'Inicio de sesión con Google exitoso.',
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        rol: usuario.rol,
+      },
+    };
   }
 }
