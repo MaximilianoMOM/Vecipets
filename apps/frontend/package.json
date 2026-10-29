@@ -1,41 +1,11 @@
 {
   "name": "frontend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "@react-oauth/google": "latest",
-    "axios": "latest",
-    "react-hook-form": "latest",
-    "yup": "latest",
-    "@hookform/resolvers": "latest",
-    "tailwindcss": "latest",
-    "postcss": "latest",
-    "autoprefixer": "latest",
-    "@radix-ui/react-icons": "latest",
-    "@radix-ui/react-toast": "latest",
-    "clsx": "latest",
-    "tailwind-merge": "latest"
-  },
-  "devDependencies": {
-    "typescript": "latest",
-    "@types/react": "latest",
-    "@types/node": "latest",
-    "eslint": "latest",
-    "prettier": "latest",
-    "eslint-config-prettier": "latest",
-    "eslint-plugin-react": "latest"
+
   }
 }
