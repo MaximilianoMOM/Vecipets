@@ -31,8 +31,8 @@ export default function RegistroPage() {
   const onSubmit = async (data: RegisterData) => {
     setApiError(null);
     try {
-      await apiClient.post('/auth/register', data);
-      router.push(`/auth/verificar?email=${encodeURIComponent(data.email)}`);
+      await apiClient.post('/usuarios', data);
+      router.push('/login');
     } catch (err: any) {
       if (err.response?.status === 400) {
         setApiError('Datos incompletos o formato incorrecto.');
