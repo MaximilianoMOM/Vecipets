@@ -27,7 +27,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginData) => {
     setApiError(null);
     try {
-      await apiClient.post('/auth/login', data);
+      await apiClient.post('/usuarios/login', data);
       router.push('/');
     } catch (err: any) {
       if (err.response?.status === 401) {
@@ -60,7 +60,7 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
           ¿No tienes cuenta?{' '}
-          <a href="/auth/registro" className="font-medium text-indigo-600 hover:underline">
+          <a href="/registro" className="font-medium text-indigo-600 hover:underline">
             Regístrate
           </a>
         </p>
