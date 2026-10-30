@@ -1,22 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
+﻿import { Test, TestingModule } from '@nestjs/testing';
+import { AppController } from './app.controller';
 
 describe('AppController', () => {
-  let appController: AppController;
+  let controller: AppController;
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
     }).compile();
 
-    appController = app.get<AppController>(AppController);
+    controller = module.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('debe estar definido', () => {
+    expect(controller).toBeDefined();
+  });
+
+  it('debe devolver la información de VeciPets', () => {
+    expect(controller.inicio()).toEqual({
+      mensaje: '¡Bienvenido a VeciPets!',
+      estado: 'Backend funcionando correctamente',
+      servicio: 'API VeciPets',
+      version: '1.0.0',
     });
   });
 });
