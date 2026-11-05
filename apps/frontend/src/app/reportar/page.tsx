@@ -11,12 +11,12 @@ import {
     Zap,
     ShieldAlert,
     CheckCircle2,
-    ShieldCheck,
+    Bot,
     X,
-    Bot
+    ShieldCheck
 } from 'lucide-react';
 
-export default function ReportarPage() {
+export default function FormularioReporteContenido() {
     const [formData, setFormData] = useState({
         nombre: '',
         especie: 'Perro' as 'Perro' | 'Gato' | 'Otro',
@@ -29,67 +29,43 @@ export default function ReportarPage() {
         esTurbo: false,
     });
 
-    const [analizandoFoto, setAnalizandoFoto] = useState(false);
+    const [cargandoImagen, setCargandoImagen] = useState(false);
     const [fotoValidadaPorIA, setFotoValidadaPorIA] = useState(false);
-    const [errorValidacionFoto, setErrorValidacionFoto] = useState<string | null>(null);
-    const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+    const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
     const [enviando, setEnviando] = useState(false);
-    const [isModalTurboOpen, setIsModalTurboOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [metodoPago, setMetodoPago] = useState<'NEQUI' | 'PSE' | 'TARJETA'>('NEQUI');
+    const [procesandoPago, setProcesandoPago] = useState(false);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        if (errorGeneral) setErrorGeneral(null);
+        if (errorValidacion) setErrorValidacion(null);
     };
 
-    // ==========================================
-    // 🤖 1. INTEGRACIÓN CON IA DE IMÁGENES (KATE)
-    // ==========================================
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setAnalizandoFoto(true);
-            setErrorValidacionFoto(null);
+            setCargandoImagen(true);
+            setErrorValidacion(null);
             setFotoValidadaPorIA(false);
 
-            try {
-                // (KATE): Aquí debes conectar la llamada real (fetch/axios) hacia el endpoint 
-                // de NestJS creado por Kate para validar que la foto corresponda a un animal.
-                // Ejemplo:
-                // const dataForm = new FormData();
-                // dataForm.append('imagen', file);
-                // const res = await fetch('http://localhost:4000/api/reportes/validar-imagen', {
-                //   method: 'POST',
-                //   body: dataForm,
-                //   credentials: 'include'
-                // });
-                // const resultado = await res.json();
-
-                // Simulación temporal actual:
-                await new Promise((resolve) => setTimeout(resolve, 1500));
+            setTimeout(() => {
                 const nombreArchivo = file.name.toLowerCase();
                 const esPaisajeFalso = nombreArchivo.includes('paisaje') || nombreArchivo.includes('montana');
 
                 if (esPaisajeFalso) {
-                    setErrorValidacionFoto('🤖 La IA detectó que esta imagen no es una mascota. Sube una foto de un perro o gato.');
+                    setErrorValidacion('🤖 Filtro IA: La imagen no corresponde a una mascota. Sube una foto de un perro o gato.');
                     setFotoValidadaPorIA(false);
                     setFormData((prev) => ({ ...prev, imagenUrl: null }));
                 } else {
-                    setFormData((prev) => ({
-                        ...prev,
-                        imagenUrl: URL.createObjectURL(file),
-                    }));
+                    setFormData((prev) => ({ ...prev, imagenUrl: URL.createObjectURL(file) }));
                     setFotoValidadaPorIA(true);
-                    setErrorValidacionFoto(null);
                 }
-            } catch (err) {
-                setErrorValidacionFoto('Error al conectar con el sistema de validación de IA.');
-            } finally {
-                setAnalizandoFoto(false);
-            }
+                setCargandoImagen(false);
+            }, 1200);
         }
     };
 
@@ -97,17 +73,17 @@ export default function ReportarPage() {
         e.preventDefault();
 
         if (!formData.imagenUrl || !fotoValidadaPorIA) {
-            setErrorGeneral('⚠️ Debes adjuntar una fotografía de mascota válida aprobada por la IA.');
+            setErrorValidacion('Debes subir una fotografía de mascota válida aprobada por el filtro de IA.');
             return;
         }
 
         if (!formData.barrioSector) {
-            setErrorGeneral('⚠️ Debes indicar el barrio o sector donde se perdió la mascota.');
+            setErrorValidacion('Debes indicar el barrio o sector del incidente.');
             return;
         }
 
         if (formData.esTurbo) {
-            setIsModalTurboOpen(true);
+            setIsModalOpen(true);
             return;
         }
 
@@ -116,19 +92,20 @@ export default function ReportarPage() {
 
     const ejecutarEnvioBackend = () => {
         setEnviando(true);
+        setProcesandoPago(false);
         setTimeout(() => {
             setEnviando(false);
-            setIsModalTurboOpen(false);
+            setIsModalOpen(false);
             alert(`¡Reporte de mascota perdida publicado con éxito! ${formData.esTurbo ? '(Alerta Turbo Activada 🚀)' : ''}`);
         }, 1200);
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
+        <main className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto space-y-6">
 
                 {/* Encabezado */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <Link
                             href="/"
@@ -145,14 +122,17 @@ export default function ReportarPage() {
                     </div>
 
                     <span className="self-start sm:self-center px-3 py-1 bg-red-100 text-red-800 font-semibold text-xs rounded-full border border-red-200">
-                        UI-002 • Formulario Integrado
+                        UI-002 • Formulario con Filtro IA
                     </span>
                 </div>
 
-                {errorGeneral && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 shadow-sm" role="alert">
+                {/* Mensaje de Error / Alerta */}
+                {errorValidacion && (
+                    <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 shadow-sm" role="alert">
                         <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                        <div className="text-sm text-red-800 font-semibold">{errorGeneral}</div>
+                        <div className="text-sm text-red-800">
+                            <strong className="font-bold">Aviso:</strong> {errorValidacion}
+                        </div>
                     </div>
                 )}
 
@@ -286,25 +266,14 @@ export default function ReportarPage() {
 
                     </div>
 
-                    {/* Columna Derecha: Foto con Filtro IA y Mapa */}
+                    {/* Columna Derecha: Foto y Ubicación */}
                     <div className="lg:col-span-5 space-y-6">
 
                         {/* Foto con Filtro Inteligente */}
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 relative">
-
-                            {errorValidacionFoto && (
-                                <div className="absolute -top-3 left-4 right-4 bg-red-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium flex items-start gap-2 z-20">
-                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                                    <div className="flex-1">{errorValidacionFoto}</div>
-                                    <button type="button" onClick={() => setErrorValidacionFoto(null)} className="text-white/80 hover:text-white">
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-between mb-2 mt-1">
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
+                            <div className="flex items-center justify-between mb-2">
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    Fotografía de la Mascota *
+                                    Fotografía con Filtro IA *
                                 </label>
                                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <Bot className="w-3 h-3" /> IA Anti-Fraude
@@ -312,7 +281,7 @@ export default function ReportarPage() {
                             </div>
 
                             <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50/50">
-                                {analizandoFoto ? (
+                                {cargandoImagen ? (
                                     <div className="py-8 flex flex-col items-center justify-center text-indigo-600">
                                         <Loader2 className="w-8 h-8 animate-spin mb-2" />
                                         <span className="text-xs font-bold">Analizando imagen con IA...</span>
@@ -323,7 +292,11 @@ export default function ReportarPage() {
                                         <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow flex items-center gap-1">
                                             <CheckCircle2 className="w-3 h-3" /> Mascota Verificada por IA
                                         </div>
-                                        <button type="button" onClick={() => { setFormData(p => ({ ...p, imagenUrl: null })); setFotoValidadaPorIA(false); }} className="mt-2 text-xs font-bold text-red-600 hover:underline">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFormData(p => ({ ...p, imagenUrl: null })); setFotoValidadaPorIA(false); }}
+                                            className="mt-2 text-xs font-bold text-red-600 hover:underline"
+                                        >
                                             Cambiar fotografía
                                         </button>
                                     </div>
@@ -331,15 +304,14 @@ export default function ReportarPage() {
                                     <label className="cursor-pointer py-6 flex flex-col items-center justify-center">
                                         <Camera className="w-8 h-8 text-slate-400 mb-2" />
                                         <span className="text-sm font-bold text-slate-700">Subir foto de la mascota</span>
+                                        <span className="text-xs text-slate-400 mt-1">Prueba nombrando el archivo ej: "paisaje.jpg" para simular rechazo</span>
                                         <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                                     </label>
                                 )}
                             </div>
                         </div>
 
-                        {/* ========================================== */}
-                        {/* 🗺️ 2. MAPA INTERACTIVO (MAX)              */}
-                        {/* ========================================== */}
+                        {/* Ubicación */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                                 Última Ubicación Vista *
@@ -358,11 +330,9 @@ export default function ReportarPage() {
                                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                                     />
                                 </div>
-
-                                {/*  (MAX): Aquí debes incrustar el componente del Mapa Interactivo (Leaflet / Mapbox) */}
                                 <div className="w-full h-40 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-center p-4">
                                     <MapPin className="w-6 h-6 text-red-500 mb-1 animate-bounce" />
-                                    <span className="text-[11px] text-slate-400">[ Aquí va el componente del Mapa Interactivo de Max ]</span>
+                                    <span className="text-[11px] text-slate-400">[ Mapa Interactivo ]</span>
                                 </div>
                             </div>
                         </div>
@@ -374,19 +344,31 @@ export default function ReportarPage() {
                             className={`w-full py-4 px-6 rounded-xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm ${formData.esTurbo ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-blue-600 hover:bg-blue-700'
                                 }`}
                         >
-                            {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : formData.esTurbo ? <><Zap className="w-4 h-4 fill-white" /> Continuar a Pago e Impulsar con Turbo</> : 'Publicar Reporte Estándar'}
+                            {enviando ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : formData.esTurbo ? (
+                                <>
+                                    <Zap className="w-4 h-4 fill-white" /> Continuar a Pago e Impulsar con Turbo
+                                </>
+                            ) : (
+                                'Publicar Reporte Estándar'
+                            )}
                         </button>
 
                     </div>
                 </form>
 
                 {/* Modal de Pago Intermedio (Alerta Turbo) */}
-                {isModalTurboOpen && (
+                {isModalOpen && (
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
-                            <button onClick={() => setIsModalTurboOpen(false)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1">
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1"
+                            >
                                 <X className="w-5 h-5" />
                             </button>
+
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-3 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/30">
                                     <Zap className="w-6 h-6 fill-white" />
@@ -413,7 +395,11 @@ export default function ReportarPage() {
                                 </div>
                             </div>
 
-                            <button onClick={ejecutarEnvioBackend} className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm">
+                            <button
+                                onClick={ejecutarEnvioBackend}
+                                disabled={procesandoPago}
+                                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm"
+                            >
                                 <CheckCircle2 className="w-4 h-4" /> Pagar $15.000 y Publicar Turbo
                             </button>
                         </div>
@@ -421,6 +407,6 @@ export default function ReportarPage() {
                 )}
 
             </div>
-        </div>
+        </main>
     );
 }
