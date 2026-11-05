@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from './api-client';
 import { useRouter } from 'next/navigation';
 
 // Define the shape of the user object returned by /auth/me
@@ -18,7 +18,7 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps>({
   user: null,
   loading: true,
-  logout: async () => {},
+  logout: async () => { },
 });
 
 /**
