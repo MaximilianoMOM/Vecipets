@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Syringe, Ticket, Filter, HeartHandshake, User } from 'lucide-react';
-import TarjetaCampaña from './components/TarjetaCampaña';
+import TarjetaCampana from './components/TarjetaCampana';
 import ModalAuthRequerida from './components/ModalAuthRequerida';
 import ListaMisReservas from './components/ListaMisReservas';
 import ModalReservaFlujo from './components/ModalReservaFlujo';
@@ -108,7 +108,7 @@ export default function PaginaJornadas() {
                 {pestañaActiva === 'campañas' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {CAMPAÑAS_INICIALES.map((campaña) => (
-                            <TarjetaCampaña key={campaña.id} campaña={campaña} onApartarCupo={intentarApartarCupo} />
+                            <TarjetaCampana key={campaña.id} campana={campaña} onApartarCupo={intentarApartarCupo} />
                         ))}
                     </div>
                 ) : (
