@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function MapaSeccion() {
     return (
         <section id="mapa" className="py-20 px-4 bg-white w-full border-t border-gray-100">
             <div className="max-w-6xl mx-auto space-y-8">
-
                 {/* Encabezado del apartado */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
@@ -21,24 +22,23 @@ export default function MapaSeccion() {
 
                     {/* Botón de acción principal */}
                     <div>
-                        <button
-                            onClick={() => alert('Redirigindo a la vista de mapa interactivo en pantalla completa...')}
+                        <Link
+                            href="/mapa"
                             className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition shadow-lg flex items-center gap-2"
                         >
                             <span>🗺️</span> Abrir Mapa a Pantalla Completa
-                        </button>
+                        </Link>
                     </div>
                 </div>
 
                 {/* Contenedor Visual del Mapa (Espacio reservado para Maxi) */}
                 <div className="relative w-full h-[450px] rounded-3xl overflow-hidden border-2 border-gray-200 shadow-xl bg-gray-100 flex flex-col items-center justify-center p-6 text-center">
-
                     {/* ========================================================================= */}
-                    {/* COMENTARIO PARA MAXI:                                                     }
-          {/* Aquí debes integrar la librería definitiva del mapa (ej. Leaflet / Google Maps)}
-          {/* conectada con el endpoint del backend para renderizar los marcadores de    }
-          {/* mascotas perdidas y zonas de calor en tiempo real.                         }
-          {/* ========================================================================= */}
+                    {/* COMENTARIO PARA MAXI:                                                     */}
+                    {/* Aquí debes integrar la librería definitiva del mapa (ej. Leaflet / Maps)  */}
+                    {/* conectada con el endpoint del backend para renderizar los marcadores de    */}
+                    {/* mascotas perdidas y zonas de calor en tiempo real.                         */}
+                    {/* ========================================================================= */}
 
                     <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/10 via-transparent to-amber-500/10 pointer-events-none" />
 
@@ -49,9 +49,7 @@ export default function MapaSeccion() {
                             [Espacio reservado para Maxi]: Aquí se renderizará el mapa de Leaflet/OpenStreetMap con las alertas activas de la comunidad.
                         </p>
                     </div>
-
                 </div>
-
             </div>
         </section>
     );

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Zap, CreditCard, ShieldCheck, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Zap, ShieldCheck, X, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface CheckoutTurboModalProps {
     isOpen: boolean;
@@ -10,7 +10,12 @@ interface CheckoutTurboModalProps {
     nombreMascota: string;
 }
 
-export default function CheckoutTurboModal({ isOpen, onClose, onSuccess, nombreMascota }: CheckoutTurboModalProps) {
+export default function CheckoutTurboModal({
+    isOpen,
+    onClose,
+    onSuccess,
+    nombreMascota,
+}: CheckoutTurboModalProps) {
     const [metodoPago, setMetodoPago] = useState<'NEQUI' | 'PSE' | 'TARJETA'>('NEQUI');
     const [procesando, setProcesando] = useState(false);
 
@@ -27,7 +32,6 @@ export default function CheckoutTurboModal({ isOpen, onClose, onSuccess, nombreM
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
-
                 {/* Botón cerrar */}
                 <button
                     onClick={onClose}
@@ -70,24 +74,33 @@ export default function CheckoutTurboModal({ isOpen, onClose, onSuccess, nombreM
                         <button
                             type="button"
                             onClick={() => setMetodoPago('NEQUI')}
-                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${metodoPago === 'NEQUI' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-slate-200 text-slate-600'
-                                }`}
+                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                                metodoPago === 'NEQUI'
+                                    ? 'border-amber-500 bg-amber-50 text-amber-900'
+                                    : 'border-slate-200 text-slate-600'
+                            }`}
                         >
                             💜 Nequi
                         </button>
                         <button
                             type="button"
                             onClick={() => setMetodoPago('PSE')}
-                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${metodoPago === 'PSE' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-slate-200 text-slate-600'
-                                }`}
+                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                                metodoPago === 'PSE'
+                                    ? 'border-amber-500 bg-amber-50 text-amber-900'
+                                    : 'border-slate-200 text-slate-600'
+                            }`}
                         >
                             🏦 PSE
                         </button>
                         <button
                             type="button"
                             onClick={() => setMetodoPago('TARJETA')}
-                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${metodoPago === 'TARJETA' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-slate-200 text-slate-600'
-                                }`}
+                            className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                                metodoPago === 'TARJETA'
+                                    ? 'border-amber-500 bg-amber-50 text-amber-900'
+                                    : 'border-slate-200 text-slate-600'
+                            }`}
                         >
                             💳 Tarjeta
                         </button>
@@ -110,7 +123,6 @@ export default function CheckoutTurboModal({ isOpen, onClose, onSuccess, nombreM
                         </>
                     )}
                 </button>
-
             </div>
         </div>
     );

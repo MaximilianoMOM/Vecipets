@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Camera, MapPin, AlertCircle, ArrowLeft, Loader2, Zap, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import CheckoutTurboModal from '../reportes/CheckoutTurboModal';
+import CheckoutTurboModal from './CheckoutTurboModal';
 
 export default function FormularioReporteContenido() {
     const [formData, setFormData] = useState({

@@ -1,6 +1,8 @@
+'use client';
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient } from './api-client';
 import { useRouter } from 'next/navigation';
+import { apiClient } from './api-client';
 
 // Define the shape of the user object returned by /auth/me
 export type User = {
@@ -18,7 +20,7 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps>({
   user: null,
   loading: true,
-  logout: async () => { },
+  logout: async () => {},
 });
 
 /**
@@ -46,7 +48,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchCurrentUser();
-    // Opcional: suscripción a cambios de sesión mediante websockets o polling.
   }, []);
 
   const logout = async () => {
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Incluso si falla, procedemos a limpiar el estado local.
     } finally {
       setUser(null);
-      router.push('/auth/login');
+      router.push('/login');
     }
   };
 
