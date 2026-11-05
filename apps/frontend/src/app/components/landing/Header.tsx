@@ -27,41 +27,37 @@ export default function Header() {
                     <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 text-xs xl:text-sm font-medium">
                         <Link
                             href="/"
-                            className={`px-2.5 py-2 rounded-lg transition ${
-                                isActive('/')
+                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/')
                                     ? 'bg-gray-100 text-indigo-600 font-semibold'
                                     : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             Inicio
                         </Link>
                         <Link
                             href="/mapa"
-                            className={`px-2.5 py-2 rounded-lg transition ${
-                                isActive('/mapa')
+                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/mapa')
                                     ? 'bg-gray-100 text-indigo-600 font-semibold'
                                     : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             Mapa Explorador
                         </Link>
                         <Link
                             href="/reportes"
-                            className={`px-2.5 py-2 rounded-lg transition ${
-                                isActive('/reportes')
+                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/reportes')
                                     ? 'bg-gray-100 text-indigo-600 font-semibold'
                                     : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             Reportes
                         </Link>
                         <Link
                             href="/clinicas"
-                            className={`px-2.5 py-2 rounded-lg transition flex items-center gap-1 ${
-                                isActive('/clinicas')
+                            className={`px-2.5 py-2 rounded-lg transition flex items-center gap-1 ${isActive('/clinicas')
                                     ? 'bg-gray-100 text-indigo-600 font-semibold'
                                     : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             <span>Clínicas y Vet.</span>
                             <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded-full font-bold">
@@ -70,21 +66,19 @@ export default function Header() {
                         </Link>
                         <Link
                             href="/jornadas"
-                            className={`px-2.5 py-2 rounded-lg transition ${
-                                isActive('/jornadas')
+                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/jornadas')
                                     ? 'bg-gray-100 text-indigo-600 font-semibold'
                                     : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             Jornadas
                         </Link>
                         <Link
                             href="/reportar"
-                            className={`px-2.5 py-2 rounded-lg transition font-semibold ${
-                                isActive('/reportar')
+                            className={`px-2.5 py-2 rounded-lg transition font-semibold ${isActive('/reportar')
                                     ? 'bg-indigo-100 text-indigo-700'
                                     : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'
-                            }`}
+                                }`}
                         >
                             Reportar Mascota
                         </Link>
@@ -94,21 +88,19 @@ export default function Header() {
                     <div className="hidden lg:flex items-center space-x-2">
                         <Link
                             href="/login"
-                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition ${
-                                isActive('/login')
+                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition ${isActive('/login')
                                     ? 'bg-gray-200 text-gray-900 font-semibold shadow-inner'
                                     : 'text-gray-700 hover:bg-gray-100 hover:text-indigo-600'
-                            }`}
+                                }`}
                         >
                             Ingresar
                         </Link>
                         <Link
                             href="/registro"
-                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition shadow-sm ${
-                                isActive('/registro')
+                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition shadow-sm ${isActive('/registro')
                                     ? 'bg-indigo-800 text-white font-semibold'
                                     : 'text-white bg-indigo-600 hover:bg-indigo-700'
-                            }`}
+                                }`}
                         >
                             Regístrate
                         </Link>
@@ -118,22 +110,20 @@ export default function Header() {
                     <div className="flex lg:hidden items-center space-x-2">
                         <Link
                             href="/login"
-                            className={`text-xs font-medium px-2 py-1.5 rounded-lg transition ${
-                                isActive('/login')
+                            className={`text-xs font-medium px-2 py-1.5 rounded-lg transition ${isActive('/login')
                                     ? 'bg-gray-200 text-gray-900 font-semibold'
                                     : 'text-gray-700 bg-gray-50 hover:bg-gray-100'
-                            }`}
+                                }`}
                         >
                             Ingresar
                         </Link>
 
                         <Link
                             href="/registro"
-                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition shadow-sm ${
-                                isActive('/registro')
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition shadow-sm ${isActive('/registro')
                                     ? 'bg-indigo-800 text-white'
                                     : 'text-white bg-indigo-600 hover:bg-indigo-700'
-                            }`}
+                                }`}
                         >
                             Registrarse
                         </Link>
@@ -168,44 +158,40 @@ export default function Header() {
                     <Link
                         href="/"
                         onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/')
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/')
                                 ? 'bg-gray-100 text-indigo-600 font-bold'
                                 : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                        }`}
+                            }`}
                     >
                         🏠 Inicio
                     </Link>
                     <Link
                         href="/mapa"
                         onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/mapa')
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/mapa')
                                 ? 'bg-gray-100 text-indigo-600 font-bold'
                                 : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                        }`}
+                            }`}
                     >
                         🗺️ Mapa Explorador
                     </Link>
                     <Link
                         href="/reportes"
                         onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/reportes')
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportes')
                                 ? 'bg-gray-100 text-indigo-600 font-bold'
                                 : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                        }`}
+                            }`}
                     >
                         📋 Reportes
                     </Link>
                     <Link
                         href="/clinicas"
                         onClick={handleClose}
-                        className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/clinicas')
+                        className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/clinicas')
                                 ? 'bg-gray-100 text-indigo-600 font-bold'
                                 : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                        }`}
+                            }`}
                     >
                         <span>🏥 Clínicas y Veterinarias</span>
                         <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
@@ -215,22 +201,20 @@ export default function Header() {
                     <Link
                         href="/jornadas"
                         onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/jornadas')
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/jornadas')
                                 ? 'bg-gray-100 text-indigo-600 font-bold'
                                 : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                        }`}
+                            }`}
                     >
                         🩺 Jornadas de Vacunación
                     </Link>
                     <Link
                         href="/reportar"
                         onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            isActive('/reportar')
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportar')
                                 ? 'bg-indigo-100 text-indigo-700 font-bold'
                                 : 'text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100'
-                        }`}
+                            }`}
                     >
                         🚨 Reportar Mascota
                     </Link>

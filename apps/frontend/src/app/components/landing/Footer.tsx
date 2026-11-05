@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 export default function Footer() {
     return (
@@ -17,9 +18,9 @@ export default function Footer() {
                 <div>
                     <h4 className="text-white font-bold text-sm mb-3">Navegación</h4>
                     <ul className="space-y-2">
-                        <li><a href="#inicio" className="hover:text-white">Inicio</a></li>
-                        <li><a href="#mapa" className="hover:text-white">Mapa Explorador</a></li>
-                        <li><a href="#reportes" className="hover:text-white">Reportes Recientes</a></li>
+                        <li><Link href="/" className="hover:text-white">Inicio</Link></li>
+                        <li><Link href="/mapa" className="hover:text-white">Mapa Explorador</Link></li>
+                        <li><Link href="/reportes" className="hover:text-white">Reportes Recientes</Link></li>
                     </ul>
                 </div>
                 <div>

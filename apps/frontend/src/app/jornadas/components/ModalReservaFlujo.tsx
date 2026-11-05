@@ -14,6 +14,7 @@ export default function ModalReservaFlujo({ campaña, onClose, onConfirmarReserv
     const [nombrePropietario, setNombrePropietario] = useState('');
     const [nombreMascota, setNombreMascota] = useState('');
     const [metodoPago, setMetodoPago] = useState<'nequi' | 'pse' | 'tarjeta'>('nequi');
+    const [reservaConfirmada, setReservaConfirmada] = useState<any>(null);
 
     const irAPagar = (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,6 +33,7 @@ export default function ModalReservaFlujo({ campaña, onClose, onConfirmarReserv
             montoPendiente: campaña.precioComunitaria,
         };
 
+        setReservaConfirmada(nuevaReserva);
         onConfirmarReserva(nuevaReserva);
         setPasoReserva('exito');
     };
@@ -148,7 +150,7 @@ export default function ModalReservaFlujo({ campaña, onClose, onConfirmarReserv
                         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2.5 text-slate-900">
                             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                                 <span className="font-bold text-slate-800 text-[10px] tracking-wider uppercase">CÓDIGO DE RESERVA</span>
-                                <span className="font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">#VP-84920</span>
+                                <span className="font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{reservaConfirmada?.codigo ?? '#VP-00000'}</span>
                             </div>
                             <p><strong className="text-slate-900">Propietario:</strong> {nombrePropietario || 'Usuario VeciPets'} ({nombreMascota || 'Mascota'})</p>
                             <p><strong className="text-slate-900">Lugar:</strong> {campaña.veterinaria}</p>

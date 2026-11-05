@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
     Camera,
     MapPin,
@@ -129,12 +130,12 @@ export default function ReportarPage() {
                 {/* Encabezado */}
                 <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <button
-                            type="button"
+                        <Link
+                            href="/"
                             className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors mb-2"
                         >
                             <ArrowLeft className="w-4 h-4 mr-1" /> Volver al inicio
-                        </button>
+                        </Link>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                             🚨 Reportar Mascota Perdida
                         </h1>
