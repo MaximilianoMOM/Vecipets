@@ -147,7 +147,7 @@ export default function MapaExploradorPage() {
                 </div>
 
                 {/* =================================================== */}
-                {/* PANEL DERECHO: El Mapa Interactivo (8 Columnas)     */}
+                {/* PANEL DERECHO: El Mapa Interactivo(Maxi)      */}
                 {/* =================================================== */}
                 <div className="lg:col-span-8 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden relative w-full h-[600px] lg:h-[calc(100vh-140px)] flex flex-col">
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-gray-100 to-indigo-50/30">
