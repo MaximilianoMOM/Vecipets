@@ -1,168 +1,167 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import { MapItem } from './MapClient';
 
-const publicacionesMock = [
-    {
-        id: 1,
-        nombre: 'Bruno',
-        especie: 'perro',
-        estado: 'PERDIDO',
-        ubicacion: 'Parque Virrey, Bogotá',
-        imagen: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=150&q=80',
-        badgeColor: 'bg-red-100 text-red-700 border-red-200',
-    },
-    {
-        id: 2,
-        nombre: 'Luna',
-        especie: 'gato',
-        estado: 'HALLAZGO',
-        ubicacion: 'Barrio Palermo, Bogotá',
-        imagen: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80',
-        badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    },
-    {
-        id: 3,
-        nombre: 'Max',
-        especie: 'perro',
-        estado: 'PERDIDO',
-        ubicacion: 'Usaquén, Bogotá',
-        imagen: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=150&q=80',
-        badgeColor: 'bg-red-100 text-red-700 border-red-200',
-    },
-];
+const MapClient = dynamic(() => import('./MapClient'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[650px] flex items-center justify-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+      <p className="text-gray-400 font-medium animate-pulse">Cargando mapa interactivo del Valle de Aburrá...</p>
+    </div>
+  ),
+});
 
-export default function MapaExploradorPage() {
-    const [filtroEspecie, setFiltroEspecie] = useState('todos');
-    const [filtroEstado, setFiltroEstado] = useState('todos');
+export default function MapaPage() {
+  const [filterCategory, setFilterCategory] = useState<string>('todos');
+  const [filterStatus, setFilterStatus] = useState<string>('todos');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
 
-    const publicacionesFiltradas = publicacionesMock.filter((pub) => {
-        const coincideEspecie = filtroEspecie === 'todos' || pub.especie === filtroEspecie;
-        const coincideEstado = filtroEstado === 'todos' || pub.estado === filtroEstado;
-        return coincideEspecie && coincideEstado;
-    });
+  const [items] = useState<MapItem[]>([
+    { id: '1', name: 'Bruno (Golden Retriever)', category: 'perro', status: 'PERDIDO', locationName: 'El Poblado, Medellín', lat: 6.2088, lng: -75.5673 },
+    { id: '2', name: 'Luna (Gata Siamesa)', category: 'gato', status: 'HALLAZGO', locationName: 'Laureles, Medellín', lat: 6.2476, lng: -75.5908 },
+    { id: '3', name: 'Max (Bulldog Francés)', category: 'perro', status: 'PERDIDO', locationName: 'Parque Principal, Envigado', lat: 6.1684, lng: -75.5857 },
+    { id: '4', name: 'Clínica Veterinaria Las Vegas', category: 'veterinaria', locationName: 'Avenida Las Vegas, Itagüí', lat: 6.1841, lng: -75.6025 },
+    { id: '5', name: 'Refugio Animal La Perla', category: 'refugio', locationName: 'Altavista, Medellín', lat: 6.2150, lng: -75.6500 },
+    { id: '6', name: 'Hospital Veterinario Small Paws', category: 'veterinaria', locationName: 'Sabaneta', lat: 6.1517, lng: -75.6155 },
+  ]);
 
-    return (
-        <div className="min-h-[calc(100vh-80px)] bg-gray-50 flex flex-col">
+  const filteredItems = items.filter((item) => {
+    const matchesCategory = 
+      filterCategory === 'todos' ||
+      (filterCategory === 'perro' && item.category === 'perro') ||
+      (filterCategory === 'gato' && item.category === 'gato') ||
+      (filterCategory === 'veterinaria' && item.category === 'veterinaria') ||
+      (filterCategory === 'refugio' && item.category === 'refugio');
 
-            {/* Contenedor principal de la vista de mapa */}
-            <div className="flex-1 w-full max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    const matchesStatus = 
+      filterStatus === 'todos' || 
+      item.status === filterStatus;
 
-                {/* =================================================== */}
-                {/* PANEL IZQUIERDO: Filtros y Tarjetas (4 Columnas)    */}
-                {/* =================================================== */}
-                <div className="lg:col-span-4 bg-white rounded-3xl p-5 shadow-sm border border-gray-200 flex flex-col space-y-4">
+    const matchesSearch = 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.locationName.toLowerCase().includes(searchQuery.toLowerCase());
 
-                    {/* Título y contador */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xl">🗺️</span>
-                            <h1 className="text-lg font-bold text-gray-900 tracking-tight">Explorador en Vivo</h1>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            {publicacionesFiltradas.length} publicaciones con ubicación registrada
-                        </p>
-                    </div>
+    return matchesCategory && matchesStatus && matchesSearch;
+  });
 
-                    {/* Filtros avanzados */}
-                    <div className="space-y-3 pt-2 border-t border-gray-100">
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen bg-gray-50">
+      {/* Columna Izquierda: Filtros, Buscador y Listado */}
+      <div className="w-full lg:w-1/3 flex flex-col gap-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              🗺️ Explorador en Vivo
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">{filteredItems.length} publicaciones con ubicación registrada</p>
 
-                        {/* Especie */}
-                        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl">
-                            <button
-                                onClick={() => setFiltroEspecie('todos')}
-                                className={`flex-1 py-1.5 text-xs font-semibold rounded-xl transition ${filtroEspecie === 'todos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                🐾 Todos
-                            </button>
-                            <button
-                                onClick={() => setFiltroEspecie('perro')}
-                                className={`flex-1 py-1.5 text-xs font-semibold rounded-xl transition ${filtroEspecie === 'perro' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                🐶 Perros
-                            </button>
-                            <button
-                                onClick={() => setFiltroEspecie('gato')}
-                                className={`flex-1 py-1.5 text-xs font-semibold rounded-xl transition ${filtroEspecie === 'gato' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                🐱 Gatos
-                            </button>
-                        </div>
-
-                        {/* Estado */}
-                        <select
-                            value={filtroEstado}
-                            onChange={(e) => setFiltroEstado(e.target.value)}
-                            className="w-full p-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="todos">Filtrar por estado (Todos)</option>
-                            <option value="PERDIDO">🚨 Solo Perdidos</option>
-                            <option value="HALLAZGO">🐾 Solo Hallazgos</option>
-                        </select>
-                    </div>
-
-                    {/* Listado de Tarjetas (Con scroll vertical si hay muchas mascotas) */}
-                    <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                        {publicacionesFiltradas.length > 0 ? (
-                            publicacionesFiltradas.map((pub) => (
-                                <div
-                                    key={pub.id}
-                                    className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm hover:shadow-md transition flex items-center gap-3 cursor-pointer group"
-                                >
-                                    <img
-                                        src={pub.imagen}
-                                        alt={pub.nombre}
-                                        className="w-14 h-14 rounded-xl object-cover border border-gray-100 flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h4 className="font-bold text-gray-900 text-sm truncate">{pub.nombre}</h4>
-                                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${pub.badgeColor}`}>
-                                                {pub.estado}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 truncate flex items-center gap-1">
-                                            <span>📍</span> {pub.ubicacion}
-                                        </p>
-                                        <span className="text-[11px] font-semibold text-indigo-600 group-hover:underline mt-1 inline-block">
-                                            Ver detalle →
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-8 text-gray-400 text-xs bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                                No hay publicaciones que coincidan con los filtros.
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-[11px] text-indigo-800 text-center">
-                        <span className="font-bold">[Módulo Maxi]:</span> Sincronizado con marcadores del mapa.
-                    </div>
-
-                </div>
-
-                {/* =================================================== */}
-                {/* PANEL DERECHO: El Mapa Interactivo(Maxi)      */}
-                {/* =================================================== */}
-                <div className="lg:col-span-8 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden relative w-full h-[600px] lg:h-[calc(100vh-140px)] flex flex-col">
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-gray-100 to-indigo-50/30">
-                        <div className="bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-gray-200 max-w-md space-y-3">
-                            <span className="text-4xl">🗺️</span>
-                            <h3 className="font-bold text-gray-900 text-base">Mapa Interactivo en Tiempo Real</h3>
-                            <p className="text-xs text-gray-500">
-                                Aquí se conectará la librería de mapas (Leaflet / OpenStreetMap) para mostrar los pines de las mascotas filtradas a la izquierda.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
+            {/* Pestañas de Especie */}
+            <div className="grid grid-cols-3 gap-1.5 mt-4 bg-gray-100 p-1 rounded-xl">
+              {[
+                { id: 'todos', label: '🐾 Todos' },
+                { id: 'perro', label: '🐕 Perros' },
+                { id: 'gato', label: '🐈 Gatos' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterCategory(tab.id)}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition ${
+                    filterCategory === tab.id
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
+            {/* Pestañas de Establecimiento */}
+            <div className="grid grid-cols-2 gap-1.5 mt-2 bg-gray-100 p-1 rounded-xl">
+              {[
+                { id: 'veterinaria', label: '🏥 Clínicas' },
+                { id: 'refugio', label: '🏠 Refugios' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterCategory(tab.id)}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition ${
+                    filterCategory === tab.id
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Desplegable de Estado */}
+            <div className="mt-3">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-700"
+              >
+                <option value="todos">Filtrar por estado (Todos)</option>
+                <option value="PERDIDO">🔴 Solo Perdidos</option>
+                <option value="HALLAZGO">🟢 Solo Encontrados (Hallazgos)</option>
+              </select>
+            </div>
+
+            {/* Buscador por zona */}
+            <div className="mt-3">
+              <input
+                type="text"
+                placeholder="Buscar barrio o municipio..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+              />
+            </div>
+          </div>
+
+          {/* Listado lateral */}
+          <div className="mt-4 space-y-2.5 overflow-y-auto flex-1 pr-1">
+            {filteredItems.length === 0 ? (
+              <p className="text-xs text-center text-gray-400 py-8">No hay registros que coincidan.</p>
+            ) : (
+              filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
+                  className={`p-3 rounded-xl border transition cursor-pointer ${
+                    selectedItem?.id === item.id 
+                      ? 'border-indigo-500 bg-indigo-50/40 shadow-sm ring-1 ring-indigo-500/20' 
+                      : 'border-gray-100 hover:border-gray-300 hover:shadow-md bg-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    {item.status && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.status === 'PERDIDO' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {item.status}
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {item.category}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-gray-800 mt-1.5 text-sm">{item.name}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">📍 {item.locationName}</p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-    );
+      </div>
+
+      {/* Columna Derecha: Mapa Interactivo */}
+      <div className="w-full lg:w-2/3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
+        <MapClient items={filteredItems} selectedItem={selectedItem} />
+      </div>
+    </div>
+  );
 }

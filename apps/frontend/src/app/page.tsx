@@ -4,7 +4,7 @@ import React from 'react';
 import HeroSection from './components/landing/HeroSection';
 import AlertasRecientes from './components/landing/AlertasRecientes';
 import ComoFunciona from './components/landing/ComoFunciona';
-import MapaSeccion from './components/landing/MapaSeccion';
+import MapaSeccion from './components/map/MapaSeccion';
 import SeccionFinalAyuda from './components/landing/SeccionFinalAyuda';
 
 export default function LandingPage() {
