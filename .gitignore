@@ -9,6 +9,8 @@ node_modules/
 /coverage/
 /.next/
 out/
+.next  
+node_modules
 
 # Frontend specific ignores
 apps/frontend/.next/
