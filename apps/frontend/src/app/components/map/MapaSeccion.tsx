@@ -1,6 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+// Importación dinámica del mapa interactivo para evitar errores de SSR con Leaflet en Next.js
+const MapClient = dynamic(() => import('./MapaInteractivo'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex h-full w-full items-center justify-center bg-gray-100 rounded-3xl">
+            <p className="text-gray-500 font-medium animate-pulse">Cargando mapa interactivo...</p>
+        </div>
+    ),
+});
 
 export default function MapaSeccion() {
     return (
@@ -31,24 +42,9 @@ export default function MapaSeccion() {
                     </div>
                 </div>
 
-                {/* Contenedor Visual del Mapa (Espacio reservado para Maxi) */}
-                <div className="relative w-full h-[450px] rounded-3xl overflow-hidden border-2 border-gray-200 shadow-xl bg-gray-100 flex flex-col items-center justify-center p-6 text-center">
-                    {/* ========================================================================= */}
-                    {/* COMENTARIO PARA MAXI:                                                     */}
-                    {/* Aquí debes integrar la librería definitiva del mapa (ej. Leaflet / Maps)  */}
-                    {/* conectada con el endpoint del backend para renderizar los marcadores de    */}
-                    {/* mascotas perdidas y zonas de calor en tiempo real.                         */}
-                    {/* ========================================================================= */}
-
-                    <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/10 via-transparent to-amber-500/10 pointer-events-none" />
-
-                    <div className="z-10 bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-md border border-gray-200 max-w-md">
-                        <span className="text-2xl">📍</span>
-                        <h4 className="font-bold text-gray-800 text-base mt-1">Módulo de Mapa Interactivo</h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                            [Espacio reservado para Maxi]: Aquí se renderizará el mapa de Leaflet/OpenStreetMap con las alertas activas de la comunidad.
-                        </p>
-                    </div>
+                {/* Contenedor Visual del Mapa Real Integrado */}
+                <div className="relative w-full h-[450px] rounded-3xl overflow-hidden border-2 border-gray-200 shadow-xl bg-gray-100">
+                    <MapClient />
                 </div>
             </div>
         </section>
