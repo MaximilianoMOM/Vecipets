@@ -128,60 +128,62 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
 
   return (
-    <MapContainer
-      center={medellinCenter}
-      zoom={13}
-      scrollWheelZoom={true}
-      style={{ height: '100%', width: '100%' }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="relative w-full h-full rounded-[inherit] overflow-hidden z-0 isolate">
+      <MapContainer
+        center={medellinCenter}
+        zoom={13}
+        scrollWheelZoom={true}
+        style={{ height: '100%', width: '100%', position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 0 }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      <MapFlyTo selectedItem={selectedItem} />
-      <UserLocationControl onLocate={(coords) => setUserCoords(coords)} />
+        <MapFlyTo selectedItem={selectedItem} />
+        <UserLocationControl onLocate={(coords) => setUserCoords(coords)} />
 
-      {userCoords && (
-        <Marker position={userCoords} icon={userIcon}>
-          <Popup>
-            <span className="font-bold text-xs text-indigo-600">📍 Tu ubicación actual</span>
-          </Popup>
-        </Marker>
-      )}
+        {userCoords && (
+          <Marker position={userCoords} icon={userIcon}>
+            <Popup>
+              <span className="font-bold text-xs text-indigo-600">📍 Tu ubicación actual</span>
+            </Popup>
+          </Marker>
+        )}
 
-      {items.map((item) => (
-        <Marker 
-          key={item.id} 
-          position={[item.lat, item.lng]} 
-          icon={getCustomIcon(item.category, item.status)}
-        >
-          <Popup>
-            <div className="p-2 space-y-2 max-w-[200px]">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {item.status && (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.status === 'PERDIDO' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {item.status}
+        {items.map((item) => (
+          <Marker 
+            key={item.id} 
+            position={[item.lat, item.lng]} 
+            icon={getCustomIcon(item.category, item.status)}
+          >
+            <Popup>
+              <div className="p-2 space-y-2 max-w-[200px]">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {item.status && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.status === 'PERDIDO' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {item.status}
+                    </span>
+                  )}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {item.category}
                   </span>
-                )}
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
-                  {item.category}
-                </span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 leading-tight">{item.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">📍 {item.locationName}</p>
+                </div>
+                <button 
+                  onClick={() => alert(`Reporte seleccionado: ${item.name}`)}
+                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition"
+                >
+                  Ver Información
+                </button>
               </div>
-              <div>
-                <h4 className="font-bold text-gray-900 leading-tight">{item.name}</h4>
-                <p className="text-xs text-gray-500 mt-1">📍 {item.locationName}</p>
-              </div>
-              <button 
-                onClick={() => alert(`Reporte seleccionado: ${item.name}`)}
-                className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition"
-              >
-                Ver Información
-              </button>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
   );
 }

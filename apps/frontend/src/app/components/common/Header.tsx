@@ -1,225 +1,272 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+
+// Definición local del tipo Usuario para evitar errores de importación
+interface Usuario {
+  nombre?: string;
+  email?: string;
+  rol?: string;
+}
 
 export default function Header() {
-    const [isOpen, setIsOpen] = useState(false);
-    const pathname = usePathname();
+  const pathname = usePathname();
+  const router = useRouter();
 
-    const handleClose = () => setIsOpen(false);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [dropdownAbierto, setDropdownAbierto] = useState(false);
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
-    const isActive = (path: string) => pathname === path;
+  useEffect(() => {
+    // Verificamos si hay un usuario guardado en el almacenamiento local
+    const verificarSesion = () => {
+      try {
+        const usuarioGuardado = localStorage.getItem('vecipets_user');
+        const token = localStorage.getItem('token') || localStorage.getItem('vecipets_access_token');
+        
+        if (token && usuarioGuardado) {
+          setUsuario(JSON.parse(usuarioGuardado));
+        } else {
+          setUsuario(null);
+        }
+      } catch (err) {
+        setUsuario(null);
+      } finally {
+        setCargando(false);
+      }
+    };
 
-    return (
-        <header className="sticky top-0 z-50 bg-white shadow-md w-full relative">
-            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-20">
-                    {/* Logo */}
-                    <div className="flex-shrink-0">
-                        <Link href="/" className="text-xl sm:text-2xl font-extrabold text-indigo-600 tracking-tight">
-                            VeciPets 🐾
-                        </Link>
+    verificarSesion();
+  }, [pathname]);
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('vecipets_access_token');
+    localStorage.removeItem('vecipets_user');
+    setUsuario(null);
+    setDropdownAbierto(false);
+    router.push('/');
+  };
+
+  const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'ADMIN';
+
+  // Enlaces de navegación de VeciPets
+  const navLinks = [
+    { name: 'Inicio', href: '/' },
+    { name: 'Mapa Explorador', href: '/mapa' },
+    { name: 'Reportes', href: '/reportes' },
+    { name: 'Clínicas y Vet.', href: '/clinicas' },
+    { name: 'Jornadas', href: '/jornadas' },
+    ...(esAdmin ? [{ name: 'Moderación', href: '/admin' }] : []),
+  ];
+
+  const isActive = (path: string) => pathname === path;
+
+  return (
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        
+        {/* LOGO & BRAND */}
+        <Link href="/" className="flex items-center gap-2.5 group py-1">
+          {/* Reemplaza temporalmente el <Image /> por esto si el archivo da problemas */}
+<img
+    src="/logo-vecipet.png"
+    alt="Logo VeciPets"
+    className="w-10 h-10 object-contain"
+/>
+          <span className="text-xl sm:text-2xl font-extrabold text-indigo-600 tracking-tight">
+            VeciPets
+          </span>
+        </Link>
+
+        {/* NAVEGACIÓN DESKTOP */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {navLinks.map((link) => {
+            const activo = isActive(link.href);
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  activo
+                    ? 'bg-indigo-50 text-indigo-600'
+                    : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-50'
+                }`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* ACCIONES Y PERFIL */}
+        <div className="hidden lg:flex items-center gap-3">
+          <Link
+            href="/reportar"
+            className="bg-amber-400 hover:bg-amber-500 text-slate-900 text-sm font-bold py-2 px-4 rounded-xl shadow-sm transition-all flex items-center gap-1.5 transform active:scale-95"
+          >
+            <span>🚨</span>
+            <span>Reportar Mascota</span>
+          </Link>
+
+          {!cargando && (
+            <>
+              {usuario ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownAbierto(!dropdownAbierto)}
+                    className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 py-1.5 px-3 rounded-xl border border-slate-200 transition-colors focus:outline-none"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
+                      {usuario.nombre ? usuario.nombre.charAt(0).toUpperCase() : '👤'}
                     </div>
-
-                    {/* Navegación principal completa */}
-                    <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 text-xs xl:text-sm font-medium">
-                        <Link
-                            href="/"
-                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                                }`}
-                        >
-                            Inicio
-                        </Link>
-                        <Link
-                            href="/mapa"
-                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/mapa')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                                }`}
-                        >
-                            Mapa Explorador
-                        </Link>
-                        <Link
-                            href="/reportes"
-                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/reportes')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                                }`}
-                        >
-                            Reportes
-                        </Link>
-                        <Link
-                            href="/clinicas"
-                            className={`px-2.5 py-2 rounded-lg transition flex items-center gap-1 ${isActive('/clinicas')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                                }`}
-                        >
-                            <span>Clínicas y Vet.</span>
-                            <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded-full font-bold">
-                                Aliados
-                            </span>
-                        </Link>
-                        <Link
-                            href="/jornadas"
-                            className={`px-2.5 py-2 rounded-lg transition ${isActive('/jornadas')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
-                                }`}
-                        >
-                            Jornadas
-                        </Link>
-                        <Link
-                            href="/reportar"
-                            className={`px-2.5 py-2 rounded-lg transition font-semibold ${isActive('/reportar')
-                                    ? 'bg-indigo-100 text-indigo-700'
-                                    : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'
-                                }`}
-                        >
-                            Reportar Mascota
-                        </Link>
-                    </nav>
-
-                    {/* Botones de Autenticación en escritorio */}
-                    <div className="hidden lg:flex items-center space-x-2">
-                        <Link
-                            href="/login"
-                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition ${isActive('/login')
-                                    ? 'bg-gray-200 text-gray-900 font-semibold shadow-inner'
-                                    : 'text-gray-700 hover:bg-gray-100 hover:text-indigo-600'
-                                }`}
-                        >
-                            Ingresar
-                        </Link>
-                        <Link
-                            href="/registro"
-                            className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition shadow-sm ${isActive('/registro')
-                                    ? 'bg-indigo-800 text-white font-semibold'
-                                    : 'text-white bg-indigo-600 hover:bg-indigo-700'
-                                }`}
-                        >
-                            Regístrate
-                        </Link>
-                    </div>
-
-                    {/* Sección visible en pantallas muy angostas */}
-                    <div className="flex lg:hidden items-center space-x-2">
-                        <Link
-                            href="/login"
-                            className={`text-xs font-medium px-2 py-1.5 rounded-lg transition ${isActive('/login')
-                                    ? 'bg-gray-200 text-gray-900 font-semibold'
-                                    : 'text-gray-700 bg-gray-50 hover:bg-gray-100'
-                                }`}
-                        >
-                            Ingresar
-                        </Link>
-
-                        <Link
-                            href="/registro"
-                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition shadow-sm ${isActive('/registro')
-                                    ? 'bg-indigo-800 text-white'
-                                    : 'text-white bg-indigo-600 hover:bg-indigo-700'
-                                }`}
-                        >
-                            Registrarse
-                        </Link>
-
-                        <button
-                            onClick={() => setIsOpen(!isOpen)}
-                            type="button"
-                            className="p-1.5 rounded-md text-gray-700 hover:text-indigo-600 hover:bg-gray-100 focus:outline-none"
-                            aria-label="Abrir menú"
-                        >
-                            {isOpen ? (
-                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            ) : (
-                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
-                            )}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Menú desplegable hamburguesa */}
-            {isOpen && (
-                <div className="absolute right-4 top-20 w-72 bg-white rounded-xl border border-gray-100 shadow-2xl py-3 px-3 space-y-2 lg:hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="text-xs font-semibold text-gray-400 uppercase px-3 pb-1 border-b border-gray-100">
-                        Menú de Navegación
-                    </div>
-
-                    <Link
-                        href="/"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                            }`}
-                    >
-                        🏠 Inicio
-                    </Link>
-                    <Link
-                        href="/mapa"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/mapa')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                            }`}
-                    >
-                        🗺️ Mapa Explorador
-                    </Link>
-                    <Link
-                        href="/reportes"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportes')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                            }`}
-                    >
-                        📋 Reportes
-                    </Link>
-                    <Link
-                        href="/clinicas"
-                        onClick={handleClose}
-                        className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/clinicas')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                            }`}
-                    >
-                        <span>🏥 Clínicas y Veterinarias</span>
-                        <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
-                            Aliados
+                    <div className="flex flex-col text-left">
+                      <span className="text-xs font-semibold text-slate-800 max-w-[100px] truncate leading-tight">
+                        {usuario.nombre || 'Mi Perfil'}
+                      </span>
+                      {usuario.rol && (
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase">
+                          {usuario.rol}
                         </span>
-                    </Link>
-                    <Link
-                        href="/jornadas"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/jornadas')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                            }`}
-                    >
-                        🩺 Jornadas de Vacunación
-                    </Link>
-                    <Link
-                        href="/reportar"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportar')
-                                ? 'bg-indigo-100 text-indigo-700 font-bold'
-                                : 'text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100'
-                            }`}
-                    >
-                        🚨 Reportar Mascota
-                    </Link>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400">▼</span>
+                  </button>
+
+                  {dropdownAbierto && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
+                      <div className="px-4 py-2 border-b border-slate-100">
+                        <p className="text-xs text-slate-400 font-medium">Conectado como</p>
+                        <p className="text-sm font-bold text-slate-800 truncate">{usuario.email || 'Usuario'}</p>
+                      </div>
+                      <Link
+                        href="/perfil"
+                        onClick={() => setDropdownAbierto(false)}
+                        className="block px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        👤 Mi Perfil y Mis Reportes
+                      </Link>
+                      {esAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setDropdownAbierto(false)}
+                          className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                        >
+                          🛡️ Panel de Moderación
+                        </Link>
+                      )}
+                      <button
+                        onClick={cerrarSesion}
+                        className="w-full text-left px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        🚪 Cerrar Sesión
+                      </button>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/login"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 px-3 py-2 rounded-xl transition-colors"
+                  >
+                    Ingresar
+                  </Link>
+                  <Link
+                    href="/registro"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-sm transition-all"
+                  >
+                    Regístrate
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* BOTÓN MENÚ MÓVIL */}
+        <div className="flex lg:hidden items-center gap-2">
+          <Link
+            href="/reportar"
+            className="bg-amber-400 text-slate-900 text-xs font-bold py-2 px-3 rounded-lg shadow-sm"
+          >
+            + Reportar
+          </Link>
+          <button
+            onClick={() => setMenuMovilAbierto(!menuMovilAbierto)}
+            className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 focus:outline-none"
+            aria-label="Abrir menú"
+          >
+            <span className="text-2xl">{menuMovilAbierto ? '✕' : '☰'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* MENÚ MÓVIL DESPLEGABLE */}
+      {menuMovilAbierto && (
+        <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
+          <nav className="flex flex-col gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setMenuMovilAbierto(false)}
+                className={`px-4 py-3 rounded-xl text-sm font-semibold ${
+                  isActive(link.href)
+                    ? 'bg-indigo-50 text-indigo-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {link.name}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            {usuario ? (
+              <>
+                <Link
+                  href="/perfil"
+                  onClick={() => setMenuMovilAbierto(false)}
+                  className="w-full text-center bg-slate-100 text-slate-800 font-semibold py-2.5 rounded-xl text-sm"
+                >
+                  👤 Mi Perfil ({usuario.nombre || 'Usuario'})
+                </Link>
+                <button
+                  onClick={() => {
+                    setMenuMovilAbierto(false);
+                    cerrarSesion();
+                  }}
+                  className="w-full text-center bg-rose-50 text-rose-600 font-semibold py-2.5 rounded-xl text-sm"
+                >
+                  🚪 Cerrar Sesión
+                </button>
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <Link
+                  href="/login"
+                  onClick={() => setMenuMovilAbierto(false)}
+                  className="flex-1 text-center bg-slate-100 text-slate-700 font-semibold py-2.5 rounded-xl text-sm"
+                >
+                  Iniciar Sesión
+                </Link>
+                <Link
+                  href="/registro"
+                  onClick={() => setMenuMovilAbierto(false)}
+                  className="flex-1 text-center bg-indigo-600 text-white font-semibold py-2.5 rounded-xl text-sm"
+                >
+                  Registrarse
+                </Link>
+              </div>
             )}
-        </header>
-    );
+          </div>
+        </div>
+      )}
+    </header>
+  );
 }
