@@ -82,7 +82,7 @@ export default function FormularioReporteContenido() {
     raza: '',
     edad: '',
     descripcion: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: '',
     barrioSector: '',
     imagenUrl: null as string | null,
     esTurbo: false,
@@ -99,6 +99,12 @@ export default function FormularioReporteContenido() {
   const [procesandoPago, setProcesandoPago] = useState(false);
 
   const origenFueMapaRef = useRef(false);
+
+  useEffect(() => {
+    setFormData((prev) =>
+      prev.fecha ? prev : { ...prev, fecha: new Date().toISOString().split('T')[0] }
+    );
+  }, []);
 
   const buscarUbicacionEnMapa = async (textoRaw: string, signal?: AbortSignal) => {
     const consulta = textoRaw.trim();
@@ -445,9 +451,9 @@ export default function FormularioReporteContenido() {
             </div>
 
             <div className="pt-3 border-t border-slate-100">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                 2. Nivel de Visibilidad
-              </label>
+              </span>
 
               <div className="grid grid-cols-1 gap-3">
                 <div
@@ -500,9 +506,9 @@ export default function FormularioReporteContenido() {
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Fotografía con Filtro IA *
-                </label>
+                </span>
                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Bot className="w-3 h-3" /> IA Anti-Fraude
                 </span>
@@ -560,9 +566,9 @@ export default function FormularioReporteContenido() {
 
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Última Ubicación Vista *
-                </label>
+                </span>
                 {buscandoUbicacion && (
                   <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Ubicando...
@@ -672,9 +678,9 @@ export default function FormularioReporteContenido() {
               </div>
 
               <div className="space-y-3 mb-6">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Selecciona el método de pago
-                </label>
+                </span>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
