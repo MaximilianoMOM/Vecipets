@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
     Camera,
     MapPin,
@@ -12,9 +13,19 @@ import {
     ShieldAlert,
     CheckCircle2,
     Bot,
-    X,
-    ShieldCheck
+    X
 } from 'lucide-react';
+
+const MapaInteractivo = dynamic(() => import('../components/map/MapaInteractivo'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex h-full w-full items-center justify-center bg-slate-100">
+            <p className="text-xs text-slate-500 font-medium animate-pulse">
+                Cargando mapa interactivo...
+            </p>
+        </div>
+    ),
+});
 
 export default function FormularioReporteContenido() {
     const [formData, setFormData] = useState({
@@ -330,9 +341,8 @@ export default function FormularioReporteContenido() {
                                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                                     />
                                 </div>
-                                <div className="w-full h-40 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-center p-4">
-                                    <MapPin className="w-6 h-6 text-red-500 mb-1 animate-bounce" />
-                                    <span className="text-[11px] text-slate-400">[ Mapa Interactivo ]</span>
+                                <div className="w-full h-60 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative">
+                                    <MapaInteractivo />
                                 </div>
                             </div>
                         </div>

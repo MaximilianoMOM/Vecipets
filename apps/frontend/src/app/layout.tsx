@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
-// Importa tu componente Navbar (ajusta la ruta según la ubicación de tu archivo)
 import Header from './components/common/Header';
+import Footer from './components/common/Footer'; // <-- Ajusta esta ruta si está en otra carpeta
 
 export default function RootLayout({
   children,
@@ -15,6 +15,7 @@ export default function RootLayout({
         <main className="flex-1 w-full">
           {children}
         </main>
+        <Footer />
       </body>
     </html>
   );
