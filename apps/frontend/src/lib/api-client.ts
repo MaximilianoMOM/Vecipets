@@ -1,20 +1,22 @@
+
 import axios from 'axios';
 
-// Base URL for the backend API. You can set it in a .env file as NEXT_PUBLIC_API_URL.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Dirección base del backend
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+// Cliente Axios con el prefijo global de la API
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true, // Send HttpOnly cookies with each request
+  baseURL: `${API_BASE_URL.replace(/\/+$/, '')}/api/v1`,
+  withCredentials: true,
 });
 
-// Optional: interceptors for handling auth errors globally
+// Interceptor para manejar errores de las peticiones
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // You could add logic here to handle 401/403 globally
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

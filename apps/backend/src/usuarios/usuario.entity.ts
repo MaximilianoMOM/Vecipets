@@ -10,21 +10,11 @@ export class Usuario {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   nombre: string;
 
-  @Column({ unique: true, length: 255 })
+  @Column({ type: 'varchar', length: 255, unique: true })
   correo: string;
-
-  // Identificador de la cuenta de Google
-  @Column({
-    name: 'google_id',
-    type: 'varchar',
-    length: 255,
-    unique: true,
-    nullable: true,
-  })
-  googleId: string | null;
 
   @Column({
     name: 'password_hash',
@@ -34,7 +24,11 @@ export class Usuario {
   })
   passwordHash: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'CIUDADANO' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'CIUDADANO',
+  })
   rol: string;
 
   @Column({
@@ -45,7 +39,11 @@ export class Usuario {
   })
   estadoAprobacion: string;
 
-  @Column({ name: 'correo_verificado', type: 'boolean', default: false })
+  @Column({
+    name: 'correo_verificado',
+    type: 'boolean',
+    default: false,
+  })
   correoVerificado: boolean;
 
   @Column({
@@ -63,10 +61,13 @@ export class Usuario {
   })
   codigoVerificacionExpira: Date | null;
 
-  @Column({ name: 'intentos_verificacion', type: 'integer', default: 0 })
+  @Column({
+    name: 'intentos_verificacion',
+    type: 'integer',
+    default: 0,
+  })
   intentosVerificacion: number;
 
-  // Recuperación de contraseña
   @Column({
     name: 'codigo_recuperacion_hash',
     type: 'varchar',
@@ -102,4 +103,27 @@ export class Usuario {
     nullable: true,
   })
   bloqueoRecuperacionHasta: Date | null;
+
+  @Column({
+    name: 'google_id',
+    type: 'varchar',
+    length: 255,
+    unique: true,
+    nullable: true,
+  })
+  googleId: string | null;
+
+  @Column({
+    name: 'solicitudes_recuperacion_fecha',
+    type: 'date',
+    nullable: true,
+  })
+  solicitudesRecuperacionFecha: string | null;
+
+  @Column({
+    name: 'fecha_solicitudes_recuperacion',
+    type: 'date',
+    nullable: true,
+  })
+  fechaSolicitudesRecuperacion: string | null;
 }
