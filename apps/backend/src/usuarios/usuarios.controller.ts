@@ -48,6 +48,25 @@ export class UsuariosController {
     return this.usuariosService.obtenerTodos();
   }
 
+  // CONSULTAR USUARIO DE LA SESIÓN ACTUAL
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async obtenerUsuarioActual(
+    @UsuarioAutenticado()
+    usuarioAutenticado: { sub: number },
+  ) {
+    const usuario = await this.usuariosService.obtenerPorId(
+      usuarioAutenticado.sub,
+    );
+
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+
+    return usuario;
+  }
+
+
   // CONSULTAR PERFIL: propietario o ADMINISTRADOR
   
   @Get(':id')

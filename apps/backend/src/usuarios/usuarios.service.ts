@@ -34,37 +34,38 @@ export class UsuariosService {
     private readonly jwtService: JwtService,
   ) {}
 
-  
-async obtenerTodos() {
-  const usuarios = await this.usuariosRepository.find();
+  // OBTENER TODOS LOS USUARIOS
+  async obtenerTodos() {
+    const usuarios = await this.usuariosRepository.find();
 
-  return usuarios.map((usuario) => ({
-    id: usuario.id,
-    nombre: usuario.nombre,
-    correo: usuario.correo,
-    rol: usuario.rol,
-    estadoAprobacion: usuario.estadoAprobacion,
-    correoVerificado: usuario.correoVerificado,
-  }));
-}
-
-
- async obtenerPorId(id: number) {
-  const usuario = await this.usuariosRepository.findOneBy({ id });
-
-  if (!usuario) {
-    return null;
+    return usuarios.map((usuario) => ({
+      id: usuario.id,
+      nombre: usuario.nombre,
+      correo: usuario.correo,
+      rol: usuario.rol,
+      estadoAprobacion: usuario.estadoAprobacion,
+      correoVerificado: usuario.correoVerificado,
+    }));
   }
 
-  return {
-    id: usuario.id,
-    nombre: usuario.nombre,
-    correo: usuario.correo,
-    rol: usuario.rol,
-    estadoAprobacion: usuario.estadoAprobacion,
-    correoVerificado: usuario.correoVerificado,
-  };
-}
+  // OBTENER USUARIO POR ID
+  async obtenerPorId(id: number) {
+    const usuario = await this.usuariosRepository.findOneBy({ id });
+
+    if (!usuario) {
+      return null;
+    }
+
+    return {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      correo: usuario.correo,
+      rol: usuario.rol,
+      estadoAprobacion: usuario.estadoAprobacion,
+      correoVerificado: usuario.correoVerificado,
+    };
+  }
+
   // REGISTRO
   async crear(datos: CrearUsuarioDto): Promise<{ mensaje: string }> {
     const correo = datos.correo.trim().toLowerCase();
@@ -76,6 +77,7 @@ async obtenerTodos() {
     }
 
     const codigo = randomInt(100000, 1000000).toString();
+
     const codigoHash = createHash('sha256')
       .update(codigo)
       .digest('hex');
@@ -175,8 +177,8 @@ async obtenerTodos() {
     return { mensaje: 'Correo verificado correctamente.' };
   }
 
-  // INICIO DE SESIÓN
-  async login(datos: LoginDto, respuesta: any) {
+  // INICIO DE SESIÓN TRADICIONAL
+  async login(datos: LoginDto, respuesta: Response) {
     const correo = datos.correo.trim().toLowerCase();
 
     const usuario = await this.usuariosRepository.findOneBy({ correo });
@@ -205,16 +207,18 @@ async obtenerTodos() {
       rol: usuario.rol,
     };
 
+    // JWT válido durante 24 horas.
     const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
+      expiresIn: '1d',
     });
 
+    // Cookie HttpOnly válida durante 24 horas.
     respuesta.cookie('vecipets_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return {
@@ -233,65 +237,84 @@ async obtenerTodos() {
     correoIngresado: string,
   ): Promise<{ mensaje: string }> {
     const correo = correoIngresado.trim().toLowerCase();
-    const usuario = await this.usuariosRepository.findOneBy({ correo });
 
     const mensaje =
       'Si el correo está registrado y verificado, recibirás instrucciones para recuperar tu contraseña.';
 
-    if (!usuario || !usuario.correoVerificado) {
+    // Obtener la fecha actual según la zona horaria de Colombia.
+    const partesFecha = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+
+    const obtenerParte = (tipo: string) =>
+      partesFecha.find((parte) => parte.type === tipo)?.value ?? '';
+
+    const fechaHoy =
+      `${obtenerParte('year')}-${obtenerParte('month')}-${obtenerParte('day')}`;
+
+    // Transacción para evitar superar el límite con solicitudes simultáneas.
+    const resultado = await this.usuariosRepository.manager.transaction(
+      async (manager) => {
+        const repositorio = manager.getRepository(Usuario);
+
+        const usuario = await repositorio.findOne({
+          where: { correo },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!usuario || !usuario.correoVerificado) {
+          return null;
+        }
+
+        // Reiniciar el contador solamente cuando cambia el día.
+        if (usuario.fechaSolicitudesRecuperacion !== fechaHoy) {
+          usuario.solicitudesRecuperacion = 0;
+          usuario.fechaSolicitudesRecuperacion = fechaHoy;
+        }
+
+        // Permitir máximo tres solicitudes por día.
+        if (usuario.solicitudesRecuperacion >= 3) {
+          throw new HttpException(
+            'Alcanzaste el máximo de 3 solicitudes de recuperación por día. Intenta nuevamente mañana.',
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        }
+
+        const codigo = randomInt(100000, 1000000).toString();
+
+        usuario.solicitudesRecuperacion += 1;
+
+        usuario.codigoRecuperacionHash = createHash('sha256')
+          .update(codigo)
+          .digest('hex');
+
+        usuario.codigoRecuperacionExpira = new Date(
+          Date.now() + 5 * 60 * 1000,
+        );
+
+        usuario.intentosRecuperacion = 0;
+
+        // El bloqueo anterior de 30 minutos deja de controlar el límite.
+        usuario.bloqueoRecuperacionHasta = null;
+
+        await repositorio.save(usuario);
+
+        return { codigo };
+      },
+    );
+
+    if (!resultado) {
       return { mensaje };
     }
 
-    const ahora = Date.now();
-
-    // Reiniciar el contador cuando termine el bloqueo.
-    if (
-      usuario.bloqueoRecuperacionHasta &&
-      usuario.bloqueoRecuperacionHasta.getTime() <= ahora
-    ) {
-      usuario.bloqueoRecuperacionHasta = null;
-      usuario.solicitudesRecuperacion = 0;
-      usuario.intentosRecuperacion = 0;
-      usuario.codigoRecuperacionHash = null;
-      usuario.codigoRecuperacionExpira = null;
-    }
-
-    // Bloquear nuevas solicitudes durante 30 minutos.
-    if (
-      usuario.bloqueoRecuperacionHasta &&
-      usuario.bloqueoRecuperacionHasta.getTime() > ahora
-    ) {
-      throw new HttpException(
-        'Demasiadas solicitudes. Intenta nuevamente después de 30 minutos.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-
-    usuario.solicitudesRecuperacion += 1;
-
-    // Después de la tercera solicitud, bloquear las siguientes.
-    if (usuario.solicitudesRecuperacion >= 3) {
-      usuario.bloqueoRecuperacionHasta = new Date(
-        ahora + 30 * 60 * 1000,
-      );
-    }
-
-    const codigo = randomInt(100000, 1000000).toString();
-
-    usuario.codigoRecuperacionHash = createHash('sha256')
-      .update(codigo)
-      .digest('hex');
-
-    usuario.codigoRecuperacionExpira = new Date(
-      ahora + 5 * 60 * 1000,
-    );
-
-    usuario.intentosRecuperacion = 0;
-
-    await this.usuariosRepository.save(usuario);
-
     try {
-      await this.correoService.enviarCodigoRecuperacion(correo, codigo);
+      await this.correoService.enviarCodigoRecuperacion(
+        correo,
+        resultado.codigo,
+      );
     } catch {
       throw new InternalServerErrorException(
         'No se pudo enviar el correo de recuperación.',
@@ -354,11 +377,11 @@ async obtenerTodos() {
       12,
     );
 
+    // Limpiar el código utilizado.
+    // No reiniciar las solicitudes diarias.
     usuario.codigoRecuperacionHash = null;
     usuario.codigoRecuperacionExpira = null;
     usuario.intentosRecuperacion = 0;
-    usuario.solicitudesRecuperacion = 0;
-    usuario.bloqueoRecuperacionHasta = null;
 
     await this.usuariosRepository.save(usuario);
 
@@ -371,7 +394,7 @@ async obtenerTodos() {
   async eliminar(id: number): Promise<void> {
     await this.usuariosRepository.delete(id);
   }
-  
+
   // INICIO DE SESIÓN CON GOOGLE
   async iniciarSesionGoogle(
     datos: {
@@ -441,21 +464,23 @@ async obtenerTodos() {
       );
     }
 
+    // JWT de Google válido durante 24 horas.
     const accessToken = await this.jwtService.signAsync(
       {
         sub: usuario.id,
         correo: usuario.correo,
         rol: usuario.rol,
       },
-      { expiresIn: '15m' },
+      { expiresIn: '1d' },
     );
 
+    // Cookie HttpOnly de Google válida durante 24 horas.
     respuesta.cookie('vecipets_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return {
