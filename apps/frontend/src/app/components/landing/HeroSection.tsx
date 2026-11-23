@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Search, PlusCircle, MapPin, Tag } from 'lucide-react';
+import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProtegido';
 
 export default function HeroSection() {
     return (
@@ -32,13 +33,12 @@ export default function HeroSection() {
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
 
                         {/* Botón 1: Redirige a Formulario de Reporte */}
-                        <Link
-                            href="/reportar"
+                        <BotonReportarProtegido
                             className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-sm rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-95"
                         >
                             <PlusCircle className="w-5 h-5 text-slate-900" />
                             <span>Reportar Mascota Perdida</span>
-                        </Link>
+                        </BotonReportarProtegido>
 
                         {/* Botón 2: Redirige al Feed Global de Reportes */}
                         <Link
