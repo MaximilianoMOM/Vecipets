@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Mail, Heart } from 'lucide-react';
+import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProtegido';
 
 export default function Footer() {
     return (
@@ -46,7 +47,7 @@ export default function Footer() {
                     <ul className="space-y-2.5 text-sm text-slate-400">
                         <li><Link href="/" className="hover:text-white transition">Inicio</Link></li>
                         <li><Link href="/reportes" className="hover:text-white transition">Buscar Mascotas Perdidas</Link></li>
-                        <li><Link href="/reportar" className="hover:text-white transition">Publicar un Reporte</Link></li>
+                        <li><BotonReportarProtegido className="hover:text-white transition text-left">Publicar un Reporte</BotonReportarProtegido></li>
                         <li><Link href="/mapa" className="hover:text-white transition">Explorador en Mapa</Link></li>
                         <li><Link href="/clinicas" className="hover:text-white transition">Refugios y Veterinarias</Link></li>
                     </ul>

@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { PlusCircle, Users } from 'lucide-react';
+import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProtegido';
+
 
 export default function SeccionFinalAyuda() {
     return (
@@ -29,13 +31,12 @@ export default function SeccionFinalAyuda() {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
 
                     {/* Botón 1: Publicar Reporte */}
-                    <Link
-                        href="/reportar"
+                    <BotonReportarProtegido
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-sm rounded-2xl shadow-md hover:shadow-lg transition-all transform active:scale-95"
                     >
                         <PlusCircle className="w-5 h-5 text-slate-900" />
                         <span>Publicar Reporte Ahora ✨</span>
-                    </Link>
+                    </BotonReportarProtegido>
 
 
                     <Link
