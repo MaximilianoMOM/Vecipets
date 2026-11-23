@@ -41,13 +41,21 @@ export class AuthController {
   ) {
     if (!request.user) {
       throw new UnauthorizedException(
-        'No se pudo obtener la cuenta de Google.',
+        'No se pudo iniciar sesión con Google.',
       );
     }
 
+    // Crea el JWT y lo guarda en la cookie HttpOnly.
     await this.usuariosService.iniciarSesionGoogle(
       request.user,
       respuesta,
     );
+
+    // Redirige al frontend después de establecer la cookie.
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ).replace(/\/+$/, '');
+
+    return respuesta.redirect(`${frontendUrl}/`);
   }
 }

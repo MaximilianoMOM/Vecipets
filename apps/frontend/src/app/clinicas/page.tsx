@@ -6,6 +6,7 @@ import BuscadorFiltros from './components/BuscadorFiltros';
 import TarjetaAliado, { Aliado } from './components/TarjetaAliado';
 import ModalDetalleAliado from './components/ModalDetalleAliado';
 
+// Datos de prueba 1
 const ALIADOS_MOCK: Aliado[] = [
     {
         id: '1',
