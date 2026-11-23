@@ -4,8 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { FiltrosReportes } from './components/FiltrosReportes';
 import { TarjetaReporte, MascotaReporte } from './components/TarjetaReportes';
 import { ModalDetalleMascota } from './components/ModalDetalleMascota';
+import BotonReportarProtegido from './components/BotonReportarProtegido';
 import { Sparkles, PlusCircle } from 'lucide-react';
-import Link from 'next/link';
 
 // Datos de prueba para el Valle de Aburrá
 const REPORTES_MOCK: MascotaReporte[] = [
@@ -128,12 +128,9 @@ export default function ReportesPage() {
                         </p>
                     </div>
 
-                    <Link
-                        href="/reportar"
-                        className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm transition-all shrink-0"
-                    >
+                    <BotonReportarProtegido className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-sm transition-all shrink-0">
                         <PlusCircle className="w-4 h-4" /> Reportar Mascota
-                    </Link>
+                    </BotonReportarProtegido>
                 </div>
 
                 {/* Módulo de Filtros */}
