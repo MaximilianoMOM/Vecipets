@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { apiClient } from './api-client';
 import { useRouter } from 'next/navigation';
-import { apiClient } from './api-client';
+
 
 export type User = {
   id: number;
