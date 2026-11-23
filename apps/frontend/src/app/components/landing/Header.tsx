@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProtegido';
 
 export default function Header() {
     const [isOpen, setIsOpen] = useState(false);
@@ -28,8 +29,8 @@ export default function Header() {
                         <Link
                             href="/"
                             className={`px-2.5 py-2 rounded-lg transition ${isActive('/')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-gray-100 text-indigo-600 font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             Inicio
@@ -37,8 +38,8 @@ export default function Header() {
                         <Link
                             href="/mapa"
                             className={`px-2.5 py-2 rounded-lg transition ${isActive('/mapa')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-gray-100 text-indigo-600 font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             Mapa Explorador
@@ -46,8 +47,8 @@ export default function Header() {
                         <Link
                             href="/reportes"
                             className={`px-2.5 py-2 rounded-lg transition ${isActive('/reportes')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-gray-100 text-indigo-600 font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             Reportes
@@ -55,8 +56,8 @@ export default function Header() {
                         <Link
                             href="/clinicas"
                             className={`px-2.5 py-2 rounded-lg transition flex items-center gap-1 ${isActive('/clinicas')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-gray-100 text-indigo-600 font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             <span>Clínicas y Vet.</span>
@@ -67,21 +68,20 @@ export default function Header() {
                         <Link
                             href="/jornadas"
                             className={`px-2.5 py-2 rounded-lg transition ${isActive('/jornadas')
-                                    ? 'bg-gray-100 text-indigo-600 font-semibold'
-                                    : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                ? 'bg-gray-100 text-indigo-600 font-semibold'
+                                : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
                                 }`}
                         >
                             Jornadas
                         </Link>
-                        <Link
-                            href="/reportar"
+                        <BotonReportarProtegido
                             className={`px-2.5 py-2 rounded-lg transition font-semibold ${isActive('/reportar')
-                                    ? 'bg-indigo-100 text-indigo-700'
-                                    : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'
                                 }`}
                         >
                             Reportar Mascota
-                        </Link>
+                        </BotonReportarProtegido>
                     </nav>
 
                     {/* Botones de Autenticación en escritorio */}
@@ -89,8 +89,8 @@ export default function Header() {
                         <Link
                             href="/login"
                             className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition ${isActive('/login')
-                                    ? 'bg-gray-200 text-gray-900 font-semibold shadow-inner'
-                                    : 'text-gray-700 hover:bg-gray-100 hover:text-indigo-600'
+                                ? 'bg-gray-200 text-gray-900 font-semibold shadow-inner'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-indigo-600'
                                 }`}
                         >
                             Ingresar
@@ -98,8 +98,8 @@ export default function Header() {
                         <Link
                             href="/registro"
                             className={`px-3 py-2 text-xs xl:text-sm font-medium rounded-lg transition shadow-sm ${isActive('/registro')
-                                    ? 'bg-indigo-800 text-white font-semibold'
-                                    : 'text-white bg-indigo-600 hover:bg-indigo-700'
+                                ? 'bg-indigo-800 text-white font-semibold'
+                                : 'text-white bg-indigo-600 hover:bg-indigo-700'
                                 }`}
                         >
                             Regístrate
@@ -111,8 +111,8 @@ export default function Header() {
                         <Link
                             href="/login"
                             className={`text-xs font-medium px-2 py-1.5 rounded-lg transition ${isActive('/login')
-                                    ? 'bg-gray-200 text-gray-900 font-semibold'
-                                    : 'text-gray-700 bg-gray-50 hover:bg-gray-100'
+                                ? 'bg-gray-200 text-gray-900 font-semibold'
+                                : 'text-gray-700 bg-gray-50 hover:bg-gray-100'
                                 }`}
                         >
                             Ingresar
@@ -121,8 +121,8 @@ export default function Header() {
                         <Link
                             href="/registro"
                             className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition shadow-sm ${isActive('/registro')
-                                    ? 'bg-indigo-800 text-white'
-                                    : 'text-white bg-indigo-600 hover:bg-indigo-700'
+                                ? 'bg-indigo-800 text-white'
+                                : 'text-white bg-indigo-600 hover:bg-indigo-700'
                                 }`}
                         >
                             Registrarse
@@ -159,8 +159,8 @@ export default function Header() {
                         href="/"
                         onClick={handleClose}
                         className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                            ? 'bg-gray-100 text-indigo-600 font-bold'
+                            : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
                             }`}
                     >
                         🏠 Inicio
@@ -169,8 +169,8 @@ export default function Header() {
                         href="/mapa"
                         onClick={handleClose}
                         className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/mapa')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                            ? 'bg-gray-100 text-indigo-600 font-bold'
+                            : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
                             }`}
                     >
                         🗺️ Mapa Explorador
@@ -179,8 +179,8 @@ export default function Header() {
                         href="/reportes"
                         onClick={handleClose}
                         className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportes')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                            ? 'bg-gray-100 text-indigo-600 font-bold'
+                            : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
                             }`}
                     >
                         📋 Reportes
@@ -189,8 +189,8 @@ export default function Header() {
                         href="/clinicas"
                         onClick={handleClose}
                         className={`flex justify-between items-center px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/clinicas')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                            ? 'bg-gray-100 text-indigo-600 font-bold'
+                            : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
                             }`}
                     >
                         <span>🏥 Clínicas y Veterinarias</span>
@@ -202,22 +202,22 @@ export default function Header() {
                         href="/jornadas"
                         onClick={handleClose}
                         className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/jornadas')
-                                ? 'bg-gray-100 text-indigo-600 font-bold'
-                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                            ? 'bg-gray-100 text-indigo-600 font-bold'
+                            : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
                             }`}
                     >
                         🩺 Jornadas de Vacunación
                     </Link>
-                    <Link
-                        href="/reportar"
-                        onClick={handleClose}
-                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportar')
+                    <div onClick={handleClose}>
+                        <BotonReportarProtegido
+                            className={`w-full text-left block px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/reportar')
                                 ? 'bg-indigo-100 text-indigo-700 font-bold'
                                 : 'text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100'
-                            }`}
-                    >
-                        🚨 Reportar Mascota
-                    </Link>
+                                }`}
+                        >
+                            🚨 Reportar Mascota
+                        </BotonReportarProtegido>
+                    </div>
                 </div>
             )}
         </header>
