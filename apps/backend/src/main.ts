@@ -8,6 +8,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Prefijo global de la API
+  app.setGlobalPrefix('api/v1');
+
   // Permite leer las cookies enviadas por el navegador
   app.use(cookieParser());
 
@@ -30,12 +33,16 @@ async function bootstrap() {
   });
 
   // Puerto del backend
-  await app.listen(process.env.PORT ?? 4000);
+  const port = process.env.PORT ?? 4000;
+
+  await app.listen(port);
 
   console.log(
-    `VeciPets backend ejecutándose en el puerto ${
-      process.env.PORT ?? 4000
-    }`,
+    `VeciPets backend ejecutándose en el puerto ${port}`,
+  );
+
+  console.log(
+    `API disponible en http://localhost:${port}/api/v1`,
   );
 }
 
