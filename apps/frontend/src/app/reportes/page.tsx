@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiltrosReportes } from './components/FiltrosReportes';
 import { TarjetaReporte, MascotaReporte } from './components/TarjetaReportes';
-import { ModalDetalleMascota } from './components/ModalDetalleMascota';
+
 import { Sparkles, PlusCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import apiClient from '@/lib/api-client';
-import CheckoutTurboModal from '../reportar/reportes/CheckoutTurboModal';
 
 export default function ReportesPage() {
     const [reportes, setReportes] = useState<MascotaReporte[]>([]);
@@ -19,12 +19,7 @@ export default function ReportesPage() {
     const [filtroEstado, setFiltroEstado] = useState('todos');
     const [filtroMunicipio, setFiltroMunicipio] = useState('todos');
 
-    // Modal de Detalles
-    const [mascotaSeleccionada, setMascotaSeleccionada] = useState<MascotaReporte | null>(null);
-
-    // Modal de Alerta Turbo
-    const [modalTurboAbierto, setModalTurboAbierto] = useState(false);
-    const [reporteParaTurbo, setReporteParaTurbo] = useState<MascotaReporte | null>(null);
+    const router = useRouter();
 
     const cargarReportes = useCallback(async () => {
         setCargando(true);
@@ -65,7 +60,7 @@ export default function ReportesPage() {
         } finally {
             setCargando(false);
         }
-    }, [busqueda, filtroEspecie, filtroEstado, filtroMunicipio]);
+    }, [busqueda, filtroEspecie, filtroEstado, filtroMunicipio, router]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -82,9 +77,8 @@ export default function ReportesPage() {
         setFiltroMunicipio('todos');
     };
 
-    const handleAbrirTurbo = (mascota: MascotaReporte) => {
-        setReporteParaTurbo(mascota);
-        setModalTurboAbierto(true);
+    const handleVerReporte = (id: string | number) => {
+        router.push(`/reportes/${id}`);
     };
 
     return (
@@ -149,7 +143,7 @@ export default function ReportesPage() {
                             <TarjetaReporte
                                 key={mascota.id}
                                 mascota={mascota}
-                                onClick={() => setMascotaSeleccionada(mascota)}
+                                onVerReporte={() => handleVerReporte(mascota.id)}
                             />
                         ))}
                     </div>
@@ -170,28 +164,7 @@ export default function ReportesPage() {
                     </div>
                 )}
 
-                {/* Modal Interactivo de Información Ampliada */}
-                <ModalDetalleMascota
-                    mascota={mascotaSeleccionada}
-                    onClose={() => setMascotaSeleccionada(null)}
-                    onActivarTurbo={(m) => {
-                        setMascotaSeleccionada(null);
-                        handleAbrirTurbo(m);
-                    }}
-                />
 
-                {/* Modal de Pago de Alerta Turbo */}
-                {reporteParaTurbo && (
-                    <CheckoutTurboModal
-                        isOpen={modalTurboAbierto}
-                        onClose={() => {
-                            setModalTurboAbierto(false);
-                            setReporteParaTurbo(null);
-                        }}
-                        reporteId={Number(reporteParaTurbo.id)}
-                        nombreMascota={reporteParaTurbo.nombre}
-                    />
-                )}
 
             </div>
         </main>

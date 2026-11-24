@@ -8,10 +8,9 @@ import { useAuth } from '@/lib/auth-context';
 interface ModalDetalleMascotaProps {
     mascota: MascotaReporte | null;
     onClose: () => void;
-    onActivarTurbo?: (reporte: MascotaReporte) => void;
 }
 
-export function ModalDetalleMascota({ mascota, onClose, onActivarTurbo }: ModalDetalleMascotaProps) {
+export function ModalDetalleMascota({ mascota, onClose }: ModalDetalleMascotaProps) {
     const { user } = useAuth();
     const [avisoEnviado, setAvisoEnviado] = useState(false);
     const [mensajeAvistamiento, setMensajeAvistamiento] = useState('');
@@ -74,14 +73,6 @@ export function ModalDetalleMascota({ mascota, onClose, onActivarTurbo }: ModalD
                                 {mascota.especie} {mascota.raza ? `• ${mascota.raza}` : ''}
                             </p>
                         </div>
-                        {esPropietario && !mascota.esTurbo && onActivarTurbo && (
-                            <button
-                                onClick={() => onActivarTurbo(mascota)}
-                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-sm flex items-center gap-1"
-                            >
-                                <Zap className="w-3.5 h-3.5 fill-white" /> Activar Turbo
-                            </button>
-                        )}
                     </div>
 
                     {/* Recompensa */}

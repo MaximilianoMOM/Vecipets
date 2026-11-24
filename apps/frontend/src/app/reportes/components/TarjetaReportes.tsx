@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Calendar, Zap, AlertTriangle, Eye } from 'lucide-react';
+import { MapPin, Calendar, AlertTriangle, Eye } from 'lucide-react';
 
 export function obtenerUrlImagen(url?: string | null): string {
     if (!url) return 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=600';
@@ -40,10 +40,10 @@ export interface MascotaReporte {
 
 interface TarjetaReporteProps {
     mascota: MascotaReporte;
-    onClick: () => void;
+    onVerReporte: () => void;
 }
 
-export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
+export function TarjetaReporte({ mascota, onVerReporte }: TarjetaReporteProps) {
     const estadoNormalizado = (mascota.tipo || mascota.estado || '').toUpperCase();
     const esPerdida = estadoNormalizado === 'PERDIDA';
     const imagenSrc = obtenerUrlImagen(mascota.imagen || mascota.imagenUrl);
@@ -52,11 +52,8 @@ export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
 
     return (
         <div
-            onClick={onClick}
-            className={`group cursor-pointer bg-white rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${mascota.esTurbo
-                    ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-amber-100/50'
-                    : 'border-slate-200/80 shadow-sm hover:border-slate-300'
-                }`}
+            onClick={onVerReporte}
+            className="group cursor-pointer bg-white rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border-slate-200/80 shadow-sm hover:border-slate-300"
         >
             {/* Contenedor Imagen */}
             <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
@@ -81,13 +78,6 @@ export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
                         'ENCONTRADA'
                     )}
                 </span>
-
-                {/* Insignia Alerta Turbo */}
-                {mascota.esTurbo && (
-                    <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-black bg-amber-400 text-amber-950 flex items-center gap-1 shadow-sm">
-                        <Zap className="w-3.5 h-3.5 fill-amber-950" /> TURBO
-                    </span>
-                )}
 
                 {/* Overlay hover indicando clic */}
                 <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

@@ -57,6 +57,15 @@ function ContenidoResultadoPago() {
                     <MapPin className="w-4 h-4" /> Ver en el Mapa
                 </Link>
             </div>
+
+            <div className="pt-2 border-t border-slate-100">
+                <Link
+                    href="/"
+                    className="inline-flex items-center justify-center w-full py-2.5 px-4 text-xs font-bold text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                    Regresar a la página principal
+                </Link>
+            </div>
         </div>
     );
 }

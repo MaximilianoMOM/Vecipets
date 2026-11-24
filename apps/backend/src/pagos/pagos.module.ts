@@ -7,6 +7,7 @@ import { Pago } from './pago.entity';
 import { IntentoPago } from './intento-pago.entity';
 import { Reporte } from '../reportes/reporte.entity';
 import { UsuariosModule } from '../usuarios/usuarios.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 import { PagosController } from './pagos.controller';
 import { PagosService } from './pagos.service';
@@ -22,6 +23,7 @@ import { WompiWebhookController } from './wompi-webhook.controller';
     ]),
     ConfigModule,
     UsuariosModule,
+    NotificacionesModule,
   ],
   controllers: [
     PagosController,

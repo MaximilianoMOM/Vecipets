@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { PagosModule } from './pagos/pagos.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { ValidacionImagenesModule } from './validacion-imagenes/validacion-imagenes.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ValidacionImagenesModule } from './validacion-imagenes/validacion-image
     PagosModule,
     ReportesModule,
     ValidacionImagenesModule,
+    NotificacionesModule,
   ],
   controllers: [AppController],
 })

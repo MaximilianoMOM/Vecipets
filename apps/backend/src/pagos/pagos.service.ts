@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -28,6 +29,7 @@ import {
 
 import { WompiService } from './wompi.service';
 import { ConfigService } from '@nestjs/config';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 const PRECIO_TURBO_CENTAVOS = 1500000;
 const DURACION_TURBO_DIAS = 7;
@@ -47,6 +49,7 @@ export class PagosService {
     private readonly wompiService: WompiService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly notificacionesService: NotificacionesService,
   ) {}
 
   // ==========================================
@@ -72,11 +75,12 @@ export class PagosService {
     }
 
     if (
-      reporte.estadoAprobacion !== EstadoAprobacionReporte.APROBADO ||
-      reporte.estado !== EstadoReporte.PUBLICO
+      reporte.estado === EstadoReporte.RECHAZADO ||
+      reporte.estado === EstadoReporte.CERRADO ||
+      reporte.estadoAprobacion === EstadoAprobacionReporte.RECHAZADO
     ) {
       throw new BadRequestException(
-        'Solo puedes activar Turbo en reportes aprobados y públicos.',
+        'No puedes activar Alerta Turbo en un reporte rechazado o cerrado.',
       );
     }
 
@@ -129,8 +133,8 @@ export class PagosService {
       .trim()
       .replace(/\/+$/, '');
 
-    // Redirigir a la página principal después del pago (botón "Volver al comercio" de Wompi)
-    const redirectUrl = `${frontendUrl}/`;
+    // Redirigir al formulario /reportar después del pago de Wompi
+    const redirectUrl = `${frontendUrl}/reportar`;
 
     const checkout = this.wompiService.obtenerDatosCheckout(
       referencia,
@@ -252,9 +256,22 @@ export class PagosService {
       );
     }
 
-    // Mantener la URL de retorno (redirect-url) para que Wompi muestre
-    // el botón "Volver al comercio" al recuperar un pago pendiente.
-    // No se elimina incluso en localhost.
+    const frontendUrl = (
+      this.configService.get<string>('FRONTEND_URL') ??
+      'http://localhost:3000'
+    )
+      .trim()
+      .replace(/\/+$/, '');
+    const redirectUrl = `${frontendUrl}/reportar`;
+
+    let checkoutUrl = pago.checkoutUrl;
+    try {
+      const urlObj = new URL(checkoutUrl);
+      urlObj.searchParams.set('redirect-url', redirectUrl);
+      checkoutUrl = urlObj.toString();
+    } catch {
+      // conservar checkoutUrl si no es parseable
+    }
 
     return {
       mensaje: 'Se recuperó el pago Turbo pendiente.',
@@ -268,7 +285,7 @@ export class PagosService {
         estado: pago.estado,
         reporteId,
       },
-      checkoutUrl: pago.checkoutUrl,
+      checkoutUrl,
     };
   }
 
@@ -735,33 +752,45 @@ export class PagosService {
         if (reportesBloqueados.length) {
           const reporte = await queryRunner.manager.findOne(Reporte, {
             where: { id: reporteId },
+            relations: { usuario: true },
           });
 
-          if (
-            reporte &&
-            reporte.estadoAprobacion === EstadoAprobacionReporte.APROBADO &&
-            reporte.estado === EstadoReporte.PUBLICO
-          ) {
+          if (reporte) {
             const fechaActivacion = new Date();
+            const fechaVencimiento = new Date(fechaActivacion);
+            fechaVencimiento.setDate(
+              fechaVencimiento.getDate() + DURACION_TURBO_DIAS,
+            );
 
-            const turboActivo =
-              reporte.esTurbo &&
-              reporte.turboVenceEn !== null &&
-              reporte.turboVenceEn > fechaActivacion;
+            // 1. Activar Alerta Turbo por 7 días
+            reporte.esTurbo = true;
+            reporte.turboActivadaEn = fechaActivacion;
+            reporte.turboVenceEn = fechaVencimiento;
 
-            if (!turboActivo) {
-              const fechaVencimiento = new Date(fechaActivacion);
+            // 2. NO publicar automáticamente: el reporte permanece como borrador/pendiente
+            // hasta que el usuario presione el botón "Publicar reporte", tras lo cual
+            // quedará pendiente de aprobación por el administrador.
+            reporte.estado = EstadoReporte.PENDIENTE;
+            reporte.estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
 
-              fechaVencimiento.setDate(
-                fechaVencimiento.getDate() + DURACION_TURBO_DIAS,
-              );
+            await queryRunner.manager.save(Reporte, reporte);
 
-              reporte.esTurbo = true;
-              reporte.turboActivadaEn = fechaActivacion;
-              reporte.turboVenceEn = fechaVencimiento;
+            // 3. Generar notificación informativa para el administrador
+            const usuarioNombre =
+              reporte.usuario?.nombre ||
+              pago.usuario?.nombre ||
+              'Ciudadano VeciPets';
 
-              await queryRunner.manager.save(Reporte, reporte);
-            }
+            await this.notificacionesService.registrarNotificacionPagoTurbo({
+              titulo: 'Nuevo pago de Alerta Turbo',
+              usuarioNombre,
+              reporteId: reporte.id,
+              monto: '$15.000 COP',
+              referencia: pago.referencia,
+              fechaPago: fechaActivacion,
+              estado: 'Aprobado',
+              enlaceReporte: `/reportes/${reporte.id}`,
+            });
           }
         }
       }
@@ -794,5 +823,109 @@ export class PagosService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  // ==========================================
+  // CONSULTAR PAGO ASOCIADO A UN REPORTE
+  // ==========================================
+
+  async consultarPagoPorReporte(usuarioId: number, reporteId: number): Promise<Pago | null> {
+    return this.pagoRepository.findOne({
+      where: {
+        reporte: { id: reporteId },
+        usuario: { id: usuarioId },
+        concepto: ConceptoPago.ALERTA_TURBO,
+      },
+      order: { id: 'DESC' },
+      relations: { reporte: true },
+    });
+  }
+
+  // ==========================================
+  // VERIFICAR TRANSACCIÓN (WOMPI REDIRECT O RECARGA)
+  // ==========================================
+
+  async verificarTransaccion(
+    usuarioId: number,
+    dto: { transactionId?: string; reporteId?: number },
+  ) {
+    const { transactionId, reporteId } = dto;
+
+    // Caso 1: Se recibió identificador de transacción desde Wompi
+    if (transactionId && typeof transactionId === 'string' && transactionId.trim()) {
+      const idTx = transactionId.trim();
+
+      // Consultar directamente a Wompi la transacción real
+      const transaccion = await this.wompiService.consultarTransaccion(idTx);
+
+      if (!transaccion || !transaccion.reference) {
+        throw new BadRequestException('Transacción no válida en Wompi.');
+      }
+
+      // Buscar el pago por referencia única
+      const pago = await this.pagoRepository.findOne({
+        where: { referencia: transaccion.reference },
+        relations: { reporte: true, usuario: true },
+      });
+
+      if (!pago) {
+        throw new NotFoundException('No se encontró el pago asociado a la transacción.');
+      }
+
+      if (pago.usuario.id !== usuarioId) {
+        throw new ForbiddenException('No tienes permiso para verificar este pago.');
+      }
+
+      // Procesar e idempotentemente actualizar estado
+      await this.procesarEventoWompi(transaccion);
+
+      const pagoActualizado = await this.pagoRepository.findOne({
+        where: { id: pago.id },
+        relations: { reporte: true },
+      });
+
+      const aprobado = pagoActualizado?.estado === EstadoPago.APROBADO;
+
+      return {
+        aprobado,
+        estado: pagoActualizado?.estado ?? EstadoPago.PENDIENTE,
+        mensaje: aprobado
+          ? 'Pago aprobado. Alerta Turbo activada para este reporte'
+          : `El pago se encuentra en estado ${pagoActualizado?.estado}.`,
+        reporteId: pagoActualizado?.reporte?.id,
+        pagoId: pago.id,
+        referencia: pago.referencia,
+      };
+    }
+
+    // Caso 2: Se recibió reporteId (recarga del formulario /reportar)
+    if (reporteId && Number.isSafeInteger(Number(reporteId))) {
+      const repId = Number(reporteId);
+      const pago = await this.consultarPagoPorReporte(usuarioId, repId);
+
+      if (!pago) {
+        return {
+          aprobado: false,
+          estado: 'NO_INICIADO',
+          mensaje: 'No hay pago de Alerta Turbo registrado para este reporte.',
+          reporteId: repId,
+        };
+      }
+
+      const aprobado = pago.estado === EstadoPago.APROBADO;
+
+      return {
+        aprobado,
+        estado: pago.estado,
+        mensaje: aprobado
+          ? 'Pago aprobado. Alerta Turbo activada para este reporte'
+          : `El pago se encuentra en estado ${pago.estado}.`,
+        reporteId: pago.reporte?.id,
+        pagoId: pago.id,
+        referencia: pago.referencia,
+      };
+    }
+
+    throw new BadRequestException('Debes proporcionar transactionId o reporteId para verificar.');
   }
 }

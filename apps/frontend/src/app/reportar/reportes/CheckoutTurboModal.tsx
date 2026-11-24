@@ -22,6 +22,7 @@ interface CheckoutTurboModalProps {
     isOpen: boolean;
     onClose: () => void;
     reporteId?: number;
+    checkoutUrl?: string;
     nombreMascota: string;
     onSuccess?: () => void;
 }
@@ -34,7 +35,9 @@ export default function CheckoutTurboModal({
     isOpen,
     onClose,
     reporteId,
+    checkoutUrl: checkoutUrlProp,
     nombreMascota,
+    onSuccess,
 }: CheckoutTurboModalProps) {
 
     const [procesando, setProcesando] = useState(false);
@@ -47,6 +50,10 @@ export default function CheckoutTurboModal({
     // ==========================================
 
     const handlePagarConWompi = async () => {
+        if (checkoutUrlProp && checkoutUrlProp.startsWith('https://checkout.wompi.co/')) {
+            window.location.href = checkoutUrlProp;
+            return;
+        }
 
         if (!reporteId) {
             setError(
@@ -73,7 +80,7 @@ export default function CheckoutTurboModal({
 
             const checkoutUrl = respuesta.data?.checkoutUrl;
 
-            // Validar enlace de Wompi
+            // Validar enlace de WompiX
             if (
                 checkoutUrl &&
                 typeof checkoutUrl === 'string' &&

@@ -36,6 +36,26 @@ export class CrearReporteDto {
   @MaxLength(100)
   raza?: string | null;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  color?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  tamano?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  sexo?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  edad?: string | null;
+
   @IsString()
   @IsNotEmpty({ message: 'La descripción es obligatoria' })
   descripcion: string;
@@ -50,6 +70,16 @@ export class CrearReporteDto {
   @IsNotEmpty({ message: 'El barrio o sector es obligatorio' })
   @MaxLength(150)
   barrioSector: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  departamento?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  ciudad?: string | null;
 
   @IsOptional()
   @IsString()
@@ -74,8 +104,16 @@ export class CrearReporteDto {
   referencia?: string | null;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  recompensa?: number | null;
+  @IsString({ message: 'La recompensa debe ser un número válido' })
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: 'La recompensa debe ser un número válido (ej. 5000 o 5000.50)',
+  })
+  recompensa?: string | null;
+
+  @IsOptional()
+  esTurbo?: boolean | string;
+
+  @IsOptional()
+  borradorId?: number | string;
 }
 

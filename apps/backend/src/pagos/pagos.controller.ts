@@ -77,4 +77,13 @@ export class PagosController {
       dto.transactionId.trim(),
     );
   }
+
+  // Verificar estado real de transacción para Alerta Turbo
+  @Post('verificar-transaccion')
+  async verificarTransaccion(
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+    @Body() dto: { transactionId?: string; reporteId?: number },
+  ) {
+    return this.pagosService.verificarTransaccion(usuario.sub, dto);
+  }
 }

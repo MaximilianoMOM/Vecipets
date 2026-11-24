@@ -22,6 +22,9 @@ import { ActualizarReporteDto } from './dto/actualizar-reporte.dto';
 import { FiltrarReportesDto } from './dto/filtrar-reportes.dto';
 
 import { AlmacenamientoService } from './almacenamiento.service';
+import { PagosService } from '../pagos/pagos.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { EstadoPago } from '../pagos/pago.entity';
 
 import {
   ValidacionImagenesService,
@@ -40,6 +43,10 @@ export class ReportesService {
     private readonly almacenamientoService: AlmacenamientoService,
 
     private readonly validacionImagenesService: ValidacionImagenesService,
+
+    private readonly pagosService: PagosService,
+
+    private readonly notificacionesService: NotificacionesService,
   ) {}
 
   // CREAR REPORTE
@@ -74,6 +81,11 @@ export class ReportesService {
 
     let imagenUrl = dto.imagenUrl?.trim() ?? '';
 
+    const esTurboDeseado =
+      dto.esTurbo === true ||
+      dto.esTurbo === 'true' ||
+      dto.esTurbo === '1';
+
     let estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
     let estado = EstadoReporte.PENDIENTE;
 
@@ -91,41 +103,164 @@ export class ReportesService {
 
       mensajeValidacion = decision.motivo;
 
-      if (decision.aprobada && !decision.errorServicio) {
+      // Rechazar inmediatamente si la imagen contiene contenido inapropiado
+      if (
+        decision.motivo &&
+        (decision.motivo.toLowerCase().includes('inapropiad') ||
+          decision.motivo.toLowerCase().includes('adulto') ||
+          decision.motivo.toLowerCase().includes('violencia'))
+      ) {
+        throw new BadRequestException(
+          `Fotografía rechazada por seguridad: ${decision.motivo}`,
+        );
+      }
+
+      if (esTurboDeseado) {
+        // En Alerta Turbo, el reporte se guarda internamente como PENDIENTE sin ser público
+        // hasta que el pago en Wompi sea confirmado.
+        estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+        estado = EstadoReporte.PENDIENTE;
+        mensajeValidacion =
+          'Reporte registrado como pendiente de pago de Alerta Turbo ($15.000 COP).';
+      } else if (decision.aprobada && !decision.errorServicio) {
+        // Reporte gratuito aprobado automáticamente por análisis de imagen
         estadoAprobacion = EstadoAprobacionReporte.APROBADO;
         estado = EstadoReporte.PUBLICO;
-
         mensajeValidacion =
-          'Roboflow identificó una mascota con suficiente confianza.';
+          'Identificación de mascota aprobada automáticamente.';
       } else {
         estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
         estado = EstadoReporte.PENDIENTE;
       }
+    } else if (esTurboDeseado) {
+      estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+      estado = EstadoReporte.PENDIENTE;
     }
 
-    const reporte = this.reporteRepository.create({
-      tipo: dto.tipo,
-      nombre: dto.nombre.trim(),
-      especie: dto.especie,
-      raza: dto.raza?.trim() || null,
-      descripcion: dto.descripcion.trim(),
-      fechaEvento: dto.fechaEvento,
-      barrioSector: dto.barrioSector.trim(),
-      imagenUrl,
-      latitud: dto.latitud ?? null,
-      longitud: dto.longitud ?? null,
-      direccion: dto.direccion?.trim() || null,
-      referencia: dto.referencia?.trim() || null,
-      recompensa: dto.recompensa ?? null,
-      usuario,
-      estadoAprobacion,
-      estado,
-      esTurbo: false,
-      turboActivadaEn: null,
-      turboVenceEn: null,
-    });
+    let reporte: Reporte;
+    const borradorIdNum = dto.borradorId ? Number(dto.borradorId) : null;
+
+    if (borradorIdNum && Number.isSafeInteger(borradorIdNum)) {
+      const existente = await this.reporteRepository.findOne({
+        where: { id: borradorIdNum, usuario: { id: usuarioId } },
+      });
+
+      if (existente) {
+        reporte = existente;
+        reporte.tipo = dto.tipo;
+        reporte.nombre = dto.nombre.trim();
+        reporte.especie = dto.especie;
+        reporte.raza = dto.raza?.trim() || null;
+        reporte.color = dto.color?.trim() || null;
+        reporte.tamano = dto.tamano?.trim() || null;
+        reporte.sexo = dto.sexo?.trim() || null;
+        reporte.edad = dto.edad?.trim() || null;
+        reporte.descripcion = dto.descripcion.trim();
+        reporte.fechaEvento = dto.fechaEvento;
+        reporte.departamento = dto.departamento?.trim() || null;
+        reporte.ciudad = dto.ciudad?.trim() || null;
+        reporte.barrioSector = dto.barrioSector.trim();
+        if (imagenUrl) reporte.imagenUrl = imagenUrl;
+        reporte.latitud = dto.latitud ?? null;
+        reporte.longitud = dto.longitud ?? null;
+        reporte.direccion = dto.direccion?.trim() || null;
+        reporte.referencia = dto.referencia?.trim() || null;
+        reporte.recompensa =
+          dto.recompensa !== undefined && dto.recompensa !== null && dto.recompensa !== ''
+            ? Number(dto.recompensa)
+            : null;
+        reporte.estadoAprobacion = estadoAprobacion;
+        reporte.estado = estado;
+      } else {
+        reporte = this.reporteRepository.create({
+          tipo: dto.tipo,
+          nombre: dto.nombre.trim(),
+          especie: dto.especie,
+          raza: dto.raza?.trim() || null,
+          color: dto.color?.trim() || null,
+          tamano: dto.tamano?.trim() || null,
+          sexo: dto.sexo?.trim() || null,
+          edad: dto.edad?.trim() || null,
+          descripcion: dto.descripcion.trim(),
+          fechaEvento: dto.fechaEvento,
+          departamento: dto.departamento?.trim() || null,
+          ciudad: dto.ciudad?.trim() || null,
+          barrioSector: dto.barrioSector.trim(),
+          imagenUrl,
+          latitud: dto.latitud ?? null,
+          longitud: dto.longitud ?? null,
+          direccion: dto.direccion?.trim() || null,
+          referencia: dto.referencia?.trim() || null,
+          recompensa:
+            dto.recompensa !== undefined && dto.recompensa !== null && dto.recompensa !== ''
+              ? Number(dto.recompensa)
+              : null,
+          usuario,
+          estadoAprobacion,
+          estado,
+          esTurbo: false,
+          turboActivadaEn: null,
+          turboVenceEn: null,
+        });
+      }
+    } else {
+      reporte = this.reporteRepository.create({
+        tipo: dto.tipo,
+        nombre: dto.nombre.trim(),
+        especie: dto.especie,
+        raza: dto.raza?.trim() || null,
+        color: dto.color?.trim() || null,
+        tamano: dto.tamano?.trim() || null,
+        sexo: dto.sexo?.trim() || null,
+        edad: dto.edad?.trim() || null,
+        descripcion: dto.descripcion.trim(),
+        fechaEvento: dto.fechaEvento,
+        departamento: dto.departamento?.trim() || null,
+        ciudad: dto.ciudad?.trim() || null,
+        barrioSector: dto.barrioSector.trim(),
+        imagenUrl,
+        latitud: dto.latitud ?? null,
+        longitud: dto.longitud ?? null,
+        direccion: dto.direccion?.trim() || null,
+        referencia: dto.referencia?.trim() || null,
+        recompensa:
+          dto.recompensa !== undefined && dto.recompensa !== null && dto.recompensa !== ''
+            ? Number(dto.recompensa)
+            : null,
+        usuario,
+        estadoAprobacion,
+        estado,
+        esTurbo: false,
+        turboActivadaEn: null,
+        turboVenceEn: null,
+      });
+    }
 
     const guardado = await this.reporteRepository.save(reporte);
+
+    // Si el usuario seleccionó Alerta Turbo, generar la transacción asociada con Wompi
+    if (esTurboDeseado) {
+      const resultadoPago = await this.pagosService.crearPagoAlertaTurbo(
+        usuarioId,
+        guardado.id,
+      );
+
+      return {
+        mensaje:
+          'Borrador guardado correctamente. Procede a Wompi para realizar el pago de Alerta Turbo.',
+        validacion: {
+          estadoAprobacion,
+          estadoReporte: estado,
+          detalles: mensajeValidacion,
+        },
+        reporte: guardado,
+        borradorId: guardado.id,
+        pago: resultadoPago.pago,
+        checkout: (resultadoPago as any).checkout,
+        checkoutUrl: resultadoPago.checkoutUrl,
+        esTurbo: true,
+      };
+    }
 
     return {
       mensaje:
@@ -138,6 +273,117 @@ export class ReportesService {
         detalles: mensajeValidacion,
       },
       reporte: guardado,
+      borradorId: guardado.id,
+    };
+  }
+
+  // ==========================================
+  // CONSULTAR BORRADOR CON ESTADO DE PAGO
+  // ==========================================
+  async obtenerBorrador(id: number, usuarioId: number) {
+    const reporte = await this.reporteRepository.findOne({
+      where: { id, usuario: { id: usuarioId } },
+      relations: { usuario: true },
+    });
+
+    if (!reporte) {
+      throw new NotFoundException('No se encontró el borrador o no te pertenece.');
+    }
+
+    const pago = await this.pagosService.consultarPagoPorReporte(usuarioId, id);
+    const pagoAprobado = pago?.estado === EstadoPago.APROBADO;
+
+    return {
+      reporte,
+      pago,
+      pagoAprobado,
+      mensaje: pagoAprobado
+        ? 'Pago aprobado. Alerta Turbo activada para este reporte'
+        : 'Borrador cargado correctamente.',
+    };
+  }
+
+  // ==========================================
+  // CONFIRMAR Y PUBLICAR REPORTE BORRADOR
+  // ==========================================
+  async publicarBorrador(
+    id: number,
+    usuarioId: number,
+    dto?: ActualizarReporteDto,
+  ) {
+    const reporte = await this.reporteRepository.findOne({
+      where: { id, usuario: { id: usuarioId } },
+      relations: { usuario: true },
+    });
+
+    if (!reporte) {
+      throw new NotFoundException('No se encontró el reporte o no te pertenece.');
+    }
+
+    // Aplicar modificaciones finales si el usuario editó algún campo antes de enviar
+    if (dto) {
+      if (dto.nombre !== undefined) reporte.nombre = dto.nombre.trim();
+      if (dto.especie !== undefined) reporte.especie = dto.especie;
+      if (dto.raza !== undefined) reporte.raza = dto.raza?.trim() || null;
+      if (dto.color !== undefined) reporte.color = dto.color?.trim() || null;
+      if (dto.tamano !== undefined) reporte.tamano = dto.tamano?.trim() || null;
+      if (dto.sexo !== undefined) reporte.sexo = dto.sexo?.trim() || null;
+      if (dto.edad !== undefined) reporte.edad = dto.edad?.trim() || null;
+      if (dto.descripcion !== undefined) reporte.descripcion = dto.descripcion.trim();
+      if (dto.fechaEvento !== undefined) reporte.fechaEvento = dto.fechaEvento;
+      if (dto.barrioSector !== undefined) reporte.barrioSector = dto.barrioSector.trim();
+      if (dto.departamento !== undefined) reporte.departamento = dto.departamento?.trim() || null;
+      if (dto.ciudad !== undefined) reporte.ciudad = dto.ciudad?.trim() || null;
+      if (dto.direccion !== undefined) reporte.direccion = dto.direccion?.trim() || null;
+      if (dto.referencia !== undefined) reporte.referencia = dto.referencia?.trim() || null;
+      if (dto.recompensa !== undefined) {
+        reporte.recompensa =
+          dto.recompensa !== null && dto.recompensa !== ''
+            ? Number(dto.recompensa)
+            : null;
+      }
+    }
+
+    // Verificar si existe pago aprobado de Alerta Turbo para este reporte
+    const pagoTurbo = await this.pagosService.consultarPagoPorReporte(usuarioId, id);
+    const pagoAprobado = pagoTurbo?.estado === EstadoPago.APROBADO;
+
+    if (pagoAprobado) {
+      const fechaActivacion = new Date();
+      const fechaVencimiento = new Date(fechaActivacion);
+      fechaVencimiento.setDate(fechaVencimiento.getDate() + 7);
+
+      reporte.esTurbo = true;
+      reporte.turboActivadaEn = fechaActivacion;
+      reporte.turboVenceEn = fechaVencimiento;
+
+      // Generar notificación informativa para el administrador
+      await this.notificacionesService.registrarNotificacionPagoTurbo({
+        titulo: 'Nuevo pago de Alerta Turbo',
+        usuarioNombre: reporte.usuario?.nombre || 'Ciudadano VeciPets',
+        reporteId: reporte.id,
+        monto: '$15.000 COP',
+        referencia: pagoTurbo.referencia,
+        fechaPago: fechaActivacion,
+        estado: 'Aprobado',
+        enlaceReporte: `/reportes/${reporte.id}`,
+      });
+    }
+
+    // El reporte queda formalmente enviado y en estado PENDIENTE de aprobación por el administrador
+    reporte.estado = EstadoReporte.PENDIENTE;
+    reporte.estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+
+    const guardado = await this.reporteRepository.save(reporte);
+
+    return {
+      mensaje: pagoAprobado
+        ? 'Reporte enviado con Alerta Turbo activa. Queda pendiente de aprobación por el administrador.'
+        : 'Reporte enviado con éxito. Queda pendiente de aprobación por el administrador.',
+      reporte: guardado,
+      esTurbo: reporte.esTurbo,
+      estadoAprobacion: reporte.estadoAprobacion,
+      estado: reporte.estado,
     };
   }
 
@@ -316,6 +562,10 @@ export class ReportesService {
     if (dto.nombre !== undefined) reporte.nombre = dto.nombre.trim();
     if (dto.especie !== undefined) reporte.especie = dto.especie;
     if (dto.raza !== undefined) reporte.raza = dto.raza;
+    if (dto.color !== undefined) reporte.color = dto.color;
+    if (dto.tamano !== undefined) reporte.tamano = dto.tamano;
+    if (dto.sexo !== undefined) reporte.sexo = dto.sexo;
+    if (dto.edad !== undefined) reporte.edad = dto.edad;
 
     if (dto.descripcion !== undefined) {
       reporte.descripcion = dto.descripcion.trim();
@@ -328,11 +578,16 @@ export class ReportesService {
     if (dto.barrioSector !== undefined) {
       reporte.barrioSector = dto.barrioSector.trim();
     }
+    if (dto.departamento !== undefined) reporte.departamento = dto.departamento;
+    if (dto.ciudad !== undefined) reporte.ciudad = dto.ciudad;
 
     if (dto.latitud !== undefined) reporte.latitud = dto.latitud;
     if (dto.longitud !== undefined) reporte.longitud = dto.longitud;
     if (dto.direccion !== undefined) reporte.direccion = dto.direccion;
     if (dto.referencia !== undefined) reporte.referencia = dto.referencia;
+    if (dto.recompensa !== undefined) {
+      reporte.recompensa = dto.recompensa ? Number(dto.recompensa) : null;
+    }
 
     if (esAdmin) {
       if (dto.estadoAprobacion !== undefined) {

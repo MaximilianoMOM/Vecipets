@@ -67,6 +67,48 @@ export class ReportesController {
   }
 
   /**
+   * Guardar o actualizar borrador de reporte (antes de pagar o durante el proceso).
+   */
+  @Post('borrador')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
+  @UseInterceptors(FileInterceptor('imagen'))
+  async guardarBorrador(
+    @Body() dto: CrearReporteDto,
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+    @UploadedFile() archivo?: ArchivoSubido,
+  ) {
+    return this.reportesService.crear(dto, usuario.sub, archivo);
+  }
+
+  /**
+   * Consultar borrador de reporte con su estado de pago.
+   */
+  @Get('borrador/:id')
+  @UseGuards(JwtAuthGuard)
+  async obtenerBorrador(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+  ) {
+    return this.reportesService.obtenerBorrador(id, usuario.sub);
+  }
+
+  /**
+   * Confirmar y publicar reporte borrador tras el pago o de forma estándar.
+   * El reporte queda formalmente registrado y pendiente de aprobación por el administrador.
+   */
+  @Post(':id/publicar')
+  @UseGuards(JwtAuthGuard)
+  async publicarReporte(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarReporteDto,
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+  ) {
+    return this.reportesService.publicarBorrador(id, usuario.sub, dto);
+  }
+
+  /**
    * Consultar feed público de reportes con filtros y paginación.
    * Prioriza automáticamente reportes con Alerta Turbo activa.
    */

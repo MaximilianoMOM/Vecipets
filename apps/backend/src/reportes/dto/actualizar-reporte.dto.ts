@@ -41,6 +41,26 @@ export class ActualizarReporteDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50)
+  color?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  tamano?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  sexo?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  edad?: string | null;
+
+  @IsOptional()
+  @IsString()
   descripcion?: string;
 
   @IsOptional()
@@ -54,6 +74,16 @@ export class ActualizarReporteDto {
   @IsString()
   @MaxLength(150)
   barrioSector?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  departamento?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  ciudad?: string | null;
 
   @IsOptional()
   @IsEnum(EstadoReporte, {
@@ -82,4 +112,7 @@ export class ActualizarReporteDto {
   @IsString()
   @MaxLength(250)
   referencia?: string | null;
+
+  @IsOptional()
+  recompensa?: string | number | null;
 }

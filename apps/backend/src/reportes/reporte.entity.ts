@@ -54,6 +54,18 @@ export class Reporte {
   @Column({ type: 'varchar', length: 100, nullable: true })
   raza: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  color: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  tamano: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  sexo: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  edad: string | null;
+
   @Column({ type: 'text' })
   descripcion: string;
 
@@ -66,6 +78,12 @@ export class Reporte {
     name: 'barrio_sector',
   })
   barrioSector: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  departamento: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  ciudad: string | null;
 
   @Column({ type: 'text', name: 'imagen_url' })
   imagenUrl: string;
