@@ -2,12 +2,15 @@
 import {
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class CorreoService {
+  private readonly logger = new Logger(CorreoService.name);
+
   constructor(private readonly configService: ConfigService) {}
 
   async enviarCodigo(correo: string, codigo: string): Promise<void> {
@@ -37,7 +40,8 @@ export class CorreoService {
           </div>
         `,
       });
-    } catch {
+    } catch (error: unknown) {
+      this.registrarErrorSmtp('verificación', error);
       throw new InternalServerErrorException(
         'No se pudo enviar el correo de verificación.',
       );
@@ -75,10 +79,24 @@ export class CorreoService {
           </div>
         `,
       });
-    } catch {
+    } catch (error: unknown) {
+      this.registrarErrorSmtp('recuperación', error);
       throw new InternalServerErrorException(
         'No se pudo enviar el correo de recuperación.',
       );
     }
+  }
+
+  private registrarErrorSmtp(tipo: string, error: unknown): void {
+    const detalles = error as { code?: unknown; responseCode?: unknown } | null;
+    const codigo = detalles?.code;
+    const estado = detalles?.responseCode;
+    const codigoSeguro = typeof codigo === 'string' && /^[A-Z][A-Z0-9_]{0,31}$/.test(codigo)
+      ? codigo
+      : 'DESCONOCIDO';
+
+    this.logger.error(
+      `Falló el correo de ${tipo}. Código SMTP: ${codigoSeguro}. Estado: ${typeof estado === 'number' ? estado : 'sin respuesta'}.`,
+    );
   }
 }
