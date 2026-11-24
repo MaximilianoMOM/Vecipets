@@ -58,13 +58,15 @@ export default function LoginPage() {
     }
   };
 
-  const iniciarGoogle = () => {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+ const iniciarGoogle = () => {
+    const rawUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    const baseUrl = rawUrl.replace(/\/+$/, '');
+    const authUrl = baseUrl.endsWith('/api/v1')
+      ? `${baseUrl}/auth/google`
+      : `${baseUrl}/api/v1/auth/google`;
 
-    window.location.assign(
-      `${apiUrl.replace(/\/+$/, '')}/api/v1/auth/google`,
-    );
+    window.location.assign(authUrl);
   };
 
   return (
