@@ -47,18 +47,18 @@ export default function LoginPage() {
       } else if (err.response?.status === 403) {
         setApiError(
           err.response?.data?.message ||
-            'Tu cuenta todavía no está habilitada.',
+          'Tu cuenta todavía no está habilitada.',
         );
       } else {
         setApiError(
           err.response?.data?.message ||
-            'Error inesperado. Por favor, intenta de nuevo.',
+          'Error inesperado. Por favor, intenta de nuevo.',
         );
       }
     }
   };
 
- const iniciarGoogle = () => {
+  const iniciarGoogle = () => {
     const rawUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
     const baseUrl = rawUrl.replace(/\/+$/, '');
