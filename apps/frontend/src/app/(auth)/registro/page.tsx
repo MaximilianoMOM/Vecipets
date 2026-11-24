@@ -2,25 +2,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import Script from 'next/script';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { apiClient } from '@/lib/api-client';
 import { GoogleAuthButton } from '../google-auth-button';
+import { useRecaptcha } from '../use-recaptcha';
 import { useState } from 'react';
 import axios from 'axios';
-
-const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim();
-
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (callback: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
-    };
-  }
-}
 
 type RegisterData = {
   email: string;
@@ -54,8 +43,7 @@ const schema = yup.object({
 export default function RegistroPage() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
-  const [recaptchaReady, setRecaptchaReady] = useState(false);
-  const [recaptchaLoadError, setRecaptchaLoadError] = useState(false);
+  const recaptcha = useRecaptcha('register');
 
   const {
     register,
@@ -71,13 +59,9 @@ export default function RegistroPage() {
   const onSubmit = async (data: RegisterData) => {
     setApiError(null);
 
-    if (!recaptchaSiteKey || !recaptchaReady || !window.grecaptcha) return;
-
     let recaptchaToken: string;
     try {
-      recaptchaToken = await window.grecaptcha.execute(recaptchaSiteKey, {
-        action: 'register',
-      });
+      recaptchaToken = await recaptcha.getToken();
     } catch {
       setApiError('No se pudo completar reCAPTCHA. Intenta nuevamente.');
       return;
@@ -126,13 +110,7 @@ export default function RegistroPage() {
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
-      {recaptchaSiteKey && (
-        <Script
-          src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`}
-          onReady={() => window.grecaptcha?.ready(() => setRecaptchaReady(true))}
-          onError={() => setRecaptchaLoadError(true)}
-        />
-      )}
+      {recaptcha.script}
       <div className="w-full max-w-md rounded-xl bg-white/90 p-8 shadow-lg">
         <h1 className="mb-2 text-center text-2xl font-bold text-gray-800">
           Crear cuenta
@@ -234,16 +212,12 @@ export default function RegistroPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || !recaptchaReady}
+            disabled={isSubmitting || !recaptcha.ready}
             className="w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Registrando...' : 'Crear cuenta'}
           </button>
-          {(!recaptchaSiteKey || recaptchaLoadError) && (
-            <p role="alert" className="text-sm text-red-600">
-              No se pudo cargar reCAPTCHA. Recarga la página e intenta nuevamente.
-            </p>
-          )}
+          {recaptcha.error}
         </form>
         <div className="mt-4">
           <GoogleAuthButton />

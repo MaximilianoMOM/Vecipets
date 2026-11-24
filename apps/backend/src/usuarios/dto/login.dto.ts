@@ -13,3 +13,10 @@ export class LoginDto {
   })
   password: string;
 }
+
+export class LoginConRecaptchaDto extends LoginDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(8192)
+  recaptchaToken: string;
+}
