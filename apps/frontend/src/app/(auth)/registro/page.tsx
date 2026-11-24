@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { apiClient } from '@/lib/api-client';
+import { GoogleAuthButton } from '../google-auth-button';
 import { useState } from 'react';
 import axios from 'axios';
 
@@ -205,12 +206,12 @@ export default function RegistroPage() {
             {isSubmitting ? 'Registrando...' : 'Crear cuenta'}
           </button>
         </form>
-        <a
-          href={apiClient.getUri({ url: '/auth/google' })}
-          className="mt-4 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-medium text-gray-700 transition hover:bg-gray-50"
-        >
-          Continuar con Google como ciudadano
-        </a>
+        <div className="mt-4">
+          <GoogleAuthButton />
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Disponible para cuentas de ciudadano.
+          </p>
+        </div>
       </div>
     </section>
   );
