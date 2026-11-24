@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
   ForbiddenException,
+  ServiceUnavailableException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,9 +19,9 @@ import {
 import type { Response, Request } from 'express';
 
 import { UsuariosService } from './usuarios.service';
-import { CrearUsuarioDto } from './dto/crear-usuario.dto';
+import { RegistroUsuarioDto } from './dto/crear-usuario.dto';
 import { VerificarCorreoDto } from './dto/verificar-correo.dto';
-import { LoginDto } from './dto/login.dto';
+import { LoginConRecaptchaDto } from './dto/login.dto';
 import { SolicitarRecuperacionDto } from './dto/solicitar-recuperacion.dto';
 import { RestablecerContrasenaDto } from './dto/restablecer-contrasena.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -100,8 +101,41 @@ export class UsuariosController {
 
   // REGISTRO PÚBLICO
   @Post()
-  crear(@Body() datos: CrearUsuarioDto) {
+  async crear(@Body() { recaptchaToken, ...datos }: RegistroUsuarioDto) {
+    await this.verificarRecaptcha(recaptchaToken, 'register');
     return this.usuariosService.crear(datos);
+  }
+
+  private async verificarRecaptcha(recaptchaToken: string, accion: 'register' | 'login') {
+    const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
+    if (!secret) {
+      throw new ServiceUnavailableException('La verificación reCAPTCHA no está disponible.');
+    }
+
+    let verificacion: { success?: boolean; action?: string; score?: number };
+    try {
+      const respuesta = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        body: new URLSearchParams({ secret, response: recaptchaToken }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!respuesta.ok) {
+        throw new Error(`reCAPTCHA respondió con HTTP ${respuesta.status}`);
+      }
+      verificacion = await respuesta.json();
+    } catch {
+      throw new ServiceUnavailableException('La verificación reCAPTCHA no está disponible.');
+    }
+
+    if (
+      verificacion?.success !== true ||
+      verificacion.action !== accion ||
+      typeof verificacion.score !== 'number' ||
+      verificacion.score < 0.5
+    ) {
+      throw new ForbiddenException('No se pudo verificar reCAPTCHA. Intenta nuevamente.');
+    }
+
   }
 
   // VERIFICACIÓN DEL CORREO
@@ -115,10 +149,11 @@ export class UsuariosController {
 
   // INICIO DE SESIÓN
   @Post('login')
-  login(
-    @Body() datos: LoginDto,
+  async login(
+    @Body() { recaptchaToken, ...datos }: LoginConRecaptchaDto,
     @Res({ passthrough: true }) respuesta: Response,
   ) {
+    await this.verificarRecaptcha(recaptchaToken, 'login');
     return this.usuariosService.login(datos, respuesta);
   }
     // CERRAR SESIÓN

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProtegido';
 
 export default function Header() {
   const pathname = usePathname();
@@ -112,11 +113,10 @@ export default function Header() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  activo
+                className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${activo
                     ? 'bg-indigo-50 text-indigo-600'
                     : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 {link.name}
               </Link>
@@ -126,13 +126,12 @@ export default function Header() {
 
         {/* ACCIONES Y PERFIL DESKTOP */}
         <div className="hidden lg:flex items-center gap-3 shrink-0">
-          <Link
-            href="/reportar"
+          <BotonReportarProtegido
             className="bg-amber-400 hover:bg-amber-500 text-slate-900 text-sm font-bold py-2 px-4 rounded-xl shadow-sm transition-all flex items-center gap-1.5 transform active:scale-95"
           >
             <span>🚨</span>
             <span>Reportar Mascota</span>
-          </Link>
+          </BotonReportarProtegido>
 
           {!cargando && (
             <>
@@ -232,12 +231,11 @@ export default function Header() {
 
         {/* BOTÓN MENÚ MÓVIL */}
         <div className="flex lg:hidden items-center gap-2 shrink-0">
-          <Link
-            href="/reportar"
+          <BotonReportarProtegido
             className="bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-bold py-2 px-3 rounded-lg shadow-sm"
           >
             + Reportar
-          </Link>
+          </BotonReportarProtegido>
 
           <button
             type="button"
@@ -268,11 +266,10 @@ export default function Header() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setMenuMovilAbierto(false)}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                    activo
+                  className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${activo
                       ? 'bg-indigo-50 text-indigo-600'
                       : 'text-slate-700 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   {link.name}
                 </Link>

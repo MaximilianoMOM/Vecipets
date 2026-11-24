@@ -1,15 +1,8 @@
-
-'use client';
-
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react';
-import { useRouter } from 'next/navigation';
+'use client'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { apiClient } from './api-client';
+import { useRouter } from 'next/navigation';
+
 
 export type User = {
   id: number;

@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { apiClient } from '@/lib/api-client';
+import { GoogleAuthButton } from '../google-auth-button';
+import { useRecaptcha } from '../use-recaptcha';
 import { useState } from 'react';
 import axios from 'axios';
 
@@ -41,6 +43,7 @@ const schema = yup.object({
 export default function RegistroPage() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
+  const recaptcha = useRecaptcha('register');
 
   const {
     register,
@@ -56,6 +59,14 @@ export default function RegistroPage() {
   const onSubmit = async (data: RegisterData) => {
     setApiError(null);
 
+    let recaptchaToken: string;
+    try {
+      recaptchaToken = await recaptcha.getToken();
+    } catch {
+      setApiError('No se pudo completar reCAPTCHA. Intenta nuevamente.');
+      return;
+    }
+
     try {
       const nombreCompleto =
         `${data.name.trim()} ${data.lastname.trim()}`.trim();
@@ -65,6 +76,7 @@ export default function RegistroPage() {
         correo: data.email.trim().toLowerCase(),
         password: data.password,
         rol: data.rol,
+        recaptchaToken,
       });
 
       router.push(
@@ -98,6 +110,7 @@ export default function RegistroPage() {
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
+      {recaptcha.script}
       <div className="w-full max-w-md rounded-xl bg-white/90 p-8 shadow-lg">
         <h1 className="mb-2 text-center text-2xl font-bold text-gray-800">
           Crear cuenta
@@ -199,12 +212,19 @@ export default function RegistroPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !recaptcha.ready}
             className="w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Registrando...' : 'Crear cuenta'}
           </button>
+          {recaptcha.error}
         </form>
+        <div className="mt-4">
+          <GoogleAuthButton />
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Disponible para cuentas de ciudadano.
+          </p>
+        </div>
       </div>
     </section>
   );
