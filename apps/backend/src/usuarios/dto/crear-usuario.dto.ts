@@ -28,3 +28,10 @@ export class CrearUsuarioDto {
   })
   rol: 'CIUDADANO' | 'REFUGIO' | 'VETERINARIA';
 }
+
+export class RegistroUsuarioDto extends CrearUsuarioDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(8192)
+  recaptchaToken: string;
+}
