@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
   ForbiddenException,
+  ServiceUnavailableException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ import {
 import type { Response, Request } from 'express';
 
 import { UsuariosService } from './usuarios.service';
-import { CrearUsuarioDto } from './dto/crear-usuario.dto';
+import { RegistroUsuarioDto } from './dto/crear-usuario.dto';
 import { VerificarCorreoDto } from './dto/verificar-correo.dto';
 import { LoginDto } from './dto/login.dto';
 import { SolicitarRecuperacionDto } from './dto/solicitar-recuperacion.dto';
@@ -100,7 +101,36 @@ export class UsuariosController {
 
   // REGISTRO PÚBLICO
   @Post()
-  crear(@Body() datos: CrearUsuarioDto) {
+  async crear(@Body() { recaptchaToken, ...datos }: RegistroUsuarioDto) {
+    const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
+    if (!secret) {
+      throw new ServiceUnavailableException('La verificación del registro no está disponible.');
+    }
+
+    let verificacion: { success?: boolean; action?: string; score?: number };
+    try {
+      const respuesta = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        body: new URLSearchParams({ secret, response: recaptchaToken }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!respuesta.ok) {
+        throw new Error(`reCAPTCHA respondió con HTTP ${respuesta.status}`);
+      }
+      verificacion = await respuesta.json();
+    } catch {
+      throw new ServiceUnavailableException('La verificación del registro no está disponible.');
+    }
+
+    if (
+      verificacion?.success !== true ||
+      verificacion.action !== 'register' ||
+      typeof verificacion.score !== 'number' ||
+      verificacion.score < 0.5
+    ) {
+      throw new ForbiddenException('No se pudo verificar reCAPTCHA. Intenta nuevamente.');
+    }
+
     return this.usuariosService.crear(datos);
   }
 
