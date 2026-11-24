@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Camera,
@@ -12,24 +13,14 @@ import {
   Zap,
   ShieldAlert,
   CheckCircle2,
-  Bot,
   X,
   Search,
   Crosshair,
+  ShieldCheck,
 } from 'lucide-react';
-
-export interface SeleccionMapa {
-  lat: number;
-  lng: number;
-  direccion?: string;
-}
-
-export interface MapaInteractivoProps {
-  lat?: number;
-  lng?: number;
-  etiqueta?: string;
-  onSeleccionarUbicacion?: (seleccion: SeleccionMapa) => void;
-}
+import apiClient from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+import type { MapaInteractivoProps, SeleccionMapa } from '../components/map/MapaInteractivo';
 
 const MapaInteractivo = dynamic<MapaInteractivoProps>(
   () => import('../components/map/MapaInteractivo'),
@@ -75,28 +66,52 @@ function parsearCoordenadas(texto: string): Coordenadas | null {
   return { lat, lng };
 }
 
-export default function FormularioReporteContenido() {
+function obtenerUrlImagen(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  return `${apiUrl.replace(/\/+$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+function FormularioReportarContenido() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
+    tipo: 'PERDIDA' as 'PERDIDA' | 'HALLAZGO',
     nombre: '',
     especie: 'Perro' as 'Perro' | 'Gato' | 'Otro',
     raza: '',
+    color: '',
+    tamano: '',
+    sexo: '',
     edad: '',
     descripcion: '',
     fecha: '',
+    departamento: '',
+    ciudad: '',
     barrioSector: '',
-    imagenUrl: null as string | null,
+    direccion: '',
+    referencia: '',
+    recompensa: '',
     esTurbo: false,
   });
 
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
+  const [previewImagen, setPreviewImagen] = useState<string | null>(null);
+
   const [ubicacion, setUbicacion] = useState<Coordenadas>(COORDENADAS_DEFECTO);
   const [buscandoUbicacion, setBuscandoUbicacion] = useState(false);
-  const [cargandoImagen, setCargandoImagen] = useState(false);
-  const [fotoValidadaPorIA, setFotoValidadaPorIA] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [metodoPago, setMetodoPago] = useState<'NEQUI' | 'PSE' | 'TARJETA'>('NEQUI');
-  const [procesandoPago, setProcesandoPago] = useState(false);
+
+  // Estados del flujo de Borrador y Verificación de Wompi
+  const [borradorId, setBorradorId] = useState<number | null>(null);
+  const [pagoAprobado, setPagoAprobado] = useState(false);
+  const [mensajePago, setMensajePago] = useState<string | null>(null);
+  const [verificandoPago, setVerificandoPago] = useState(false);
 
   const origenFueMapaRef = useRef(false);
 
@@ -105,6 +120,121 @@ export default function FormularioReporteContenido() {
       prev.fecha ? prev : { ...prev, fecha: new Date().toISOString().split('T')[0] }
     );
   }, []);
+
+  // Recuperar borrador y verificar estado de Wompi al cargar / retornar de Wompi
+  useEffect(() => {
+    let cancelado = false;
+
+    const recuperarBorradorYPago = async () => {
+      const urlBorradorId = searchParams.get('borradorId');
+      const urlTransaccionId = searchParams.get('id'); // Wompi retorna el id de transacción en ?id=...
+      const savedBorradorId = typeof window !== 'undefined'
+        ? sessionStorage.getItem('vecipets_borrador_id')
+        : null;
+
+      const targetBorradorId = urlBorradorId || savedBorradorId;
+
+      // 1. Si hay identificador de transacción retornado por Wompi, verificar con backend
+      if (urlTransaccionId) {
+        setVerificandoPago(true);
+        try {
+          const res = await apiClient.post('/pagos/verificar-transaccion', {
+            transactionId: urlTransaccionId,
+            reporteId: targetBorradorId ? Number(targetBorradorId) : undefined,
+          });
+
+          if (!cancelado) {
+            if (res.data?.aprobado) {
+              setPagoAprobado(true);
+              setMensajePago('Pago aprobado. Alerta Turbo activada para este reporte');
+              if (res.data?.reporteId) {
+                setBorradorId(Number(res.data.reporteId));
+                sessionStorage.setItem('vecipets_borrador_id', String(res.data.reporteId));
+              }
+            } else {
+              setErrorValidacion(
+                res.data?.mensaje ||
+                'La transacción no fue aprobada por Wompi. Tu información sigue intacta en el formulario.'
+              );
+            }
+          }
+        } catch (err: any) {
+          if (!cancelado) {
+            console.error('Error al verificar transacción de Wompi:', err);
+            setErrorValidacion('No fue posible confirmar automáticamente la transacción con Wompi.');
+          }
+        } finally {
+          if (!cancelado) setVerificandoPago(false);
+        }
+      }
+
+      // 2. Recuperar la información completa del borrador para restaurar el formulario
+      const idParaCargar = targetBorradorId || (borradorId ? String(borradorId) : null);
+      if (idParaCargar && !isNaN(Number(idParaCargar))) {
+        try {
+          const resReporte = await apiClient.get(`/reportes/${idParaCargar}`);
+          const rep = resReporte.data?.reporte ?? resReporte.data;
+
+          if (rep && !cancelado) {
+            setBorradorId(rep.id);
+            setFormData({
+              tipo: rep.tipo || 'PERDIDA',
+              nombre: rep.nombre || '',
+              especie: rep.especie || 'Perro',
+              raza: rep.raza || '',
+              color: rep.color || '',
+              tamano: rep.tamano || '',
+              sexo: rep.sexo || '',
+              edad: rep.edad || '',
+              descripcion: rep.descripcion || '',
+              fecha: rep.fechaEvento ? String(rep.fechaEvento).split('T')[0] : '',
+              departamento: rep.departamento || '',
+              ciudad: rep.ciudad || '',
+              barrioSector: rep.barrioSector || '',
+              direccion: rep.direccion || '',
+              referencia: rep.referencia || '',
+              recompensa: rep.recompensa ? String(rep.recompensa) : '',
+              esTurbo: true, // Si hay borrador con pago o en proceso Turbo
+            });
+
+            if (rep.latitud && rep.longitud) {
+              setUbicacion({
+                lat: Number(rep.latitud),
+                lng: Number(rep.longitud),
+              });
+            }
+
+            if (rep.imagenUrl) {
+              setPreviewImagen(obtenerUrlImagen(rep.imagenUrl));
+            }
+
+            // Consultar si ya tiene pago aprobado si no se había verificado antes
+            if (!urlTransaccionId) {
+              try {
+                const resPago = await apiClient.post('/pagos/verificar-transaccion', {
+                  reporteId: rep.id,
+                });
+                if (!cancelado && resPago.data?.aprobado) {
+                  setPagoAprobado(true);
+                  setMensajePago('Pago aprobado. Alerta Turbo activada para este reporte');
+                }
+              } catch {
+                // Sin pago previo
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('No se pudo cargar el borrador previo:', err);
+        }
+      }
+    };
+
+    void recuperarBorradorYPago();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [searchParams]);
 
   const buscarUbicacionEnMapa = async (textoRaw: string, signal?: AbortSignal) => {
     const consulta = textoRaw.trim();
@@ -140,75 +270,63 @@ export default function FormularioReporteContenido() {
         headers: { Accept: 'application/json' },
       });
 
-      if (res.ok) {
-        const resultados = await res.json();
-        if (Array.isArray(resultados) && resultados.length > 0) {
-          const latNum = parseFloat(resultados[0].lat);
-          const lngNum = parseFloat(resultados[0].lon);
-          if (!Number.isNaN(latNum) && !Number.isNaN(lngNum)) {
-            setUbicacion({ lat: latNum, lng: lngNum });
-          }
+      if (!res.ok) throw new Error('Error al consultar geocodificador');
+      const data = await res.json();
+
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          setUbicacion({ lat, lng });
         }
       }
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error('Error buscando ubicación en el mapa:', err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.warn('Error al buscar dirección en el mapa:', err);
       }
     } finally {
       setBuscandoUbicacion(false);
     }
   };
 
-  useEffect(() => {
-    if (origenFueMapaRef.current) {
-      origenFueMapaRef.current = false;
-      return;
-    }
-
-    const consulta = formData.barrioSector.trim();
-    if (consulta.length < 3) {
-      setBuscandoUbicacion(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      buscarUbicacionEnMapa(consulta, controller.signal);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [formData.barrioSector]);
-
-  const handleSeleccionDesdeMapa = async ({ lat, lng, direccion }: SeleccionMapa) => {
-    setUbicacion({ lat, lng });
+  const handleBarrioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value;
+    setFormData((prev) => ({ ...prev, barrioSector: valor }));
     if (errorValidacion) setErrorValidacion(null);
+  };
 
-    if (direccion && direccion.trim()) {
-      origenFueMapaRef.current = true;
-      setFormData((prev) => ({ ...prev, barrioSector: direccion.trim() }));
-      return;
-    }
+  const handleSeleccionDesdeMapa = async (seleccion: SeleccionMapa) => {
+    const { lat, lng } = seleccion;
+    setUbicacion({ lat, lng });
 
-    setBuscandoUbicacion(true);
     try {
+      setBuscandoUbicacion(true);
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+      });
+
       if (res.ok) {
         const data = await res.json();
-        const addr = data?.address || {};
-        const legible =
-          addr.road ||
-          addr.neighbourhood ||
-          addr.suburb ||
-          addr.city ||
-          data?.display_name?.split(',').slice(0, 2).join(', ') ||
-          `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const address = data?.address || {};
+        const barrio =
+          address.neighbourhood ||
+          address.suburb ||
+          address.residential ||
+          address.quarter ||
+          address.city_district ||
+          '';
+
+        const ciudad = address.city || address.town || address.village || '';
+        const legible = [barrio, ciudad].filter(Boolean).join(', ');
 
         origenFueMapaRef.current = true;
-        setFormData((prev) => ({ ...prev, barrioSector: legible }));
+        setFormData((prev) => ({
+          ...prev,
+          barrioSector: legible || prev.barrioSector,
+          direccion: data?.display_name || prev.direccion,
+        }));
       }
     } catch {
       origenFueMapaRef.current = true;
@@ -231,182 +349,431 @@ export default function FormularioReporteContenido() {
     if (errorValidacion) setErrorValidacion(null);
   };
 
-  const handlePasteDireccion = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const textoPegado = e.clipboardData.getData('text');
-    if (textoPegado && textoPegado.trim().length >= 2) {
-      setTimeout(() => {
-        buscarUbicacionEnMapa(textoPegado);
-      }, 50);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setCargandoImagen(true);
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorValidacion('La imagen no puede pesar más de 5 MB.');
+        return;
+      }
+      setArchivoSeleccionado(file);
+      setPreviewImagen(URL.createObjectURL(file));
       setErrorValidacion(null);
-      setFotoValidadaPorIA(false);
-
-      setTimeout(() => {
-        const nombreArchivo = file.name.toLowerCase();
-        const esPaisajeFalso =
-          nombreArchivo.includes('paisaje') || nombreArchivo.includes('montana');
-
-        if (esPaisajeFalso) {
-          setErrorValidacion(
-            '🤖 Filtro IA: La imagen no corresponde a una mascota. Sube una foto de un perro o gato.'
-          );
-          setFotoValidadaPorIA(false);
-          setFormData((prev) => ({ ...prev, imagenUrl: null }));
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            imagenUrl: URL.createObjectURL(file),
-          }));
-          setFotoValidadaPorIA(true);
-        }
-        setCargandoImagen(false);
-      }, 1200);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Enviar formulario (Flujo Turbo con pago o Publicación Final)
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorValidacion(null);
+    setMensajeExito(null);
 
-    if (!formData.imagenUrl || !fotoValidadaPorIA) {
-      setErrorValidacion(
-        'Debes subir una fotografía de mascota válida aprobada por el filtro de IA.'
-      );
+    if (!user) {
+      setErrorValidacion('Debes iniciar sesión con tu cuenta de ciudadano para publicar un reporte.');
+      return;
+    }
+
+    if (user.rol !== 'CIUDADANO') {
+      setErrorValidacion('Solo los usuarios con rol CIUDADANO pueden crear reportes.');
+      return;
+    }
+
+    if (!archivoSeleccionado && !previewImagen) {
+      setErrorValidacion('La fotografía de la mascota es obligatoria.');
       return;
     }
 
     if (!formData.barrioSector.trim()) {
-      setErrorValidacion(
-        'Debes indicar el barrio o sector del incidente o hacer clic en el mapa.'
-      );
+      setErrorValidacion('Debes indicar el barrio o sector del suceso o señalarlo en el mapa.');
       return;
     }
 
-    if (formData.esTurbo) {
-      setIsModalOpen(true);
-      return;
-    }
-
-    ejecutarEnvioBackend();
-  };
-
-  const ejecutarEnvioBackend = () => {
     setEnviando(true);
-    setProcesandoPago(false);
-    setTimeout(() => {
-      setEnviando(false);
-      setIsModalOpen(false);
-      alert(
-        `¡Reporte de mascota perdida publicado con éxito! (${ubicacion.lat.toFixed(
-          5
-        )}, ${ubicacion.lng.toFixed(5)}) ${
-          formData.esTurbo ? '(Alerta Turbo Activada 🚀)' : ''
-        }`
+
+    try {
+      // =========================================================================
+      // CASO 1: Alerta Turbo seleccionada pero AÚN NO PAGADA
+      // Guarda como borrador completo con foto antes de redirigir a Wompi
+      // =========================================================================
+      if (formData.esTurbo && !pagoAprobado) {
+        const data = new FormData();
+        if (archivoSeleccionado) {
+          data.append('imagen', archivoSeleccionado);
+        }
+        data.append('tipo', formData.tipo);
+        data.append('nombre', formData.nombre.trim());
+        data.append('especie', formData.especie);
+        if (formData.raza.trim()) data.append('raza', formData.raza.trim());
+        if (formData.color.trim()) data.append('color', formData.color.trim());
+        if (formData.tamano.trim()) data.append('tamano', formData.tamano.trim());
+        if (formData.sexo.trim()) data.append('sexo', formData.sexo.trim());
+        if (formData.edad.trim()) data.append('edad', formData.edad.trim());
+        data.append('descripcion', formData.descripcion.trim());
+        data.append('fechaEvento', formData.fecha);
+        data.append('barrioSector', formData.barrioSector.trim());
+        if (formData.departamento.trim()) data.append('departamento', formData.departamento.trim());
+        if (formData.ciudad.trim()) data.append('ciudad', formData.ciudad.trim());
+        if (formData.direccion.trim()) data.append('direccion', formData.direccion.trim());
+        if (formData.referencia.trim()) data.append('referencia', formData.referencia.trim());
+        if (formData.recompensa.trim()) data.append('recompensa', formData.recompensa.trim());
+        data.append('latitud', ubicacion.lat.toString());
+        data.append('longitud', ubicacion.lng.toString());
+        data.append('esTurbo', 'true');
+
+        if (borradorId) {
+          data.append('borradorId', String(borradorId));
+        }
+
+        const resBorrador = await apiClient.post('/reportes/borrador', data);
+
+        const nuevoBorradorId = resBorrador.data?.borradorId || resBorrador.data?.reporte?.id;
+        const checkoutUrlRecibida = resBorrador.data?.checkoutUrl;
+
+        if (nuevoBorradorId) {
+          setBorradorId(nuevoBorradorId);
+          sessionStorage.setItem('vecipets_borrador_id', String(nuevoBorradorId));
+        }
+
+        if (checkoutUrlRecibida && typeof checkoutUrlRecibida === 'string') {
+          // Redirección directa y segura a Wompi Checkout
+          window.location.href = checkoutUrlRecibida;
+          return;
+        }
+
+        throw new Error('No se recibió la URL de pago de Wompi.');
+      }
+
+      // =========================================================================
+      // CASO 2: Pago APROBADO o Reporte Estándar -> Publicar reporte definitivo
+      // Queda pendiente de aprobación por el administrador
+      // =========================================================================
+      if (borradorId) {
+        // Enviar borrador previamente guardado
+        const resPublicacion = await apiClient.post(`/reportes/${borradorId}/publicar`, {
+          tipo: formData.tipo,
+          nombre: formData.nombre.trim(),
+          especie: formData.especie,
+          raza: formData.raza.trim() || null,
+          color: formData.color.trim() || null,
+          tamano: formData.tamano.trim() || null,
+          sexo: formData.sexo.trim() || null,
+          edad: formData.edad.trim() || null,
+          descripcion: formData.descripcion.trim(),
+          fechaEvento: formData.fecha,
+          barrioSector: formData.barrioSector.trim(),
+          departamento: formData.departamento.trim() || null,
+          ciudad: formData.ciudad.trim() || null,
+          direccion: formData.direccion.trim() || null,
+          referencia: formData.referencia.trim() || null,
+          recompensa: formData.recompensa.trim() || null,
+        });
+
+        sessionStorage.removeItem('vecipets_borrador_id');
+        setMensajeExito(
+          resPublicacion.data?.mensaje ||
+          '¡Reporte publicado con éxito! Ha quedado pendiente de aprobación por el administrador.'
+        );
+
+        setTimeout(() => {
+          router.push('/mis-reportes');
+        }, 2200);
+      } else {
+        // Publicación estándar sin Turbo
+        const data = new FormData();
+        if (archivoSeleccionado) {
+          data.append('imagen', archivoSeleccionado);
+        }
+        data.append('tipo', formData.tipo);
+        data.append('nombre', formData.nombre.trim());
+        data.append('especie', formData.especie);
+        if (formData.raza.trim()) data.append('raza', formData.raza.trim());
+        if (formData.color.trim()) data.append('color', formData.color.trim());
+        if (formData.tamano.trim()) data.append('tamano', formData.tamano.trim());
+        if (formData.sexo.trim()) data.append('sexo', formData.sexo.trim());
+        if (formData.edad.trim()) data.append('edad', formData.edad.trim());
+        data.append('descripcion', formData.descripcion.trim());
+        data.append('fechaEvento', formData.fecha);
+        data.append('barrioSector', formData.barrioSector.trim());
+        if (formData.departamento.trim()) data.append('departamento', formData.departamento.trim());
+        if (formData.ciudad.trim()) data.append('ciudad', formData.ciudad.trim());
+        if (formData.direccion.trim()) data.append('direccion', formData.direccion.trim());
+        if (formData.referencia.trim()) data.append('referencia', formData.referencia.trim());
+        if (formData.recompensa.trim()) data.append('recompensa', formData.recompensa.trim());
+        data.append('latitud', ubicacion.lat.toString());
+        data.append('longitud', ubicacion.lng.toString());
+        data.append('esTurbo', 'false');
+
+        const res = await apiClient.post('/reportes', data);
+        sessionStorage.removeItem('vecipets_borrador_id');
+
+        setMensajeExito(
+          res.data?.mensaje ||
+          '¡Reporte recibido con éxito! Queda pendiente de aprobación por el administrador.'
+        );
+
+        setTimeout(() => {
+          router.push('/mis-reportes');
+        }, 2200);
+      }
+    } catch (err: any) {
+      console.error('Error al procesar reporte:', err);
+      const backendMessage = err.response?.data?.message;
+      setErrorValidacion(
+        Array.isArray(backendMessage)
+          ? backendMessage.join(', ')
+          : backendMessage || err.message || 'No fue posible procesar la solicitud.'
       );
-    }, 1200);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="max-w-2xl mx-auto space-y-6">
+
+        {/* Encabezado */}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/reportes"
+            className="p-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition shadow-sm"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors mb-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" /> Volver al inicio
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              🚨 Reportar Mascota Perdida
+            <span className="text-[11px] font-black tracking-widest text-emerald-700 uppercase bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+              Servicio Comunitario 🐾
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 mt-1">
+              {borradorId ? 'Completar y Publicar Reporte' : 'Reportar Mascota'}
             </h1>
-            <p className="text-sm text-slate-600 mt-1">
-              Completa la información y valida tu reporte con nuestro filtro
-              inteligente de seguridad.
+            <p className="text-xs text-slate-500">
+              Ingresa los datos para registrar o activar la Alerta Turbo.
             </p>
           </div>
-
-          <span className="self-start sm:self-center px-3 py-1 bg-red-100 text-red-800 font-semibold text-xs rounded-full border border-red-200">
-            UI-002 • Formulario con Filtro IA
-          </span>
         </div>
 
-        {errorValidacion && (
-          <div
-            className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 shadow-sm"
-            role="alert"
-          >
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-red-800">
-              <strong className="font-bold">Aviso:</strong> {errorValidacion}
+        {/* BANNER 1: Verificando Pago */}
+        {verificandoPago && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 text-xs font-semibold animate-pulse">
+            <Loader2 className="w-5 h-5 text-amber-600 animate-spin shrink-0" />
+            <span>Confirmando la transacción con Wompi... Por favor espera un momento.</span>
+          </div>
+        )}
+
+        {/* BANNER 2: PAGO APROBADO (Requisito 7 y 8) */}
+        {pagoAprobado && (
+          <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl flex items-start gap-3 text-emerald-950 shadow-sm animate-fade-in">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-extrabold text-sm text-emerald-900">
+                Pago aprobado. Alerta Turbo activada para este reporte
+              </p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Tu transacción en Wompi por $15.000 COP fue confirmada. Revisa los datos de la mascota y presiona «Publicar reporte» para enviarlo a revisión administrativa.
+              </p>
             </div>
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6"
-        >
-          <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-5">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <ShieldAlert className="w-4 h-4 text-red-500" />
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                1. Información de la Mascota
-              </h2>
+        {/* Alerta de Error */}
+        {errorValidacion && (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-800 text-xs font-medium">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <span>{errorValidacion}</span>
+          </div>
+        )}
+
+        {/* Alerta de Éxito */}
+        {mensajeExito && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-emerald-800 text-xs font-bold">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <span>{mensajeExito}</span>
+          </div>
+        )}
+
+        {/* Formulario */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* FOTOGRAFÍA (Conservada después del pago) */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-emerald-600" /> Fotografía de la Mascota
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {previewImagen
+                    ? 'Fotografía cargada y preservada correctamente.'
+                    : 'Adjunta una foto clara (JPG, PNG o WEBP, máx. 5 MB).'}
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {previewImagen ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 h-56 bg-slate-900">
+                <img
+                  src={previewImagen}
+                  alt="Vista previa de la mascota"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchivoSeleccionado(null);
+                    setPreviewImagen(null);
+                  }}
+                  className="absolute top-3 right-3 p-1.5 bg-slate-900/70 text-white rounded-full hover:bg-slate-900 transition"
+                  title="Cambiar fotografía"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition bg-slate-50 hover:bg-emerald-50/20">
+                <Camera className="w-8 h-8 text-slate-400 mb-2" />
+                <span className="text-xs font-bold text-slate-700">Seleccionar o tomar fotografía</span>
+                <span className="text-[11px] text-slate-400 mt-1">Formatos admitidos: JPEG, PNG, WEBP</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {/* DATOS DE LA MASCOTA */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+            <h2 className="text-sm font-bold text-slate-900">1. Datos Básicos</h2>
+
+            {/* Tipo de Reporte */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData((p) => ({ ...p, tipo: 'PERDIDA' }))}
+                className={`py-3 px-4 rounded-xl text-xs font-bold border-2 transition ${
+                  formData.tipo === 'PERDIDA'
+                    ? 'border-rose-500 bg-rose-50 text-rose-800'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                🚨 Mascota Perdida
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData((p) => ({ ...p, tipo: 'HALLAZGO' }))}
+                className={`py-3 px-4 rounded-xl text-xs font-bold border-2 transition ${
+                  formData.tipo === 'HALLAZGO'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                🐾 Mascota Encontrada
+              </button>
+            </div>
+
+            {/* Nombre y Especie */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nombre *
+                  Nombre de la mascota
                 </label>
                 <input
                   name="nombre"
                   type="text"
                   required
-                  placeholder="Ej. Rocky"
+                  placeholder="Ej. Rocky, Pelusa"
                   value={formData.nombre}
                   onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Especie *
+                  Especie
                 </label>
                 <select
                   name="especie"
                   value={formData.especie}
                   onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 >
-                  <option value="Perro">🐶 Perro</option>
-                  <option value="Gato">🐱 Gato</option>
-                  <option value="Otro">🐾 Otro</option>
+                  <option value="Perro">Perro</option>
+                  <option value="Gato">Gato</option>
+                  <option value="Otro">Otro</option>
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Raza, Color, Tamaño */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Raza
+                  Raza (Opcional)
                 </label>
                 <input
                   name="raza"
                   type="text"
-                  placeholder="Ej. Golden Retriever"
+                  placeholder="Ej. Criollo, Labrador"
                   value={formData.raza}
                   onChange={handleChange}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Color (Opcional)
+                </label>
+                <input
+                  name="color"
+                  type="text"
+                  placeholder="Ej. Café con blanco"
+                  value={formData.color}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tamaño (Opcional)
+                </label>
+                <select
+                  name="tamano"
+                  value={formData.tamano}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="Pequeno">Pequeño</option>
+                  <option value="Mediano">Mediano</option>
+                  <option value="Grande">Grande</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Sexo, Edad, Fecha */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Sexo (Opcional)
+                </label>
+                <select
+                  name="sexo"
+                  value={formData.sexo}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="Macho">Macho</option>
+                  <option value="Hembra">Hembra</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Edad aproximada
@@ -414,322 +781,244 @@ export default function FormularioReporteContenido() {
                 <input
                   name="edad"
                   type="text"
-                  placeholder="Ej. 2 años"
+                  placeholder="Ej. 2 años, Cachorro"
                   value={formData.edad}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Fecha del suceso
+                </label>
+                <input
+                  name="fecha"
+                  type="date"
+                  required
+                  value={formData.fecha}
                   onChange={handleChange}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                 />
               </div>
             </div>
 
+            {/* Descripción */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Fecha de Extravío *
-              </label>
-              <input
-                name="fecha"
-                type="date"
-                required
-                value={formData.fecha}
-                onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Descripción y Señas Particulares
+                Descripción detallada
               </label>
               <textarea
                 name="descripcion"
                 rows={3}
-                placeholder="Detalles sobre cómo se perdió..."
+                required
+                placeholder="Indica collar, señas particulares, cicatrices o condiciones médicas..."
                 value={formData.descripcion}
                 onChange={handleChange}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none resize-none"
               />
             </div>
 
+            {/* SELECCIÓN DE ALERTA TURBO */}
             <div className="pt-3 border-t border-slate-100">
               <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                2. Nivel de Visibilidad
+                2. Impulso Comunitario (Alerta Turbo)
               </span>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div
-                  onClick={() => setFormData((p) => ({ ...p, esTurbo: false }))}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    !formData.esTurbo
-                      ? 'border-blue-600 bg-blue-50/30'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
+              {pagoAprobado ? (
+                /* Estado Pagado y Confirmado */
+                <div className="p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50/70 flex items-center justify-between shadow-sm">
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">
-                        Estándar (Gratis)
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        Publicación normal en el feed y mapa.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setFormData((p) => ({ ...p, esTurbo: true }))}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    formData.esTurbo
-                      ? 'border-amber-500 bg-amber-50/50'
-                      : 'border-slate-200 hover:border-amber-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-500 text-white rounded-lg shrink-0">
-                      <Zap className="w-4 h-4 fill-white" />
+                    <div className="p-2 bg-emerald-600 text-white rounded-xl shrink-0">
+                      <Zap className="w-5 h-5 fill-white" />
                     </div>
                     <div>
-                      <span className="font-bold text-amber-900 text-sm block">
-                        Alerta Turbo ($15.000 COP)
+                      <span className="font-extrabold text-emerald-950 text-xs block">
+                        Alerta Turbo Pagada y Confirmada ($15.000 COP)
                       </span>
-                      <span className="text-xs text-slate-600">
-                        Máxima prioridad, notificaciones y afiche con QR.
+                      <span className="text-[11px] text-emerald-800">
+                        Duración de 7 días continuos garantizados a partir de la aprobación del reporte.
                       </span>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
-              <div className="flex items-center justify-between mb-2">
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Fotografía con Filtro IA *
-                </span>
-                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Bot className="w-3 h-3" /> IA Anti-Fraude
-                </span>
-              </div>
-
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50/50">
-                {cargandoImagen ? (
-                  <div className="py-8 flex flex-col items-center justify-center text-indigo-600">
-                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                    <span className="text-xs font-bold">
-                      Analizando imagen con IA...
-                    </span>
-                  </div>
-                ) : formData.imagenUrl && fotoValidadaPorIA ? (
-                  <div className="relative">
-                    <img
-                      src={formData.imagenUrl}
-                      alt="Preview"
-                      className="w-full h-44 object-cover rounded-lg shadow-sm"
-                    />
-                    <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Mascota Verificada por IA
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData((p) => ({ ...p, imagenUrl: null }));
-                        setFotoValidadaPorIA(false);
-                      }}
-                      className="mt-2 text-xs font-bold text-red-600 hover:underline"
-                    >
-                      Cambiar fotografía
-                    </button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer py-6 flex flex-col items-center justify-center">
-                    <Camera className="w-8 h-8 text-slate-400 mb-2" />
-                    <span className="text-sm font-bold text-slate-700">
-                      Subir foto de la mascota
-                    </span>
-                    <span className="text-xs text-slate-400 mt-1">
-                      Prueba nombrando el archivo ej: &quot;paisaje.jpg&quot; para
-                      simular rechazo
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
-              <div className="flex items-center justify-between mb-2">
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Última Ubicación Vista *
-                </span>
-                {buscandoUbicacion && (
-                  <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Ubicando...
+                  <span className="px-3 py-1 bg-emerald-600 text-white font-black text-[10px] rounded-full uppercase tracking-wider">
+                    PAGADO ✓
                   </span>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    <input
-                      name="barrioSector"
-                      type="text"
-                      required
-                      placeholder="Ej. Laureles, Medellín o 6.24, -75.58"
-                      value={formData.barrioSector}
-                      onChange={handleChange}
-                      onPaste={handlePasteDireccion}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => buscarUbicacionEnMapa(formData.barrioSector)}
-                    className="px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shrink-0 flex items-center gap-1 text-xs font-bold"
-                    title="Buscar en el mapa"
-                  >
-                    <Search className="w-4 h-4" />
-                    <span className="hidden sm:inline">Buscar</span>
-                  </button>
                 </div>
-
-                <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <Crosshair className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>
-                    Haz clic en el mapa para marcar el punto o escribe/pega la dirección.
-                  </span>
-                </p>
-
-                <div className="w-full h-60 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative">
-                  <MapaInteractivo
-                    lat={ubicacion.lat}
-                    lng={ubicacion.lng}
-                    etiqueta={formData.barrioSector || 'Ubicación del reporte'}
-                    onSeleccionarUbicacion={handleSeleccionDesdeMapa}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={enviando}
-              className={`w-full py-4 px-6 rounded-xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm ${
-                formData.esTurbo
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {enviando ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : formData.esTurbo ? (
-                <>
-                  <Zap className="w-4 h-4 fill-white" /> Continuar a Pago e
-                  Impulsar con Turbo
-                </>
               ) : (
-                'Publicar Reporte Estándar'
+                /* Selección entre Estándar y Turbo */
+                <div className="grid grid-cols-1 gap-2.5">
+                  <div
+                    onClick={() => setFormData((p) => ({ ...p, esTurbo: false }))}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                      !formData.esTurbo
+                        ? 'border-emerald-600 bg-emerald-50/40 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-900 text-xs block">
+                          Publicación Estándar (Gratis)
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Revisión regular y publicación en mapa y feed comunitario.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setFormData((p) => ({ ...p, esTurbo: true }))}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                      formData.esTurbo
+                        ? 'border-amber-500 bg-amber-50/70 shadow-sm ring-1 ring-amber-300'
+                        : 'border-slate-200 hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-500 text-white rounded-lg shrink-0">
+                        <Zap className="w-4 h-4 fill-white" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-amber-950 text-xs block">
+                          Activar Alerta Turbo ⚡ ($15.000 COP)
+                        </span>
+                        <span className="text-[11px] text-slate-700">
+                          Máxima visibilidad durante 7 días continuos en la parte superior del mapa y feed.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
+
+            {/* Recompensa Opcional */}
+            <div className="pt-3 border-t border-slate-100">
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                3. Recompensa (Opcional)
+              </span>
+              <input
+                name="recompensa"
+                type="number"
+                placeholder="Monto en COP (ej. 50000)"
+                value={formData.recompensa}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+              />
+            </div>
           </div>
+
+          {/* UBICACIÓN Y MAPA */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-600" /> Ubicación del Suceso
+            </h2>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Barrio o Sector *
+              </label>
+              <input
+                name="barrioSector"
+                type="text"
+                required
+                placeholder="Ej. Laureles, Poblado, Estadio"
+                value={formData.barrioSector}
+                onChange={handleBarrioChange}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Dirección específica (Opcional)
+                </label>
+                <input
+                  name="direccion"
+                  type="text"
+                  placeholder="Ej. Calle 33 # 74B - 12"
+                  value={formData.direccion}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Punto de referencia (Opcional)
+                </label>
+                <input
+                  name="referencia"
+                  type="text"
+                  placeholder="Ej. Cerca al parque principal"
+                  value={formData.referencia}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <Crosshair className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Haz clic en el mapa para ajustar las coordenadas exactas.</span>
+            </p>
+
+            <div className="w-full h-56 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 relative">
+              <MapaInteractivo
+                lat={ubicacion.lat}
+                lng={ubicacion.lng}
+                etiqueta={formData.barrioSector || 'Ubicación registrada'}
+                onSeleccionarUbicacion={handleSeleccionDesdeMapa}
+              />
+            </div>
+          </div>
+
+          {/* BOTÓN PRINCIPAL DE ACCIÓN */}
+          <button
+            type="submit"
+            disabled={enviando || verificandoPago}
+            className={`w-full py-4 px-6 rounded-2xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
+              formData.esTurbo && !pagoAprobado
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            }`}
+          >
+            {enviando ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Procesando información...
+              </>
+            ) : formData.esTurbo && !pagoAprobado ? (
+              <>
+                <Zap className="w-4 h-4 fill-white" /> Guardar borrador y Pagar Alerta Turbo ($15.000 COP)
+              </>
+            ) : (
+              'Publicar reporte'
+            )}
+          </button>
         </form>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/30">
-                  <Zap className="w-6 h-6 fill-white" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-lg">
-                    Activar Alerta Turbo
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Impulsa el reporte de {formData.nombre || 'tu mascota'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 mb-5">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600 font-medium">
-                    Servicio Alerta Turbo 24h
-                  </span>
-                  <span className="font-bold text-slate-900">$15.000 COP</span>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Selecciona el método de pago
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('NEQUI')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'NEQUI'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    💜 Nequi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('PSE')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'PSE'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    🏦 PSE
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('TARJETA')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'TARJETA'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    💳 Tarjeta
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={ejecutarEnvioBackend}
-                disabled={procesandoPago}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm"
-              >
-                <CheckCircle2 className="w-4 h-4" /> Pagar $15.000 y Publicar Turbo
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </main>
+  );
+}
+
+export default function ReportarPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin"></div>
+            <p className="text-xs text-slate-500 font-semibold">Cargando formulario...</p>
+          </div>
+        </div>
+      }
+    >
+      <FormularioReportarContenido />
+    </Suspense>
   );
 }

@@ -35,7 +35,10 @@ export class Reporte {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Usuario, { nullable: false, onDelete: 'RESTRICT' })
+  @ManyToOne(() => Usuario, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
@@ -51,14 +54,36 @@ export class Reporte {
   @Column({ type: 'varchar', length: 100, nullable: true })
   raza: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  color: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  tamano: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  sexo: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  edad: string | null;
+
   @Column({ type: 'text' })
   descripcion: string;
 
   @Column({ type: 'date', name: 'fecha_evento' })
   fechaEvento: string;
 
-  @Column({ type: 'varchar', length: 150, name: 'barrio_sector' })
+  @Column({
+    type: 'varchar',
+    length: 150,
+    name: 'barrio_sector',
+  })
   barrioSector: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  departamento: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  ciudad: string | null;
 
   @Column({ type: 'text', name: 'imagen_url' })
   imagenUrl: string;
@@ -78,7 +103,11 @@ export class Reporte {
   })
   estado: EstadoReporte;
 
-  @Column({ type: 'boolean', default: false, name: 'es_turbo' })
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'es_turbo',
+  })
   esTurbo: boolean;
 
   @Column({
@@ -95,9 +124,55 @@ export class Reporte {
   })
   turboVenceEn: Date | null;
 
-  @CreateDateColumn({ name: 'creado_en', type: 'timestamptz' })
+  // Ubicación geográfica del reporte
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
+  latitud: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
+  longitud: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  direccion: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 250,
+    nullable: true,
+  })
+  referencia: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'recompensa',
+  })
+  recompensa: number | null;
+
+  @CreateDateColumn({
+    name: 'creado_en',
+    type: 'timestamptz',
+  })
   creadoEn: Date;
 
-  @UpdateDateColumn({ name: 'actualizado_en', type: 'timestamptz' })
+  @UpdateDateColumn({
+    name: 'actualizado_en',
+    type: 'timestamptz',
+  })
   actualizadoEn: Date;
 }

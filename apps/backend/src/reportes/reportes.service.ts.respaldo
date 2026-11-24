@@ -1,0 +1,130 @@
+
+  /**
+   * Crea un reporte de mascota:
+   * 1. Valida los permisos del ciudadano.
+   * 2. Guarda la fotografía.
+   * 3. Analiza la imagen con Roboflow.
+   * 4. Si la IA determina que es elegible, publica automáticamente.
+   * 5. Si la detección es dudosa o falla el servicio, queda pendiente
+   *    para revisión del administrador.
+   */
+  async crear(
+    dto: CrearReporteDto,
+    usuarioId: number,
+    archivo?: ArchivoMulter,
+  ) {
+    const usuario = await this.usuarioRepository.findOne({
+      where: { id: usuarioId },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException('No se encontró el usuario.');
+    }
+
+    if (
+      usuario.rol !== 'CIUDADANO' ||
+      !usuario.correoVerificado ||
+      usuario.estadoAprobacion !== 'APROBADO'
+    ) {
+      throw new ForbiddenException(
+        'Solo los ciudadanos verificados y aprobados pueden crear reportes.',
+      );
+    }
+
+    let urlFinalImagen = dto.imagenUrl?.trim() ?? '';
+
+    let estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+    let estadoReporte = EstadoReporte.PENDIENTE;
+    let mensajeValidacion =
+      'El reporte está pendiente de revisión administrativa.';
+
+    if (archivo && archivo.buffer && archivo.buffer.length > 0) {
+      // 1. Guardar la imagen de manera segura.
+      urlFinalImagen = await this.almacenamientoService.guardarImagen(
+        archivo.buffer,
+        archivo.mimetype,
+      );
+
+      // 2. Analizar la imagen con Roboflow.
+      const decisionVision =
+        await this.validacionImagenesService.validarImagenReporte({
+          originalname: archivo.originalname,
+          mimetype: archivo.mimetype,
+          size: archivo.size,
+          buffer: archivo.buffer,
+        });
+
+      mensajeValidacion = decisionVision.motivo;
+
+      // 3. Publicar solamente si Roboflow la considera elegible.
+      if (decisionVision.aprobada && !decisionVision.errorServicio) {
+        estadoAprobacion = EstadoAprobacionReporte.APROBADO;
+        estadoReporte = EstadoReporte.PUBLICO;
+
+        mensajeValidacion =
+          'La IA identificó una mascota con suficiente confianza. El reporte fue publicado automáticamente.';
+      } else {
+        // 4. Los casos dudosos requieren decisión administrativa.
+        estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+        estadoReporte = EstadoReporte.PENDIENTE;
+
+        mensajeValidacion =
+          decisionVision.motivo ||
+          'La fotografía requiere revisión del administrador antes de su publicación.';
+      }
+    }
+
+    const reporte = this.reporteRepository.create({
+      tipo: dto.tipo,
+      nombre: dto.nombre.trim(),
+      especie: dto.especie,
+      raza: dto.raza?.trim() || null,
+      descripcion: dto.descripcion.trim(),
+      fechaEvento: dto.fechaEvento,
+      barrioSector: dto.barrioSector.trim(),
+      imagenUrl: urlFinalImagen,
+      latitud: dto.latitud ?? null,
+      longitud: dto.longitud ?? null,
+      direccion: dto.direccion?.trim() || null,
+      referencia: dto.referencia?.trim() || null,
+      usuario,
+      estadoAprobacion,
+      estado: estadoReporte,
+      esTurbo: false,
+      turboActivadaEn: null,
+      turboVenceEn: null,
+    });
+
+    const guardado = await this.reporteRepository.save(reporte);
+
+    return {
+      mensaje:
+        estadoReporte === EstadoReporte.PUBLICO
+          ? '¡Tu reporte fue publicado con éxito en el mapa y directorio!'
+          : 'Tu reporte fue recibido y está pendiente de revisión por un administrador. Te notificaremos cuando se tome una decisión.',
+      validacion: {
+        estadoAprobacion,
+        estadoReporte,
+        detalles: mensajeValidacion,
+      },
+      reporte: {
+        id: guardado.id,
+        tipo: guardado.tipo,
+        nombre: guardado.nombre,
+        especie: guardado.especie,
+        raza: guardado.raza,
+        descripcion: guardado.descripcion,
+        fechaEvento: guardado.fechaEvento,
+        barrioSector: guardado.barrioSector,
+        imagenUrl: guardado.imagenUrl,
+        latitud: guardado.latitud,
+        longitud: guardado.longitud,
+        direccion: guardado.direccion,
+        referencia: guardado.referencia,
+        estadoAprobacion: guardado.estadoAprobacion,
+        estado: guardado.estado,
+        esTurbo: guardado.esTurbo,
+        creadoEn: guardado.creadoEn,
+      },
+    };
+  }

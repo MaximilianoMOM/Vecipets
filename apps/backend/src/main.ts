@@ -2,11 +2,16 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import express from 'express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  // Servir archivos estáticos subidos (fotografías de mascotas)
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
   // Prefijo global de la API
   app.setGlobalPrefix('api/v1');
@@ -27,7 +32,7 @@ async function bootstrap() {
   );
 
   // Limpia cualquier barra '/' final accidental en la variable de entorno
-  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '');
+  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
 
   const allowedOrigins = [
     'http://localhost:3000',
@@ -37,6 +42,7 @@ async function bootstrap() {
   ].filter((origin): origin is string => Boolean(origin));
 
   // Configuración CORS con tipos explícitos para evitar el error ts(7006)
+  // Permite que el frontend envíe cookies al backend
   app.enableCors({
     origin: (
       origin: string | undefined,

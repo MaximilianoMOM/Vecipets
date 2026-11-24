@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
-    "build": "nest build",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+"scripts": {
+  "start": "node dist/main.js",
+  "start:dev": "nest start --watch",
+  "build": "nest build",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
+  "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
+  "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
+  "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/data-source.ts"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -46,6 +50,7 @@
     "@types/dotenv": "^6.1.1",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
     "@types/passport": "^1.0.17",
