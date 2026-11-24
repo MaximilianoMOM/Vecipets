@@ -205,6 +205,12 @@ export default function RegistroPage() {
             {isSubmitting ? 'Registrando...' : 'Crear cuenta'}
           </button>
         </form>
+        <a
+          href={apiClient.getUri({ url: '/auth/google' })}
+          className="mt-4 block w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-center font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          Continuar con Google como ciudadano
+        </a>
       </div>
     </section>
   );
