@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { API_BASE_URL, apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
+import { GoogleAuthButton } from '../google-auth-button';
 import { useAuth } from '@/lib/auth-context';
 import { useState } from 'react';
 
@@ -56,10 +57,6 @@ export default function LoginPage() {
         );
       }
     }
-  };
-
-  const iniciarGoogle = () => {
-    window.location.assign(`${API_BASE_URL}/auth/google`);
   };
 
   return (
@@ -144,13 +141,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={iniciarGoogle}
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
-        >
-          Continuar con Google
-        </button>
+        <GoogleAuthButton />
 
         <p className="mt-4 text-center text-sm text-gray-600">
           ¿No tienes cuenta?{' '}
