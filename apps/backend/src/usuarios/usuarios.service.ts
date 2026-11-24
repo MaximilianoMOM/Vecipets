@@ -1,4 +1,3 @@
-
 import {
   Injectable,
   ConflictException,
@@ -33,6 +32,18 @@ export class UsuariosService {
     private readonly correoService: CorreoService,
     private readonly jwtService: JwtService,
   ) {}
+
+  private establecerCookieSesion(respuesta: Response, accessToken: string): void {
+    const esProduccion = process.env.NODE_ENV === 'production';
+
+    respuesta.cookie('vecipets_access_token', accessToken, {
+      httpOnly: true,
+      secure: esProduccion,
+      sameSite: esProduccion ? 'none' : 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+  }
 
   // OBTENER TODOS LOS USUARIOS
   async obtenerTodos() {
@@ -212,14 +223,7 @@ export class UsuariosService {
       expiresIn: '1d',
     });
 
-    // Cookie HttpOnly válida durante 24 horas.
-    respuesta.cookie('vecipets_access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    this.establecerCookieSesion(respuesta, accessToken);
 
     return {
       mensaje: 'Inicio de sesión exitoso.',
@@ -474,14 +478,7 @@ export class UsuariosService {
       { expiresIn: '1d' },
     );
 
-    // Cookie HttpOnly de Google válida durante 24 horas.
-    respuesta.cookie('vecipets_access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    this.establecerCookieSesion(respuesta, accessToken);
 
     return {
       mensaje: 'Inicio de sesión con Google exitoso.',
