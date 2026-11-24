@@ -2,12 +2,17 @@
 import axios from 'axios';
 
 // Dirección base del backend
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const backendUrl = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+).replace(/\/+$/, '');
+
+export const API_BASE_URL = backendUrl.endsWith('/api/v1')
+  ? backendUrl
+  : `${backendUrl}/api/v1`;
 
 // Cliente Axios con el prefijo global de la API
 export const apiClient = axios.create({
-  baseURL: `${API_BASE_URL.replace(/\/+$/, '')}/api/v1`,
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

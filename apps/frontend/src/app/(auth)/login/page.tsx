@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { apiClient } from '@/lib/api-client';
+import { API_BASE_URL, apiClient } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { useState } from 'react';
 
@@ -59,14 +59,7 @@ export default function LoginPage() {
   };
 
   const iniciarGoogle = () => {
-    const rawUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    const baseUrl = rawUrl.replace(/\/+$/, '');
-    const authUrl = baseUrl.endsWith('/api/v1')
-      ? `${baseUrl}/auth/google`
-      : `${baseUrl}/api/v1/auth/google`;
-
-    window.location.assign(authUrl);
+    window.location.assign(`${API_BASE_URL}/auth/google`);
   };
 
   return (
