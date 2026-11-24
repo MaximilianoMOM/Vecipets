@@ -25,7 +25,7 @@ interface RequestGoogle extends Request {
 export class AuthController {
   constructor(
     private readonly usuariosService: UsuariosService,
-  ) {}
+  ) { }
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
