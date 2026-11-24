@@ -92,6 +92,7 @@ export default function ReportarPage() {
     barrioSector: '',
     direccion: '',
     referencia: '',
+    recompensa: '',
     esTurbo: false,
   });
 
@@ -301,6 +302,7 @@ export default function ReportarPage() {
       data.append('barrioSector', formData.barrioSector.trim());
       if (formData.direccion.trim()) data.append('direccion', formData.direccion.trim());
       if (formData.referencia.trim()) data.append('referencia', formData.referencia.trim());
+      if (formData.recompensa.trim()) data.append('recompensa', formData.recompensa.trim());
       data.append('latitud', ubicacion.lat.toString());
       data.append('longitud', ubicacion.lng.toString());
 
@@ -584,6 +586,30 @@ export default function ReportarPage() {
                 </div>
               </div>
             )}
+
+            {/* Campo opcional de recompensa */}
+            <div className="pt-3 border-t border-slate-100">
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                3. Recompensa (Opcional)
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  name="recompensa"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.recompensa}
+                  onChange={handleChange}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-amber-500/20"
+                />
+                <span className="text-xs text-slate-500">COP</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Monto opcional que se ofrecerá a quien ayude a encontrar a tu
+                mascota.
+              </p>
+            </div>
           </div>
 
           <div className="lg:col-span-5 space-y-5">
@@ -720,7 +746,13 @@ export default function ReportarPage() {
             isOpen={modalTurboAbierto}
             onClose={() => {
               setModalTurboAbierto(false);
-              router.push('/reportes');
+              router.push('/mis-reportes');
+            }}
+            onSuccess={() => {
+              setModalTurboAbierto(false);
+              setMensajeExito(
+                'Redirigiendo a Wompi para completar el pago de tu Alerta Turbo...'
+              );
             }}
             reporteId={reporteCreadoId}
             nombreMascota={formData.nombre}

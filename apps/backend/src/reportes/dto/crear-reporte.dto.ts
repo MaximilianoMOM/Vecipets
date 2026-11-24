@@ -8,6 +8,8 @@ import {
   MaxLength,
   IsDateString,
   Matches,
+  IsNumber,
+  Min,
 } from 'class-validator';
 
 import { TipoReporte } from '../reporte.entity';
@@ -70,5 +72,10 @@ export class CrearReporteDto {
   @IsString()
   @MaxLength(250)
   referencia?: string | null;
+
+  @IsOptional()
+  @IsNumber({ maxDecimals: 2 })
+  @Min(0)
+  recompensa?: number | null;
 }
 

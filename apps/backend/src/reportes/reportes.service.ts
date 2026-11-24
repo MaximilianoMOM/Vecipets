@@ -116,6 +116,7 @@ export class ReportesService {
       longitud: dto.longitud ?? null,
       direccion: dto.direccion?.trim() || null,
       referencia: dto.referencia?.trim() || null,
+      recompensa: dto.recompensa ?? null,
       usuario,
       estadoAprobacion,
       estado,

@@ -79,6 +79,8 @@ export default function CheckoutTurboModal({
                 typeof checkoutUrl === 'string' &&
                 checkoutUrl.startsWith('https://checkout.wompi.co/')
             ) {
+                // Notificar que el pago se inició correctamente antes de redirigir
+                onSuccess?.();
                 window.location.href = checkoutUrl;
                 return;
             }

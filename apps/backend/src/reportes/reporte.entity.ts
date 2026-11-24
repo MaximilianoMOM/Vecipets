@@ -137,6 +137,15 @@ export class Reporte {
   })
   referencia: string | null;
 
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'recompensa',
+  })
+  recompensa: number | null;
+
   @CreateDateColumn({
     name: 'creado_en',
     type: 'timestamptz',
