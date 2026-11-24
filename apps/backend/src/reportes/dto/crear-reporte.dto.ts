@@ -19,12 +19,14 @@ export class CrearReporteDto {
   tipo: TipoReporte;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'El nombre es obligatorio' })
   @MaxLength(100)
   nombre: string;
 
   @IsString()
-  @IsIn(['Perro', 'Gato', 'Otro'])
+  @IsIn(['Perro', 'Gato', 'Otro'], {
+    message: 'La especie debe ser Perro, Gato u Otro',
+  })
   especie: string;
 
   @IsOptional()
@@ -33,7 +35,7 @@ export class CrearReporteDto {
   raza?: string | null;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'La descripción es obligatoria' })
   descripcion: string;
 
   @IsDateString()
@@ -43,11 +45,30 @@ export class CrearReporteDto {
   fechaEvento: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'El barrio o sector es obligatorio' })
   @MaxLength(150)
   barrioSector: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  imagenUrl: string;
+  imagenUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  latitud?: string | null;
+
+  @IsOptional()
+  @IsString()
+  longitud?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  direccion?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
+  referencia?: string | null;
 }
+

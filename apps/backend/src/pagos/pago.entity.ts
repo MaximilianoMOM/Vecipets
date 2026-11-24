@@ -4,18 +4,23 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { Usuario } from '../usuarios/usuario.entity';
 import { Reporte } from '../reportes/reporte.entity';
+import { IntentoPago } from './intento-pago.entity';
 
 export enum EstadoPago {
   PENDIENTE = 'PENDIENTE',
   APROBADO = 'APROBADO',
   RECHAZADO = 'RECHAZADO',
   EXPIRADO = 'EXPIRADO',
+  ERROR = 'ERROR',
+  ANULADO = 'ANULADO',
 }
 
 export enum ConceptoPago {
@@ -29,16 +34,32 @@ export class Pago {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'integer', name: 'usuario_id' })
-  usuarioId: number;
+  // Usuario propietario del pago
+  @ManyToOne(() => Usuario, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario: Usuario;
 
-  @Column({ type: 'varchar', length: 100, unique: true })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    unique: true,
+  })
   referencia: string;
 
-  @Column({ type: 'integer', name: 'monto_centavos' })
+  @Column({
+    type: 'integer',
+    name: 'monto_centavos',
+  })
   montoCentavos: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'COP' })
+  @Column({
+    type: 'varchar',
+    length: 3,
+    default: 'COP',
+  })
   moneda: string;
 
   @Column({
@@ -55,6 +76,7 @@ export class Pago {
   })
   estado: EstadoPago;
 
+  // Reporte asociado cuando el pago corresponde a Alerta Turbo
   @ManyToOne(() => Reporte, {
     nullable: true,
     onDelete: 'RESTRICT',
@@ -62,6 +84,7 @@ export class Pago {
   @JoinColumn({ name: 'reporte_id' })
   reporte: Reporte | null;
 
+  // Identificador de la transacción principal o más reciente de Wompi
   @Column({
     type: 'varchar',
     length: 100,
@@ -70,12 +93,26 @@ export class Pago {
   })
   wompiTransactionId: string | null;
 
-  @Column({ type: 'text', nullable: true, name: 'checkout_url' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    name: 'checkout_url',
+  })
   checkoutUrl: string | null;
 
-  @CreateDateColumn({ name: 'creado_en', type: 'timestamptz' })
+  // Un pago puede tener varios intentos de transacción
+  @OneToMany(() => IntentoPago, (intento) => intento.pago)
+  intentos: IntentoPago[];
+
+  @CreateDateColumn({
+    name: 'creado_en',
+    type: 'timestamptz',
+  })
   creadoEn: Date;
 
-  @UpdateDateColumn({ name: 'actualizado_en', type: 'timestamptz' })
+  @UpdateDateColumn({
+    name: 'actualizado_en',
+    type: 'timestamptz',
+  })
   actualizadoEn: Date;
 }

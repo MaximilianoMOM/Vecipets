@@ -35,7 +35,10 @@ export class Reporte {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Usuario, { nullable: false, onDelete: 'RESTRICT' })
+  @ManyToOne(() => Usuario, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
@@ -57,7 +60,11 @@ export class Reporte {
   @Column({ type: 'date', name: 'fecha_evento' })
   fechaEvento: string;
 
-  @Column({ type: 'varchar', length: 150, name: 'barrio_sector' })
+  @Column({
+    type: 'varchar',
+    length: 150,
+    name: 'barrio_sector',
+  })
   barrioSector: string;
 
   @Column({ type: 'text', name: 'imagen_url' })
@@ -78,7 +85,11 @@ export class Reporte {
   })
   estado: EstadoReporte;
 
-  @Column({ type: 'boolean', default: false, name: 'es_turbo' })
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'es_turbo',
+  })
   esTurbo: boolean;
 
   @Column({
@@ -95,9 +106,46 @@ export class Reporte {
   })
   turboVenceEn: Date | null;
 
-  @CreateDateColumn({ name: 'creado_en', type: 'timestamptz' })
+  // Ubicación geográfica del reporte
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
+  latitud: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
+  longitud: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  direccion: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 250,
+    nullable: true,
+  })
+  referencia: string | null;
+
+  @CreateDateColumn({
+    name: 'creado_en',
+    type: 'timestamptz',
+  })
   creadoEn: Date;
 
-  @UpdateDateColumn({ name: 'actualizado_en', type: 'timestamptz' })
+  @UpdateDateColumn({
+    name: 'actualizado_en',
+    type: 'timestamptz',
+  })
   actualizadoEn: Date;
 }

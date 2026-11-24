@@ -5,21 +5,25 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Reporte } from './reporte.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 import { UsuariosModule } from '../usuarios/usuarios.module';
+import { ValidacionImagenesModule } from '../validacion-imagenes/validacion-imagenes.module';
 
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 
 import { ReportesController } from './reportes.controller';
 import { ReportesService } from './reportes.service';
+import { AlmacenamientoService } from './almacenamiento.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Reporte, Usuario]),
     UsuariosModule,
+    ValidacionImagenesModule,
   ],
   controllers: [ReportesController],
   providers: [
     ReportesService,
+    AlmacenamientoService,
     JwtAuthGuard,
     RolesGuard,
   ],

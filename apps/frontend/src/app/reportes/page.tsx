@@ -1,113 +1,90 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiltrosReportes } from './components/FiltrosReportes';
 import { TarjetaReporte, MascotaReporte } from './components/TarjetaReportes';
 import { ModalDetalleMascota } from './components/ModalDetalleMascota';
-import { Sparkles, PlusCircle } from 'lucide-react';
+import { Sparkles, PlusCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-
-// Datos de prueba para el Valle de Aburrá
-const REPORTES_MOCK: MascotaReporte[] = [
-    {
-        id: '1',
-        nombre: 'Rocky',
-        especie: 'Perro',
-        raza: 'Golden Retriever',
-        estado: 'perdida',
-        esTurbo: true,
-        barrio: 'Laureles',
-        ciudad: 'Medellín',
-        fecha: '04 de Noviembre, 2026',
-        imagen: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=600',
-        descripcion: 'Se asustó con pólvora cerca a la avenida Nutibara. Lleva collar azul sin placa.',
-        edad: '3 años',
-        tamano: 'Grande',
-        color: 'Dorado',
-        recompensa: '$300.000 COP'
-    },
-    {
-        id: '2',
-        nombre: 'Michi',
-        especie: 'Gato',
-        raza: 'Siamés',
-        estado: 'encontrada',
-        esTurbo: false,
-        barrio: 'Niquía',
-        ciudad: 'Bello',
-        fecha: '03 de Noviembre, 2026',
-        imagen: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=600',
-        descripcion: 'Encontrado en la estación del Metro Niquía. Es muy manso y resguardado en veterinaria local.',
-        edad: '1 año',
-        tamano: 'Pequeño',
-        color: 'Beige y Marrón'
-    },
-    {
-        id: '3',
-        nombre: 'Bruno',
-        especie: 'Perro',
-        raza: 'Bulldog Francés',
-        estado: 'perdida',
-        esTurbo: false,
-        barrio: 'Zúñiga',
-        ciudad: 'Envigado',
-        fecha: '02 de Noviembre, 2026',
-        imagen: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=600',
-        descripcion: 'Requiere medicamento diario para la piel. Mancha negra en su ojo derecho.',
-        edad: '4 años',
-        tamano: 'Mediano',
-        color: 'Blanco y Negro',
-        recompensa: '$150.000 COP'
-    },
-    {
-        id: '4',
-        nombre: 'Luna',
-        especie: 'Gato',
-        raza: 'Mestizo',
-        estado: 'perdida',
-        esTurbo: true,
-        barrio: 'Ditaires',
-        ciudad: 'Itagüí',
-        fecha: '04 de Noviembre, 2026',
-        imagen: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&q=80&w=600',
-        descripcion: 'Gata de ojos verdes claros, muy esquiva con extraños. Se salió por la ventana.',
-        edad: '2 años',
-        tamano: 'Pequeño',
-        color: 'Negro sólido'
-    }
-];
+import apiClient from '@/lib/api-client';
+import CheckoutTurboModal from '../reportar/reportes/CheckoutTurboModal';
 
 export default function ReportesPage() {
+    const [reportes, setReportes] = useState<MascotaReporte[]>([]);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const [busqueda, setBusqueda] = useState('');
     const [filtroEspecie, setFiltroEspecie] = useState('todas');
     const [filtroEstado, setFiltroEstado] = useState('todos');
     const [filtroMunicipio, setFiltroMunicipio] = useState('todos');
 
-    // Estado para controlar qué mascota está abierta en el Modal de Detalles
+    // Modal de Detalles
     const [mascotaSeleccionada, setMascotaSeleccionada] = useState<MascotaReporte | null>(null);
 
-    // Filtrado reactivo en tiempo real
-    const reportesFiltrados = useMemo(() => {
-        return REPORTES_MOCK.filter((m) => {
-            const coincideBusqueda =
-                m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                m.raza.toLowerCase().includes(busqueda.toLowerCase()) ||
-                m.barrio.toLowerCase().includes(busqueda.toLowerCase()) ||
-                m.descripcion.toLowerCase().includes(busqueda.toLowerCase());
+    // Modal de Alerta Turbo
+    const [modalTurboAbierto, setModalTurboAbierto] = useState(false);
+    const [reporteParaTurbo, setReporteParaTurbo] = useState<MascotaReporte | null>(null);
 
-            const coincideEspecie = filtroEspecie === 'todas' || m.especie === filtroEspecie;
-            const coincideEstado = filtroEstado === 'todos' || m.estado === filtroEstado;
-            const coincideMunicipio = filtroMunicipio === 'todos' || m.ciudad === filtroMunicipio;
+    const cargarReportes = useCallback(async () => {
+        setCargando(true);
+        setError(null);
 
-            return coincideBusqueda && coincideEspecie && coincideEstado && coincideMunicipio;
-        });
+        try {
+            const params: Record<string, string | number> = {
+                limite: 60,
+                pagina: 1,
+            };
+
+            if (busqueda.trim()) {
+                params.busqueda = busqueda.trim();
+            }
+
+            if (filtroEspecie && filtroEspecie !== 'todas') {
+                params.especie = filtroEspecie;
+            }
+
+            if (filtroEstado && filtroEstado !== 'todos') {
+                params.tipo = filtroEstado === 'perdida' ? 'PERDIDA' : 'HALLAZGO';
+            }
+
+            if (filtroMunicipio && filtroMunicipio !== 'todos') {
+                params.barrioSector = filtroMunicipio;
+            }
+
+            const respuesta = await apiClient.get('/reportes', { params });
+            const datos = respuesta.data?.datos ?? [];
+
+            setReportes(datos);
+        } catch (err: any) {
+            console.error('Error cargando reportes:', err);
+            setError(
+                err.response?.data?.message ||
+                'No fue posible cargar los reportes en este momento.'
+            );
+        } finally {
+            setCargando(false);
+        }
     }, [busqueda, filtroEspecie, filtroEstado, filtroMunicipio]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            void cargarReportes();
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [cargarReportes]);
 
     const handleResetFiltros = () => {
         setBusqueda('');
         setFiltroEspecie('todas');
         setFiltroEstado('todos');
         setFiltroMunicipio('todos');
+    };
+
+    const handleAbrirTurbo = (mascota: MascotaReporte) => {
+        setReporteParaTurbo(mascota);
+        setModalTurboAbierto(true);
     };
 
     return (
@@ -118,13 +95,13 @@ export default function ReportesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-full">
-                            Feed de Mascota Perdidas y Encontradas
+                            Feed en Vivo • Mascotas Perdidas y Encontradas
                         </span>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
                             Reportes en la Comunidad
                         </h1>
                         <p className="text-xs sm:text-sm text-slate-500">
-                            Explora las alertas activas en Medellín y el Valle de Aburrá.
+                            Explora las alertas activas con ubicación confirmada en Medellín y el Valle de Aburrá.
                         </p>
                     </div>
 
@@ -146,14 +123,29 @@ export default function ReportesPage() {
                     setFiltroEstado={setFiltroEstado}
                     filtroMunicipio={filtroMunicipio}
                     setFiltroMunicipio={setFiltroMunicipio}
-                    totalResultados={reportesFiltrados.length}
+                    totalResultados={reportes.length}
                     onReset={handleResetFiltros}
                 />
 
+                {/* Estado de Carga */}
+                {cargando && (
+                    <div className="py-20 flex flex-col items-center justify-center space-y-3">
+                        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                        <p className="text-xs font-semibold text-slate-500">Cargando reportes comunitarios...</p>
+                    </div>
+                )}
+
+                {/* Error */}
+                {!cargando && error && (
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold text-center">
+                        {error}
+                    </div>
+                )}
+
                 {/* Listado / Grid de Tarjetas */}
-                {reportesFiltrados.length > 0 ? (
+                {!cargando && !error && reportes.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {reportesFiltrados.map((mascota) => (
+                        {reportes.map((mascota) => (
                             <TarjetaReporte
                                 key={mascota.id}
                                 mascota={mascota}
@@ -161,8 +153,11 @@ export default function ReportesPage() {
                             />
                         ))}
                     </div>
-                ) : (
-                    <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 space-y-3">
+                )}
+
+                {/* Lista vacía */}
+                {!cargando && !error && reportes.length === 0 && (
+                    <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 space-y-3 shadow-sm">
                         <Sparkles className="w-8 h-8 text-slate-300 mx-auto" />
                         <h3 className="text-base font-bold text-slate-700">No se encontraron mascotas con esos criterios</h3>
                         <p className="text-xs text-slate-400">Prueba cambiando las palabras clave o limpiando los filtros de búsqueda.</p>
@@ -179,7 +174,24 @@ export default function ReportesPage() {
                 <ModalDetalleMascota
                     mascota={mascotaSeleccionada}
                     onClose={() => setMascotaSeleccionada(null)}
+                    onActivarTurbo={(m) => {
+                        setMascotaSeleccionada(null);
+                        handleAbrirTurbo(m);
+                    }}
                 />
+
+                {/* Modal de Pago de Alerta Turbo */}
+                {reporteParaTurbo && (
+                    <CheckoutTurboModal
+                        isOpen={modalTurboAbierto}
+                        onClose={() => {
+                            setModalTurboAbierto(false);
+                            setReporteParaTurbo(null);
+                        }}
+                        reporteId={Number(reporteParaTurbo.id)}
+                        nombreMascota={reporteParaTurbo.nombre}
+                    />
+                )}
 
             </div>
         </main>

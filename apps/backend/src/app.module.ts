@@ -8,6 +8,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { AuthModule } from './auth/auth.module';
 import { PagosModule } from './pagos/pagos.module';
 import { ReportesModule } from './reportes/reportes.module';
+import { ValidacionImagenesModule } from './validacion-imagenes/validacion-imagenes.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ReportesModule } from './reportes/reportes.module';
     AuthModule,
     PagosModule,
     ReportesModule,
+    ValidacionImagenesModule,
   ],
   controllers: [AppController],
 })

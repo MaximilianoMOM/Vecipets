@@ -1,0 +1,85 @@
+
+import {
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  IsDateString,
+  Matches,
+} from 'class-validator';
+
+import {
+  TipoReporte,
+  EstadoReporte,
+  EstadoAprobacionReporte,
+} from '../reporte.entity';
+
+export class ActualizarReporteDto {
+  @IsOptional()
+  @IsEnum(TipoReporte, {
+    message: 'El tipo debe ser PERDIDA o HALLAZGO',
+  })
+  tipo?: TipoReporte;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  nombre?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['Perro', 'Gato', 'Otro'], {
+    message: 'La especie debe ser Perro, Gato u Otro',
+  })
+  especie?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  raza?: string | null;
+
+  @IsOptional()
+  @IsString()
+  descripcion?: string;
+
+  @IsOptional()
+  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'La fecha debe tener el formato YYYY-MM-DD',
+  })
+  fechaEvento?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  barrioSector?: string;
+
+  @IsOptional()
+  @IsEnum(EstadoReporte, {
+    message: 'El estado debe ser PUBLICO, RESUELTO o CERRADO',
+  })
+  estado?: EstadoReporte;
+
+  @IsOptional()
+  @IsEnum(EstadoAprobacionReporte)
+  estadoAprobacion?: EstadoAprobacionReporte;
+
+  @IsOptional()
+  @IsString()
+  latitud?: string | null;
+
+  @IsOptional()
+  @IsString()
+  longitud?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  direccion?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
+  referencia?: string | null;
+}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Camera,
@@ -12,11 +13,13 @@ import {
   Zap,
   ShieldAlert,
   CheckCircle2,
-  Bot,
   X,
   Search,
   Crosshair,
 } from 'lucide-react';
+import apiClient from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+import CheckoutTurboModal from './reportes/CheckoutTurboModal';
 
 export interface SeleccionMapa {
   lat: number;
@@ -75,28 +78,35 @@ function parsearCoordenadas(texto: string): Coordenadas | null {
   return { lat, lng };
 }
 
-export default function FormularioReporteContenido() {
+export default function ReportarPage() {
+  const router = useRouter();
+  const { user, loading: cargandoUsuario } = useAuth();
+
   const [formData, setFormData] = useState({
+    tipo: 'PERDIDA' as 'PERDIDA' | 'HALLAZGO',
     nombre: '',
     especie: 'Perro' as 'Perro' | 'Gato' | 'Otro',
     raza: '',
-    edad: '',
     descripcion: '',
     fecha: '',
     barrioSector: '',
-    imagenUrl: null as string | null,
+    direccion: '',
+    referencia: '',
     esTurbo: false,
   });
 
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
+  const [previewImagen, setPreviewImagen] = useState<string | null>(null);
+
   const [ubicacion, setUbicacion] = useState<Coordenadas>(COORDENADAS_DEFECTO);
   const [buscandoUbicacion, setBuscandoUbicacion] = useState(false);
-  const [cargandoImagen, setCargandoImagen] = useState(false);
-  const [fotoValidadaPorIA, setFotoValidadaPorIA] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [metodoPago, setMetodoPago] = useState<'NEQUI' | 'PSE' | 'TARJETA'>('NEQUI');
-  const [procesandoPago, setProcesandoPago] = useState(false);
+
+  // Modal Checkout Wompi Turbo
+  const [reporteCreadoId, setReporteCreadoId] = useState<number | null>(null);
+  const [modalTurboAbierto, setModalTurboAbierto] = useState(false);
 
   const origenFueMapaRef = useRef(false);
 
@@ -152,7 +162,7 @@ export default function FormularioReporteContenido() {
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        console.error('Error buscando ubicación en el mapa:', err);
+        console.error('Error buscando ubicación en mapa:', err);
       }
     } finally {
       setBuscandoUbicacion(false);
@@ -174,7 +184,7 @@ export default function FormularioReporteContenido() {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       buscarUbicacionEnMapa(consulta, controller.signal);
-    }, 500);
+    }, 600);
 
     return () => {
       clearTimeout(timer);
@@ -188,7 +198,11 @@ export default function FormularioReporteContenido() {
 
     if (direccion && direccion.trim()) {
       origenFueMapaRef.current = true;
-      setFormData((prev) => ({ ...prev, barrioSector: direccion.trim() }));
+      setFormData((prev) => ({
+        ...prev,
+        barrioSector: direccion.trim(),
+        direccion: direccion.trim(),
+      }));
       return;
     }
 
@@ -208,7 +222,11 @@ export default function FormularioReporteContenido() {
           `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
         origenFueMapaRef.current = true;
-        setFormData((prev) => ({ ...prev, barrioSector: legible }));
+        setFormData((prev) => ({
+          ...prev,
+          barrioSector: legible,
+          direccion: data?.display_name || legible,
+        }));
       }
     } catch {
       origenFueMapaRef.current = true;
@@ -231,85 +249,120 @@ export default function FormularioReporteContenido() {
     if (errorValidacion) setErrorValidacion(null);
   };
 
-  const handlePasteDireccion = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const textoPegado = e.clipboardData.getData('text');
-    if (textoPegado && textoPegado.trim().length >= 2) {
-      setTimeout(() => {
-        buscarUbicacionEnMapa(textoPegado);
-      }, 50);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setCargandoImagen(true);
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorValidacion('La imagen no puede pesar más de 5 MB.');
+        return;
+      }
+      setArchivoSeleccionado(file);
+      setPreviewImagen(URL.createObjectURL(file));
       setErrorValidacion(null);
-      setFotoValidadaPorIA(false);
-
-      setTimeout(() => {
-        const nombreArchivo = file.name.toLowerCase();
-        const esPaisajeFalso =
-          nombreArchivo.includes('paisaje') || nombreArchivo.includes('montana');
-
-        if (esPaisajeFalso) {
-          setErrorValidacion(
-            '🤖 Filtro IA: La imagen no corresponde a una mascota. Sube una foto de un perro o gato.'
-          );
-          setFotoValidadaPorIA(false);
-          setFormData((prev) => ({ ...prev, imagenUrl: null }));
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            imagenUrl: URL.createObjectURL(file),
-          }));
-          setFotoValidadaPorIA(true);
-        }
-        setCargandoImagen(false);
-      }, 1200);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorValidacion(null);
+    setMensajeExito(null);
 
-    if (!formData.imagenUrl || !fotoValidadaPorIA) {
-      setErrorValidacion(
-        'Debes subir una fotografía de mascota válida aprobada por el filtro de IA.'
-      );
+    if (!user) {
+      setErrorValidacion('Debes iniciar sesión con tu cuenta de ciudadano para publicar un reporte.');
+      return;
+    }
+
+    if (user.rol !== 'CIUDADANO') {
+      setErrorValidacion('Solo los usuarios con rol CIUDADANO pueden crear reportes.');
+      return;
+    }
+
+    if (!archivoSeleccionado) {
+      setErrorValidacion('La fotografía de la mascota es obligatoria para el análisis con Google Vision.');
       return;
     }
 
     if (!formData.barrioSector.trim()) {
-      setErrorValidacion(
-        'Debes indicar el barrio o sector del incidente o hacer clic en el mapa.'
-      );
+      setErrorValidacion('Debes indicar el barrio o sector del suceso o señalarlo en el mapa.');
       return;
     }
 
-    if (formData.esTurbo) {
-      setIsModalOpen(true);
-      return;
-    }
-
-    ejecutarEnvioBackend();
-  };
-
-  const ejecutarEnvioBackend = () => {
     setEnviando(true);
-    setProcesandoPago(false);
-    setTimeout(() => {
+
+    try {
+      const data = new FormData();
+      data.append('imagen', archivoSeleccionado);
+      data.append('tipo', formData.tipo);
+      data.append('nombre', formData.nombre.trim());
+      data.append('especie', formData.especie);
+      if (formData.raza.trim()) data.append('raza', formData.raza.trim());
+      data.append('descripcion', formData.descripcion.trim());
+      data.append('fechaEvento', formData.fecha);
+      data.append('barrioSector', formData.barrioSector.trim());
+      if (formData.direccion.trim()) data.append('direccion', formData.direccion.trim());
+      if (formData.referencia.trim()) data.append('referencia', formData.referencia.trim());
+      data.append('latitud', ubicacion.lat.toString());
+      data.append('longitud', ubicacion.lng.toString());
+
+      const res = await apiClient.post('/reportes', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const reporteId = res.data?.reporte?.id;
+      const estadoReporte = res.data?.validacion?.estadoReporte;
+      const mensajeBackend = res.data?.mensaje || 'Reporte registrado con éxito.';
+
       setEnviando(false);
-      setIsModalOpen(false);
-      alert(
-        `¡Reporte de mascota perdida publicado con éxito! (${ubicacion.lat.toFixed(
-          5
-        )}, ${ubicacion.lng.toFixed(5)}) ${
-          formData.esTurbo ? '(Alerta Turbo Activada 🚀)' : ''
-        }`
-      );
-    }, 1200);
+
+      if (formData.esTurbo && estadoReporte === 'PUBLICO' && reporteId) {
+        // Reporte aprobado con opción Turbo seleccionada: abrir modal oficial de Wompi
+        setReporteCreadoId(reporteId);
+        setModalTurboAbierto(true);
+      } else {
+        setMensajeExito(mensajeBackend);
+        setTimeout(() => {
+          router.push('/reportes');
+        }, 2200);
+      }
+    } catch (err: any) {
+      setEnviando(false);
+      console.error('Error al enviar reporte:', err);
+      const mensaje =
+        err.response?.data?.message ||
+        'Ocurrió un error al procesar el reporte. Verifica la información e intenta nuevamente.';
+      setErrorValidacion(mensaje);
+    }
   };
+
+  if (!cargandoUsuario && !user) {
+    return (
+      <main className="min-h-screen bg-slate-50 py-16 px-4 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-3xl max-w-md w-full text-center space-y-4 shadow-sm border border-slate-200">
+          <ShieldAlert className="w-12 h-12 text-amber-500 mx-auto" />
+          <h2 className="text-xl font-black text-slate-900">Inicio de Sesión Requerido</h2>
+          <p className="text-xs text-slate-600">
+            Para publicar una mascota perdida o encontrada y proteger la veracidad de la comunidad, debes tener una cuenta ciudadana verificada.
+          </p>
+          <div className="pt-2 flex flex-col gap-2">
+            <Link
+              href="/login"
+              className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+            >
+              Iniciar Sesión
+            </Link>
+            <Link
+              href="/registro"
+              className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all"
+            >
+              Crear Cuenta Ciudadana
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -317,62 +370,101 @@ export default function FormularioReporteContenido() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <Link
-              href="/"
+              href="/reportes"
               className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors mb-2"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" /> Volver al inicio
+              <ArrowLeft className="w-4 h-4 mr-1" /> Volver a los reportes
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              🚨 Reportar Mascota Perdida
+              🚨 Registrar Reporte de Mascota
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Completa la información y valida tu reporte con nuestro filtro
-              inteligente de seguridad.
+              Publicación automática tras verificación de fotografía con Google Cloud Vision.
             </p>
           </div>
 
-          <span className="self-start sm:self-center px-3 py-1 bg-red-100 text-red-800 font-semibold text-xs rounded-full border border-red-200">
-            UI-002 • Formulario con Filtro IA
+          <span className="self-start sm:self-center px-3 py-1 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-full border border-emerald-200">
+            {user?.nombre ? `Sesión: ${user.nombre}` : 'Ciudadano Autenticado'}
           </span>
         </div>
 
         {errorValidacion && (
           <div
-            className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 shadow-sm"
+            className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 shadow-sm text-rose-800 text-xs font-semibold"
             role="alert"
           >
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-red-800">
-              <strong className="font-bold">Aviso:</strong> {errorValidacion}
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold">Atención:</strong> {errorValidacion}
             </div>
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6"
-        >
+        {mensajeExito && (
+          <div
+            className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 shadow-sm text-emerald-800 text-xs font-semibold"
+            role="alert"
+          >
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold">¡Éxito!</strong> {mensajeExito} Redirigiendo al feed de la comunidad...
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-5">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <ShieldAlert className="w-4 h-4 text-red-500" />
+              <ShieldAlert className="w-4 h-4 text-emerald-600" />
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                1. Información de la Mascota
+                1. Datos del Caso y de la Mascota
               </h2>
+            </div>
+
+            {/* Selector de Tipo */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Tipo de Reporte *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData((p) => ({ ...p, tipo: 'PERDIDA' }))}
+                  className={`p-3 rounded-xl border-2 text-xs font-black transition-all ${
+                    formData.tipo === 'PERDIDA'
+                      ? 'border-rose-500 bg-rose-50 text-rose-900'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  🔴 Mascota Perdida
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((p) => ({ ...p, tipo: 'HALLAZGO', esTurbo: false }))}
+                  className={`p-3 rounded-xl border-2 text-xs font-black transition-all ${
+                    formData.tipo === 'HALLAZGO'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  🟢 Mascota Encontrada
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nombre *
+                  Nombre de la Mascota *
                 </label>
                 <input
                   name="nombre"
                   type="text"
                   required
-                  placeholder="Ej. Rocky"
+                  placeholder="Ej. Bruno o Sin Identificar"
                   value={formData.nombre}
                   onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
@@ -388,7 +480,7 @@ export default function FormularioReporteContenido() {
                 >
                   <option value="Perro">🐶 Perro</option>
                   <option value="Gato">🐱 Gato</option>
-                  <option value="Otro">🐾 Otro</option>
+                  <option value="Otro">🐾 Otro animal</option>
                 </select>
               </div>
             </div>
@@ -396,26 +488,27 @@ export default function FormularioReporteContenido() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Raza
+                  Raza (Opcional)
                 </label>
                 <input
                   name="raza"
                   type="text"
-                  placeholder="Ej. Golden Retriever"
+                  placeholder="Ej. Golden Retriever / Mestizo"
                   value={formData.raza}
                   onChange={handleChange}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Edad aproximada
+                  Fecha del Evento *
                 </label>
                 <input
-                  name="edad"
-                  type="text"
-                  placeholder="Ej. 2 años"
-                  value={formData.edad}
+                  name="fecha"
+                  type="date"
+                  required
+                  value={formData.fecha}
                   onChange={handleChange}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                 />
@@ -424,121 +517,102 @@ export default function FormularioReporteContenido() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Fecha de Extravío *
-              </label>
-              <input
-                name="fecha"
-                type="date"
-                required
-                value={formData.fecha}
-                onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Descripción y Señas Particulares
+                Descripción Detallada *
               </label>
               <textarea
                 name="descripcion"
                 rows={3}
-                placeholder="Detalles sobre cómo se perdió..."
+                required
+                placeholder="Indica cómo ocurrió, collar, marcas corporales, señas particulares y recomendaciones..."
                 value={formData.descripcion}
                 onChange={handleChange}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none resize-none"
               />
             </div>
 
-            <div className="pt-3 border-t border-slate-100">
-              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                2. Nivel de Visibilidad
-              </span>
+            {/* Opción Alerta Turbo solo para mascotas perdidas */}
+            {formData.tipo === 'PERDIDA' && (
+              <div className="pt-3 border-t border-slate-100">
+                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  2. Impulso Comunitario (Opcional)
+                </span>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div
-                  onClick={() => setFormData((p) => ({ ...p, esTurbo: false }))}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    !formData.esTurbo
-                      ? 'border-blue-600 bg-blue-50/30'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">
-                        Estándar (Gratis)
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        Publicación normal en el feed y mapa.
-                      </span>
+                <div className="grid grid-cols-1 gap-2.5">
+                  <div
+                    onClick={() => setFormData((p) => ({ ...p, esTurbo: false }))}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                      !formData.esTurbo
+                        ? 'border-emerald-600 bg-emerald-50/40'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-900 text-xs block">
+                          Publicación Estándar (Gratis)
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Aparece inmediatamente en el feed y en el mapa.
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div
-                  onClick={() => setFormData((p) => ({ ...p, esTurbo: true }))}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    formData.esTurbo
-                      ? 'border-amber-500 bg-amber-50/50'
-                      : 'border-slate-200 hover:border-amber-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-500 text-white rounded-lg shrink-0">
-                      <Zap className="w-4 h-4 fill-white" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-amber-900 text-sm block">
-                        Alerta Turbo ($15.000 COP)
-                      </span>
-                      <span className="text-xs text-slate-600">
-                        Máxima prioridad, notificaciones y afiche con QR.
-                      </span>
+                  <div
+                    onClick={() => setFormData((p) => ({ ...p, esTurbo: true }))}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                      formData.esTurbo
+                        ? 'border-amber-500 bg-amber-50/60'
+                        : 'border-slate-200 hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-500 text-white rounded-lg shrink-0">
+                        <Zap className="w-4 h-4 fill-white" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-amber-950 text-xs block">
+                          Activar Alerta Turbo 🚀 ($15.000 COP)
+                        </span>
+                        <span className="text-[11px] text-slate-600">
+                          Prioridad número 1 durante 7 días continuos en mapa y feed.
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
+          <div className="lg:col-span-5 space-y-5">
+            {/* Fotografía de la mascota */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
               <div className="flex items-center justify-between mb-2">
                 <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Fotografía con Filtro IA *
+                  Fotografía de la Mascota *
                 </span>
-                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Bot className="w-3 h-3" /> IA Anti-Fraude
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Validación Vision
                 </span>
               </div>
 
               <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50/50">
-                {cargandoImagen ? (
-                  <div className="py-8 flex flex-col items-center justify-center text-indigo-600">
-                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                    <span className="text-xs font-bold">
-                      Analizando imagen con IA...
-                    </span>
-                  </div>
-                ) : formData.imagenUrl && fotoValidadaPorIA ? (
+                {previewImagen ? (
                   <div className="relative">
                     <img
-                      src={formData.imagenUrl}
-                      alt="Preview"
+                      src={previewImagen}
+                      alt="Vista previa"
                       className="w-full h-44 object-cover rounded-lg shadow-sm"
                     />
-                    <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Mascota Verificada por IA
-                    </div>
                     <button
                       type="button"
                       onClick={() => {
-                        setFormData((p) => ({ ...p, imagenUrl: null }));
-                        setFotoValidadaPorIA(false);
+                        setArchivoSeleccionado(null);
+                        setPreviewImagen(null);
                       }}
-                      className="mt-2 text-xs font-bold text-red-600 hover:underline"
+                      className="mt-2 text-xs font-bold text-rose-600 hover:underline"
                     >
                       Cambiar fotografía
                     </button>
@@ -547,16 +621,16 @@ export default function FormularioReporteContenido() {
                   <label className="cursor-pointer py-6 flex flex-col items-center justify-center">
                     <Camera className="w-8 h-8 text-slate-400 mb-2" />
                     <span className="text-sm font-bold text-slate-700">
-                      Subir foto de la mascota
+                      Seleccionar imagen (JPG, PNG, WEBP)
                     </span>
-                    <span className="text-xs text-slate-400 mt-1">
-                      Prueba nombrando el archivo ej: &quot;paisaje.jpg&quot; para
-                      simular rechazo
+                    <span className="text-[11px] text-slate-400 mt-1">
+                      Máximo 5 MB. Pasará por Google Cloud Vision antes de publicarse.
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
+                      accept="image/jpeg,image/png,image/webp"
+                      required
+                      onChange={handleFileChange}
                       className="hidden"
                     />
                   </label>
@@ -564,13 +638,14 @@ export default function FormularioReporteContenido() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
+            {/* Ubicación y Mapa */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80">
               <div className="flex items-center justify-between mb-2">
                 <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Última Ubicación Vista *
+                  Ubicación del Suceso *
                 </span>
                 {buscandoUbicacion && (
-                  <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1">
+                  <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Ubicando...
                   </span>
                 )}
@@ -584,36 +659,31 @@ export default function FormularioReporteContenido() {
                       name="barrioSector"
                       type="text"
                       required
-                      placeholder="Ej. Laureles, Medellín o 6.24, -75.58"
+                      placeholder="Ej. Laureles, Belén, Poblado..."
                       value={formData.barrioSector}
                       onChange={handleChange}
-                      onPaste={handlePasteDireccion}
                       className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => buscarUbicacionEnMapa(formData.barrioSector)}
-                    className="px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors shrink-0 flex items-center gap-1 text-xs font-bold"
-                    title="Buscar en el mapa"
+                    className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-colors shrink-0 flex items-center gap-1 text-xs font-bold"
                   >
                     <Search className="w-4 h-4" />
-                    <span className="hidden sm:inline">Buscar</span>
                   </button>
                 </div>
 
                 <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <Crosshair className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <span>
-                    Haz clic en el mapa para marcar el punto o escribe/pega la dirección.
-                  </span>
+                  <Crosshair className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Haz clic en el mapa para marcar el punto exacto.</span>
                 </p>
 
-                <div className="w-full h-60 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative">
+                <div className="w-full h-56 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative">
                   <MapaInteractivo
                     lat={ubicacion.lat}
                     lng={ubicacion.lng}
-                    etiqueta={formData.barrioSector || 'Ubicación del reporte'}
+                    etiqueta={formData.barrioSector || 'Ubicación'}
                     onSeleccionarUbicacion={handleSeleccionDesdeMapa}
                   />
                 </div>
@@ -623,111 +693,38 @@ export default function FormularioReporteContenido() {
             <button
               type="submit"
               disabled={enviando}
-              className={`w-full py-4 px-6 rounded-xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm ${
+              className={`w-full py-4 px-6 rounded-xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
                 formData.esTurbo
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
               }`}
             >
               {enviando ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Verificando con Google Vision...
+                </>
               ) : formData.esTurbo ? (
                 <>
-                  <Zap className="w-4 h-4 fill-white" /> Continuar a Pago e
-                  Impulsar con Turbo
+                  <Zap className="w-4 h-4 fill-white" /> Publicar y Continuar a Wompi
                 </>
               ) : (
-                'Publicar Reporte Estándar'
+                'Publicar Reporte'
               )}
             </button>
           </div>
         </form>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/30">
-                  <Zap className="w-6 h-6 fill-white" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-lg">
-                    Activar Alerta Turbo
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Impulsa el reporte de {formData.nombre || 'tu mascota'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 mb-5">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-600 font-medium">
-                    Servicio Alerta Turbo 24h
-                  </span>
-                  <span className="font-bold text-slate-900">$15.000 COP</span>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Selecciona el método de pago
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('NEQUI')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'NEQUI'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    💜 Nequi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('PSE')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'PSE'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    🏦 PSE
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMetodoPago('TARJETA')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 ${
-                      metodoPago === 'TARJETA'
-                        ? 'border-amber-500 bg-amber-50 text-amber-900'
-                        : 'border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    💳 Tarjeta
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={ejecutarEnvioBackend}
-                disabled={procesandoPago}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-sm"
-              >
-                <CheckCircle2 className="w-4 h-4" /> Pagar $15.000 y Publicar Turbo
-              </button>
-            </div>
-          </div>
+        {/* Modal de Alerta Turbo conectado con Wompi */}
+        {reporteCreadoId && (
+          <CheckoutTurboModal
+            isOpen={modalTurboAbierto}
+            onClose={() => {
+              setModalTurboAbierto(false);
+              router.push('/reportes');
+            }}
+            reporteId={reporteCreadoId}
+            nombreMascota={formData.nombre}
+          />
         )}
       </div>
     </main>

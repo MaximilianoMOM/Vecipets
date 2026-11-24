@@ -3,10 +3,15 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import express from 'express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Servir archivos estáticos subidos (fotografías de mascotas)
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
   // Prefijo global de la API
   app.setGlobalPrefix('api/v1');
@@ -23,12 +28,16 @@ async function bootstrap() {
     }),
   );
 
+  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+  const origenesPermitidos = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(frontendUrl ? [frontendUrl] : []),
+  ];
+
   // Permite que el frontend envíe cookies al backend
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-    ],
+    origin: origenesPermitidos,
     credentials: true,
   });
 

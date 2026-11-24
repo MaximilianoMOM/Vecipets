@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { PagosService } from './pagos.service';
@@ -18,11 +19,18 @@ interface UsuarioSesion {
   sub: number;
 }
 
+interface RecuperarPagoDto {
+  transactionId: string;
+}
+
 @Controller('pagos')
 @UseGuards(JwtAuthGuard)
 export class PagosController {
-  constructor(private readonly pagosService: PagosService) {}
+  constructor(
+    private readonly pagosService: PagosService,
+  ) {}
 
+  // Crear pago de Alerta Turbo
   @Post('alerta-turbo')
   async crearPagoTurbo(
     @UsuarioAutenticado() usuario: UsuarioSesion,
@@ -34,11 +42,39 @@ export class PagosController {
     );
   }
 
+  // Consultar un pago
   @Get(':id')
   async consultarPago(
     @UsuarioAutenticado() usuario: UsuarioSesion,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.pagosService.consultarPago(id, usuario.sub);
+    return this.pagosService.consultarPago(
+      id,
+      usuario.sub,
+    );
+  }
+
+  // Recuperar una transacción existente desde Wompi
+  @Post(':id/recuperar-wompi')
+  async recuperarPagoWompi(
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RecuperarPagoDto,
+  ) {
+    if (
+      !dto ||
+      typeof dto.transactionId !== 'string' ||
+      !dto.transactionId.trim()
+    ) {
+      throw new BadRequestException(
+        'Debes proporcionar el ID de la transacción de Wompi.',
+      );
+    }
+
+    return this.pagosService.recuperarTransaccionWompi(
+      id,
+      usuario.sub,
+      dto.transactionId.trim(),
+    );
   }
 }
