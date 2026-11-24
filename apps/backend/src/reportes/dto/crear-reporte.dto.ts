@@ -74,7 +74,7 @@ export class CrearReporteDto {
   referencia?: string | null;
 
   @IsOptional()
-  @IsNumber({ maxDecimals: 2 })
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   recompensa?: number | null;
 }
