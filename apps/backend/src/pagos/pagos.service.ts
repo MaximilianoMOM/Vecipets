@@ -27,6 +27,9 @@ import {
   EstadoReporte,
 } from '../reportes/reporte.entity';
 
+import { Jornada } from '../jornadas/jornada.entity';
+import { ReservaJornada, EstadoReservaJornada } from '../jornadas/reserva-jornada.entity';
+
 import { WompiService } from './wompi.service';
 import { ConfigService } from '@nestjs/config';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
@@ -45,6 +48,12 @@ export class PagosService {
 
     @InjectRepository(Reporte)
     private readonly reporteRepository: Repository<Reporte>,
+
+    @InjectRepository(Jornada)
+    private readonly jornadaRepository: Repository<Jornada>,
+
+    @InjectRepository(ReservaJornada)
+    private readonly reservaJornadaRepository: Repository<ReservaJornada>,
 
     private readonly wompiService: WompiService,
     private readonly configService: ConfigService,
@@ -728,6 +737,59 @@ export class PagosService {
       }
 
       await queryRunner.manager.save(Pago, pago);
+
+      // Gestión de cupos para reservas de jornada (APARTADO_RESERVA).
+      // El cupo se retiene al crear la reserva. Al confirmar el pago no se
+      // descuenta de nuevo; solo se marca la reserva como confirmada.
+      // Si el pago se rechaza/anula/error, se libera el cupo.
+      if (pago.concepto === ConceptoPago.APARTADO_RESERVA) {
+        const reserva = await queryRunner.manager.findOne(ReservaJornada, {
+          where: { pago: { id: pago.id } },
+          relations: { jornada: true },
+        });
+
+        if (reserva && reserva.jornada) {
+          const esAprobacionInicial =
+            nuevoEstado === EstadoPago.APROBADO &&
+            !pagoYaEstabaAprobado &&
+            !yaExistiaIntentoAprobado;
+
+          // Pre-comparar estados para evitar problemas de narrowing de TypeScript
+          // con tipos enum discriminados en ramas condicionales.
+          const esEstadoRechazo =
+            [
+              EstadoPago.RECHAZADO,
+              EstadoPago.ANULADO,
+              EstadoPago.ERROR,
+              EstadoPago.EXPIRADO,
+            ].includes(nuevoEstado);
+
+          const esEstadoExpirado = [EstadoPago.EXPIRADO].includes(nuevoEstado);
+
+          if (esAprobacionInicial) {
+            // Confirmar la reserva sin tocar el cupo (ya fue retenido al crearla).
+            if (reserva.estado !== EstadoReservaJornada.CONFIRMADA) {
+              reserva.estado = EstadoReservaJornada.CONFIRMADA;
+              reserva.confirmadaEn = new Date();
+              await queryRunner.manager.save(ReservaJornada, reserva);
+            }
+          } else if (
+            reserva.estado === EstadoReservaJornada.PENDIENTE &&
+            esEstadoRechazo
+          ) {
+            // Liberar el cupo retenido porque el pago no se aprobó.
+            reserva.jornada.cuposDisponibles += 1;
+            await queryRunner.manager.save(Jornada, reserva.jornada);
+
+            reserva.estado = esEstadoExpirado
+              ? EstadoReservaJornada.EXPIRADA
+              : EstadoReservaJornada.RECHAZADA;
+            await queryRunner.manager.save(ReservaJornada, reserva);
+          }
+        }
+      }
+
+      // Turbo solo se activa en la primera aprobación del pago.
 
       // Turbo solo se activa en la primera aprobación del pago.
       // Una segunda transacción aprobada no extiende su duración.
