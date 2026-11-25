@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import AccountLayout, { accountCard, accountSecondary } from '../components/common/AccountLayout';
+import UsuariosAdmin from './UsuariosAdmin';
 import { MapItem } from '../mapa/MapClient'; // O la ruta donde tengas tu tipo MapItem
 
 interface ReporteModeracion extends MapItem {
@@ -10,7 +13,29 @@ interface ReporteModeracion extends MapItem {
     contacto?: string;
 }
 
-export default function AdminModeracionPage() {
+export default function AdminPage() {
+    const { user, loading } = useAuth();
+
+    return (
+        <AccountLayout title={<span className="text-indigo-600">Administración</span>} description="Gestiona el acceso de las cuentas de VeciPets.">
+            {loading ? (
+                <p role="status" className={accountCard}>Cargando el panel…</p>
+            ) : user?.rol === 'ADMINISTRADOR' ? (
+                <>
+                    <UsuariosAdmin />
+                    <AdminModeracionPage />
+                </>
+            ) : (
+                <section className={accountCard}>
+                    <p>{user ? 'Esta página requiere permisos de administrador.' : 'Inicia sesión para acceder al panel.'}</p>
+                    {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
+                </section>
+            )}
+        </AccountLayout>
+    );
+}
+
+function AdminModeracionPage() {
     // Listado de reportes de ejemplo que la comunidad ha enviado y están esperando revisión
     const [reportes, setReportes] = useState<ReporteModeracion[]>([
         {
@@ -62,27 +87,24 @@ export default function AdminModeracionPage() {
     const reportesFiltrados = reportes.filter((r) => r.estadoModeracion === filtroTab);
 
     return (
-        <div className="min-h-screen bg-gray-50 py-10 px-4">
-            <div className="max-w-5xl mx-auto space-y-6">
+        <section aria-label="Demostración de moderación de reportes">
+            <div className="space-y-6">
                 
                 {/* Cabecera del Panel */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
+                <div className={`${accountCard} flex flex-col justify-between gap-4 md:flex-row md:items-center`}>
                     <div>
-                        <span className="text-[11px] font-bold tracking-widest text-indigo-600 uppercase bg-indigo-50 px-3 py-1 rounded-full">
-                            Moderación de Contenido 🛡️
-                        </span>
-                        <h1 className="text-2xl font-extrabold text-gray-900 mt-2">
-                            Panel de Aprobación de Reportes
-                        </h1>
+                        <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                            Demostración de moderación de reportes
+                        </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            Revisa las solicitudes enviadas por los ciudadanos antes de que aparezcan en el mapa público.
+                            Practica con reportes de ejemplo. Los cambios solo se muestran en esta pantalla.
                         </p>
                     </div>
                     <Link
                         href="/mapa"
-                        className="px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition text-center"
+                        className={accountSecondary}
                     >
-                        Ver Mapa Público 🗺️
+                        Ver mapa público
                     </Link>
                 </div>
 
@@ -175,6 +197,6 @@ export default function AdminModeracionPage() {
                 </div>
 
             </div>
-        </div>
+        </section>
     );
 }
