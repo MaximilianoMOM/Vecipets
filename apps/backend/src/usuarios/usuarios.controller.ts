@@ -3,10 +3,12 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Body,
   ParseIntPipe,
+  ParseBoolPipe,
   NotFoundException,
   Res,
   UseGuards,
@@ -47,6 +49,16 @@ export class UsuariosController {
   @Roles('ADMINISTRADOR')
   obtenerTodos() {
     return this.usuariosService.obtenerTodos();
+  }
+
+  @Patch(':id/suspension')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMINISTRADOR')
+  cambiarSuspension(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('suspendido', ParseBoolPipe) suspendido: boolean,
+  ) {
+    return this.usuariosService.cambiarSuspension(id, suspendido);
   }
 
   // CONSULTAR USUARIO DE LA SESIÓN ACTUAL

@@ -18,6 +18,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+import AccountLayout, { accountCard } from '../components/common/AccountLayout';
+import UsuariosAdmin from './UsuariosAdmin';
 
 interface NotificacionAdmin {
   id: string;
@@ -53,7 +56,29 @@ interface ReporteModeracion {
   };
 }
 
-export default function AdminDashboardPage() {
+export default function AdminPage() {
+    const { user, loading } = useAuth();
+
+    return (
+        <AccountLayout title={<span className="text-indigo-600">Administración</span>} description="Gestiona las cuentas, los reportes y las notificaciones de VeciPets.">
+            {loading ? (
+                <p role="status" className={accountCard}>Cargando el panel…</p>
+            ) : user?.rol === 'ADMINISTRADOR' ? (
+                <>
+                    <UsuariosAdmin />
+                    <AdminDashboard />
+                </>
+            ) : (
+                <section className={accountCard}>
+                    <p>{user ? 'Esta página requiere permisos de administrador.' : 'Inicia sesión para acceder al panel.'}</p>
+                    {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
+                </section>
+            )}
+        </AccountLayout>
+    );
+}
+
+function AdminDashboard() {
   const [tabActiva, setTabActiva] = useState<'notificaciones' | 'moderacion'>('notificaciones');
 
   // Estado Notificaciones Turbo
@@ -143,8 +168,8 @@ export default function AdminDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
 
         {/* Cabecera del Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
@@ -152,9 +177,9 @@ export default function AdminDashboardPage() {
             <span className="text-[11px] font-black tracking-widest text-emerald-700 uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
               Panel Administrativo • VeciPets 🛡️
             </span>
-            <h1 className="text-2xl font-black text-slate-900 mt-2">
+            <h2 className="text-2xl font-black text-slate-900 mt-2">
               Centro de Gestión y Notificaciones
-            </h1>
+            </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Supervisión informativa de pagos Turbo y moderación de contenido comunitario.
             </p>

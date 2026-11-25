@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  NotFoundException,
   InternalServerErrorException,
   UnauthorizedException,
   ForbiddenException,
@@ -75,6 +76,45 @@ export class UsuariosService {
       estadoAprobacion: usuario.estadoAprobacion,
       correoVerificado: usuario.correoVerificado,
     };
+  }
+
+  async cambiarSuspension(id: number, suspendido: boolean) {
+    const anterior = suspendido ? 'APROBADO' : 'INACTIVO';
+    const siguiente = suspendido ? 'INACTIVO' : 'APROBADO';
+    const resultado = await this.usuariosRepository
+      .createQueryBuilder()
+      .update(Usuario)
+      .set({ estadoAprobacion: siguiente })
+      .where({ id, estadoAprobacion: anterior })
+      .andWhere('rol <> :rol', { rol: 'ADMINISTRADOR' })
+      .execute();
+
+    if (resultado.affected) {
+      return { id, estadoAprobacion: siguiente };
+    }
+
+    const usuario = await this.obtenerPorId(id);
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+    if (usuario.rol === 'ADMINISTRADOR') {
+      throw new ForbiddenException('No se pueden suspender cuentas de administrador.');
+    }
+    if (usuario.estadoAprobacion !== siguiente) {
+      throw new ConflictException('El estado actual de la cuenta no permite esta acción.');
+    }
+    return { id, estadoAprobacion: siguiente };
+  }
+
+  private comprobarAcceso(estadoAprobacion: string): void {
+    if (estadoAprobacion === 'INACTIVO') {
+      throw new ForbiddenException('Tu cuenta está suspendida. Contacta con VeciPets.');
+    }
+    if (estadoAprobacion !== 'APROBADO') {
+      throw new ForbiddenException(
+        'Tu cuenta está pendiente de aprobación por el administrador.',
+      );
+    }
   }
 
   // REGISTRO
@@ -170,20 +210,19 @@ export class UsuariosService {
     );
 
     if (!coincide) {
-      usuario.intentosVerificacion += 1;
-      await this.usuariosRepository.save(usuario);
+      await this.usuariosRepository.increment({ id: usuario.id }, 'intentosVerificacion', 1);
 
       throw new UnauthorizedException(
         'El correo o el código no son válidos.',
       );
     }
 
-    usuario.correoVerificado = true;
-    usuario.codigoVerificacionHash = null;
-    usuario.codigoVerificacionExpira = null;
-    usuario.intentosVerificacion = 0;
-
-    await this.usuariosRepository.save(usuario);
+    await this.usuariosRepository.update(usuario.id, {
+      correoVerificado: true,
+      codigoVerificacionHash: null,
+      codigoVerificacionExpira: null,
+      intentosVerificacion: 0,
+    });
 
     return { mensaje: 'Correo verificado correctamente.' };
   }
@@ -206,11 +245,7 @@ export class UsuariosService {
       throw new ForbiddenException('Debes verificar tu correo primero.');
     }
 
-    if (usuario.estadoAprobacion !== 'APROBADO') {
-      throw new ForbiddenException(
-        'Tu cuenta está pendiente de aprobación por el administrador.',
-      );
-    }
+    this.comprobarAcceso(usuario.estadoAprobacion);
 
     const payload = {
       sub: usuario.id,
@@ -368,26 +403,26 @@ export class UsuariosService {
     );
 
     if (!coincide) {
-      usuario.intentosRecuperacion += 1;
-      await this.usuariosRepository.save(usuario);
+      await this.usuariosRepository.increment({ id: usuario.id }, 'intentosRecuperacion', 1);
 
       throw new UnauthorizedException(
         'El correo o el código no son válidos.',
       );
     }
 
-    usuario.passwordHash = await bcrypt.hash(
+    const passwordHash = await bcrypt.hash(
       datos.nuevaContrasena,
       12,
     );
 
     // Limpiar el código utilizado.
     // No reiniciar las solicitudes diarias.
-    usuario.codigoRecuperacionHash = null;
-    usuario.codigoRecuperacionExpira = null;
-    usuario.intentosRecuperacion = 0;
-
-    await this.usuariosRepository.save(usuario);
+    await this.usuariosRepository.update(usuario.id, {
+      passwordHash,
+      codigoRecuperacionHash: null,
+      codigoRecuperacionExpira: null,
+      intentosRecuperacion: 0,
+    });
 
     return {
       mensaje: 'Tu contraseña fue restablecida correctamente.',
@@ -456,17 +491,12 @@ export class UsuariosService {
       }
 
       if (!usuario.googleId) {
-        usuario.googleId = datos.googleId;
-        usuario = await this.usuariosRepository.save(usuario);
+        this.comprobarAcceso(usuario.estadoAprobacion);
+        await this.usuariosRepository.update(usuario.id, { googleId: datos.googleId });
       }
     }
 
-    // Respetar la aprobación de refugios y veterinarias.
-    if (usuario.estadoAprobacion !== 'APROBADO') {
-      throw new ForbiddenException(
-        'Tu cuenta está pendiente de aprobación por el administrador.',
-      );
-    }
+    this.comprobarAcceso(usuario.estadoAprobacion);
 
     // JWT de Google válido durante 24 horas.
     const accessToken = await this.jwtService.signAsync(
