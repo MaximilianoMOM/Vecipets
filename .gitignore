@@ -11,6 +11,7 @@ node_modules/
 # Next.js & Build Outputs
 # ==========================================
 .next/
+**/.next/
 **/apps/frontend/.next/
 out/
 build/

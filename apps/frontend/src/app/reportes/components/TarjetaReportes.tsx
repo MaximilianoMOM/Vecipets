@@ -1,47 +1,64 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Calendar, Zap, AlertTriangle, Eye } from 'lucide-react';
+import { MapPin, Calendar, AlertTriangle, Eye } from 'lucide-react';
+
+export function obtenerUrlImagen(url?: string | null): string {
+    if (!url) return 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=600';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    return `${apiUrl.replace(/\/+$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 export interface MascotaReporte {
-    id: string;
+    id: string | number;
     nombre: string;
-    especie: 'Perro' | 'Gato' | 'Otro';
-    raza: string;
-    estado: 'perdida' | 'encontrada';
+    especie: 'Perro' | 'Gato' | 'Otro' | string;
+    raza?: string | null;
+    estado: 'perdida' | 'encontrada' | 'PERDIDA' | 'HALLAZGO' | string;
+    tipo?: 'PERDIDA' | 'HALLAZGO';
     esTurbo?: boolean;
-    barrio: string;
-    ciudad: string;
-    fecha: string;
-    imagen: string;
+    barrio?: string;
+    barrioSector?: string;
+    ciudad?: string;
+    fecha?: string;
+    fechaEvento?: string;
+    imagen?: string;
+    imagenUrl?: string;
     descripcion: string;
     edad?: string;
     tamano?: string;
     color?: string;
     senasParticulares?: string;
     recompensa?: string;
+    usuario?: { id: number; nombre: string };
+    latitud?: string | null;
+    longitud?: string | null;
+    direccion?: string | null;
+    referencia?: string | null;
 }
 
 interface TarjetaReporteProps {
     mascota: MascotaReporte;
-    onClick: () => void;
+    onVerReporte: () => void;
 }
 
-export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
-    const esPerdida = mascota.estado === 'perdida';
+export function TarjetaReporte({ mascota, onVerReporte }: TarjetaReporteProps) {
+    const estadoNormalizado = (mascota.tipo || mascota.estado || '').toUpperCase();
+    const esPerdida = estadoNormalizado === 'PERDIDA';
+    const imagenSrc = obtenerUrlImagen(mascota.imagen || mascota.imagenUrl);
+    const barrioTexto = mascota.barrioSector || mascota.barrio || 'Medellín';
+    const fechaTexto = mascota.fechaEvento || mascota.fecha || 'Reciente';
 
     return (
         <div
-            onClick={onClick}
-            className={`group cursor-pointer bg-white rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${mascota.esTurbo
-                    ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-amber-100/50'
-                    : 'border-slate-200/80 shadow-sm hover:border-slate-300'
-                }`}
+            onClick={onVerReporte}
+            className="group cursor-pointer bg-white rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border-slate-200/80 shadow-sm hover:border-slate-300"
         >
             {/* Contenedor Imagen */}
             <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
                 <img
-                    src={mascota.imagen}
+                    src={imagenSrc}
                     alt={mascota.nombre}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
@@ -62,13 +79,6 @@ export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
                     )}
                 </span>
 
-                {/* Insignia Alerta Turbo */}
-                {mascota.esTurbo && (
-                    <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-black bg-amber-400 text-amber-950 flex items-center gap-1 shadow-sm">
-                        <Zap className="w-3.5 h-3.5 fill-amber-950" /> TURBO
-                    </span>
-                )}
-
                 {/* Overlay hover indicando clic */}
                 <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <span className="bg-white/90 text-slate-900 font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1 shadow-md">
@@ -85,7 +95,7 @@ export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
                             {mascota.nombre}
                         </h3>
                         <p className="text-xs font-medium text-slate-500">
-                            {mascota.especie} • {mascota.raza}
+                            {mascota.especie} {mascota.raza ? `• ${mascota.raza}` : ''}
                         </p>
                     </div>
                     {mascota.recompensa && (
@@ -100,12 +110,12 @@ export function TarjetaReporte({ mascota, onClick }: TarjetaReporteProps) {
                     <div className="flex items-center gap-1.5 truncate">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate">
-                            {mascota.barrio}, {mascota.ciudad}
+                            {barrioTexto}
                         </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>Visto: {mascota.fecha}</span>
+                        <span>Visto: {fechaTexto}</span>
                     </div>
                 </div>
 

@@ -4,8 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 
 import { Pago } from './pago.entity';
+import { IntentoPago } from './intento-pago.entity';
 import { Reporte } from '../reportes/reporte.entity';
 import { UsuariosModule } from '../usuarios/usuarios.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 import { PagosController } from './pagos.controller';
 import { PagosService } from './pagos.service';
@@ -14,15 +16,23 @@ import { WompiWebhookController } from './wompi-webhook.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pago, Reporte]),
+    TypeOrmModule.forFeature([
+      Pago,
+      Reporte,
+      IntentoPago,
+    ]),
     ConfigModule,
     UsuariosModule,
+    NotificacionesModule,
   ],
   controllers: [
     PagosController,
     WompiWebhookController,
   ],
-  providers: [PagosService, WompiService],
+  providers: [
+    PagosService,
+    WompiService,
+  ],
   exports: [PagosService],
 })
 export class PagosModule {}
