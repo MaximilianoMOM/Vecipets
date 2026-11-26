@@ -123,6 +123,20 @@ describe('ReportesService', () => {
     expect(service).toBeDefined();
   });
 
+  it('guarda las coordenadas ajustadas al enviar un borrador que le pertenece al ciudadano', async () => {
+    mockReporteRepo.findOne.mockResolvedValue({
+      id: 1, usuario: mockUsuarioCiudadano, enviadoRevision: false,
+      estado: EstadoReporte.PENDIENTE, estadoAprobacion: EstadoAprobacionReporte.PENDIENTE,
+      latitud: '6.2442', longitud: '-75.5812',
+    });
+    const posicion = { latitud: '6.2506', longitud: '-75.5928' };
+    const respuesta = await service.publicarBorrador(1, mockUsuarioCiudadano.id, posicion);
+    expect(mockReporteRepo.save).toHaveBeenCalledWith(expect.objectContaining({
+      ...posicion, enviadoRevision: true,
+    }));
+    expect(respuesta.reporte).toMatchObject(posicion);
+  });
+
   it('solo permite al dueño resolver un reporte aprobado', async () => {
     mockReporteRepo.findOne.mockResolvedValue({
       id: 1, usuario: { ...mockUsuarioCiudadano, passwordHash: 'privado' },

@@ -16,6 +16,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { leerCoordenadas } from '@/lib/reportes-mapa';
 import type { MapaInteractivoProps } from '@/app/components/map/MapaInteractivo';
 
 const MapaInteractivoDetalle = dynamic<MapaInteractivoProps>(
@@ -103,11 +104,7 @@ export default function ReporteDetallePage() {
   }
 
   const esPerdida = (reporte.tipo || reporte.estado || '').toUpperCase() === 'PERDIDA';
-  const tieneCoordenadas =
-    reporte.latitud &&
-    reporte.longitud &&
-    !isNaN(Number(reporte.latitud)) &&
-    !isNaN(Number(reporte.longitud));
+  const coordenadas = leerCoordenadas(reporte.latitud, reporte.longitud);
 
   return (
     <main className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -245,13 +242,18 @@ export default function ReporteDetallePage() {
                 {reporte.barrioSector} {reporte.direccion ? `• ${reporte.direccion}` : ''}
               </p>
             </div>
+            {coordenadas && reporte.estado === 'PUBLICO' && (
+              <Link href={`/mapa#reporte-${reporte.id}`} className="text-right text-xs font-bold text-indigo-700 hover:underline">
+                Ver en el mapa general
+              </Link>
+            )}
           </div>
 
-          {tieneCoordenadas ? (
+          {coordenadas ? (
             <div className="h-[360px] w-full rounded-2xl border border-slate-200 overflow-hidden">
               <MapaInteractivoDetalle
-                lat={Number(reporte.latitud)}
-                lng={Number(reporte.longitud)}
+                lat={coordenadas.lat}
+                lng={coordenadas.lng}
                 etiqueta={`${reporte.nombre} (${reporte.barrioSector})`}
               />
             </div>

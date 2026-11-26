@@ -33,17 +33,18 @@ export interface MapaInteractivoProps {
   lat?: number;
   lng?: number;
   etiqueta?: string;
+  mostrarMarcador?: boolean;
   onSeleccionarUbicacion?: (seleccion: SeleccionMapa) => void;
 }
 
-function CentradorMapa({ lat, lng }: { lat: number; lng: number }) {
+function CentradorMapa({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   const map = useMap();
 
   useEffect(() => {
     if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-      map.setView([lat, lng], 15, { animate: true });
+      map.setView([lat, lng], zoom, { animate: true });
     }
-  }, [lat, lng, map]);
+  }, [lat, lng, map, zoom]);
 
   return null;
 }
@@ -71,6 +72,7 @@ export default function MapaInteractivo({
   lat = 6.2442,
   lng = -75.5812,
   etiqueta = '¡Vecipets activo en Medellín! 🐾',
+  mostrarMarcador = true,
   onSeleccionarUbicacion,
 }: MapaInteractivoProps) {
   const [isMounted, setIsMounted] = useState(false);
@@ -101,11 +103,11 @@ export default function MapaInteractivo({
   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 />
-<CentradorMapa lat={lat} lng={lng} />
+<CentradorMapa lat={lat} lng={lng} zoom={mostrarMarcador ? 15 : 13} />
 <SelectorClicMapa onSeleccionar={onSeleccionarUbicacion} />
-<Marker position={[lat, lng]}>
+{mostrarMarcador && <Marker position={[lat, lng]}>
   <Popup>{etiqueta}</Popup>
-</Marker>
+</Marker>}
       </MapContainer>
     </div>
   );

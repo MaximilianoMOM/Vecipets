@@ -1,167 +1,119 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import { MapItem } from './MapClient';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { etiquetaReporteMapa, type CategoriaMapa, type TipoReporteMapa } from '@/lib/reportes-mapa';
+import { useReportesMapa } from '@/lib/use-reportes-mapa';
 
 const MapClient = dynamic(() => import('./MapClient'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-[650px] flex items-center justify-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-      <p className="text-gray-400 font-medium animate-pulse">Cargando mapa interactivo del Valle de Aburrá...</p>
-    </div>
-  ),
+  loading: () => <p role="status" className="p-6 text-sm text-slate-600">Cargando mapa…</p>,
 });
 
+const categorias = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'perro', label: 'Perros' },
+  { id: 'gato', label: 'Gatos' },
+  { id: 'otro', label: 'Otros' },
+] as const;
+
 export default function MapaPage() {
-  const [filterCategory, setFilterCategory] = useState<string>('todos');
-  const [filterStatus, setFilterStatus] = useState<string>('todos');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
+  const { items, estado, recargar } = useReportesMapa();
+  const [categoria, setCategoria] = useState<CategoriaMapa | 'todos'>('todos');
+  const [tipo, setTipo] = useState<TipoReporteMapa | 'todos'>('todos');
+  const [busqueda, setBusqueda] = useState('');
+  const [seleccion, setSeleccion] = useState<string | null>(null);
 
-  const [items] = useState<MapItem[]>([
-    { id: '1', name: 'Bruno (Golden Retriever)', category: 'perro', status: 'PERDIDO', locationName: 'El Poblado, Medellín', lat: 6.2088, lng: -75.5673 },
-    { id: '2', name: 'Luna (Gata Siamesa)', category: 'gato', status: 'HALLAZGO', locationName: 'Laureles, Medellín', lat: 6.2476, lng: -75.5908 },
-    { id: '3', name: 'Max (Bulldog Francés)', category: 'perro', status: 'PERDIDO', locationName: 'Parque Principal, Envigado', lat: 6.1684, lng: -75.5857 },
-    { id: '4', name: 'Clínica Veterinaria Las Vegas', category: 'veterinaria', locationName: 'Avenida Las Vegas, Itagüí', lat: 6.1841, lng: -75.6025 },
-    { id: '5', name: 'Refugio Animal La Perla', category: 'refugio', locationName: 'Altavista, Medellín', lat: 6.2150, lng: -75.6500 },
-    { id: '6', name: 'Hospital Veterinario Small Paws', category: 'veterinaria', locationName: 'Sabaneta', lat: 6.1517, lng: -75.6155 },
-  ]);
+  useEffect(() => {
+    function enfocarDesdeEnlace() {
+      const id = /^#reporte-(\d+)$/.exec(window.location.hash)?.[1];
+      if (id) setSeleccion(id);
+    }
+    enfocarDesdeEnlace();
+    window.addEventListener('hashchange', enfocarDesdeEnlace);
+    return () => window.removeEventListener('hashchange', enfocarDesdeEnlace);
+  }, []);
 
-  const filteredItems = items.filter((item) => {
-    const matchesCategory = 
-      filterCategory === 'todos' ||
-      (filterCategory === 'perro' && item.category === 'perro') ||
-      (filterCategory === 'gato' && item.category === 'gato') ||
-      (filterCategory === 'veterinaria' && item.category === 'veterinaria') ||
-      (filterCategory === 'refugio' && item.category === 'refugio');
-
-    const matchesStatus = 
-      filterStatus === 'todos' || 
-      item.status === filterStatus;
-
-    const matchesSearch = 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.locationName.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesCategory && matchesStatus && matchesSearch;
-  });
+  const consulta = busqueda.trim().toLowerCase();
+  const visibles = items.filter((item) =>
+    (categoria === 'todos' || item.category === categoria) &&
+    (tipo === 'todos' || item.status === tipo) &&
+    [item.name, item.locationName].some((texto) => texto.toLowerCase().includes(consulta)),
+  );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen bg-gray-50">
-      {/* Columna Izquierda: Filtros, Buscador y Listado */}
-      <div className="w-full lg:w-1/3 flex flex-col gap-4">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              🗺️ Explorador en Vivo
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">{filteredItems.length} publicaciones con ubicación registrada</p>
+    <main className="bg-slate-50 px-4 py-8 sm:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(17rem,1fr)_2fr]">
+        <section className="flex max-h-[38rem] min-h-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="mapa-titulo">
+          <header>
+            <h1 id="mapa-titulo" className="text-2xl font-black tracking-tight text-slate-900">Mapa de reportes</h1>
+            <p className="mt-1 text-sm text-slate-600">Explora mascotas perdidas y hallazgos con ubicación registrada.</p>
+          </header>
 
-            {/* Pestañas de Especie */}
-            <div className="grid grid-cols-3 gap-1.5 mt-4 bg-gray-100 p-1 rounded-xl">
-              {[
-                { id: 'todos', label: '🐾 Todos' },
-                { id: 'perro', label: '🐕 Perros' },
-                { id: 'gato', label: '🐈 Gatos' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilterCategory(tab.id)}
-                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition ${
-                    filterCategory === tab.id
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Pestañas de Establecimiento */}
-            <div className="grid grid-cols-2 gap-1.5 mt-2 bg-gray-100 p-1 rounded-xl">
-              {[
-                { id: 'veterinaria', label: '🏥 Clínicas' },
-                { id: 'refugio', label: '🏠 Refugios' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilterCategory(tab.id)}
-                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition ${
-                    filterCategory === tab.id
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Desplegable de Estado */}
-            <div className="mt-3">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-700"
-              >
-                <option value="todos">Filtrar por estado (Todos)</option>
-                <option value="PERDIDO">🔴 Solo Perdidos</option>
-                <option value="HALLAZGO">🟢 Solo Encontrados (Hallazgos)</option>
-              </select>
-            </div>
-
-            {/* Buscador por zona */}
-            <div className="mt-3">
-              <input
-                type="text"
-                placeholder="Buscar barrio o municipio..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
-              />
-            </div>
+          <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1" aria-label="Filtrar por especie">
+            {categorias.map(({ id, label }) => (
+              <button key={id} type="button" aria-pressed={categoria === id} onClick={() => setCategoria(id)}
+                className={`rounded-lg px-1 py-2 text-xs font-bold ${categoria === id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Listado lateral */}
-          <div className="mt-4 space-y-2.5 overflow-y-auto flex-1 pr-1">
-            {filteredItems.length === 0 ? (
-              <p className="text-xs text-center text-gray-400 py-8">No hay registros que coincidan.</p>
-            ) : (
-              filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedItem(item)}
-                  className={`p-3 rounded-xl border transition cursor-pointer ${
-                    selectedItem?.id === item.id 
-                      ? 'border-indigo-500 bg-indigo-50/40 shadow-sm ring-1 ring-indigo-500/20' 
-                      : 'border-gray-100 hover:border-gray-300 hover:shadow-md bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    {item.status && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.status === 'PERDIDO' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                        {item.status}
-                      </span>
-                    )}
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {item.category}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-gray-800 mt-1.5 text-sm">{item.name}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">📍 {item.locationName}</p>
+          <label className="text-sm font-semibold text-slate-700">Tipo de reporte
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoReporteMapa | 'todos')}
+              className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+              <option value="todos">Perdidos y hallazgos</option>
+              <option value="PERDIDA">Mascotas perdidas</option>
+              <option value="HALLAZGO">Hallazgos</option>
+            </select>
+          </label>
+
+          <label className="text-sm font-semibold text-slate-700">Buscar en el mapa
+            <input type="search" value={busqueda} placeholder="Nombre, barrio o municipio"
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" />
+          </label>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {estado === 'cargando' ? <p role="status" className="text-sm text-slate-600">Cargando reportes…</p> :
+              estado === 'error' ? (
+                <div role="alert" className="space-y-2 text-sm text-rose-700">
+                  <p>No se pudieron cargar los reportes del mapa.</p>
+                  <button type="button" onClick={recargar} className="font-bold underline">Volver a intentar</button>
                 </div>
-              ))
-            )}
+              ) : visibles.length === 0 ? (
+                <p className="text-sm text-slate-600">{items.length === 0 ? 'Aún no hay reportes públicos con ubicación.' : 'No hay reportes que coincidan con los filtros.'}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {visibles.map((item) => (
+                    <li key={item.id} className={`rounded-2xl border p-3 ${seleccion === item.id ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'}`}>
+                      <button type="button" aria-pressed={seleccion === item.id} onClick={() => setSeleccion(item.id)}
+                        className="flex w-full items-start gap-2 rounded-lg text-left focus-visible:outline-indigo-600">
+                        <MapPin className="mt-1 h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold text-indigo-700">{etiquetaReporteMapa[item.status]}</span>
+                          <span className="block break-words text-sm font-bold text-slate-900">{item.name}</span>
+                          <span className="block text-xs text-slate-600">{item.locationName}</span>
+                        </span>
+                      </button>
+                      {seleccion === item.id && (
+                        <Link href={`/reportes/${item.id}`} className="mt-2 inline-block text-xs font-bold text-indigo-700 hover:underline">Ver reporte</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
           </div>
+
+          <Link href="/reportes" className="text-sm font-bold text-indigo-700 hover:underline">Ir al listado de reportes</Link>
+        </section>
+
+        <div className="h-[420px] overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-sm lg:h-[38rem]">
+          <MapClient items={visibles} selectedItem={visibles.find((item) => item.id === seleccion) ?? null} />
         </div>
       </div>
-
-      {/* Columna Derecha: Mapa Interactivo */}
-      <div className="w-full lg:w-2/3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
-        <MapClient items={filteredItems} selectedItem={selectedItem} />
-      </div>
-    </div>
+    </main>
   );
 }
