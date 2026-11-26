@@ -146,7 +146,9 @@ describe.skipIf(!testUrl)('Perfiles y moderación con HTTP y PostgreSQL', () => 
     ]);
     await api.post('/reportes').send(datosReporte).expect(401);
     await api.post('/reportes').set('Cookie', cookie(veterinaria)).send(datosReporte).expect(403);
-    const { body: alta } = await api.post('/reportes').set('Cookie', cookie(ciudadano)).send(datosReporte).expect(201);
+    const ubicacion = { latitud: '6.2459659', longitud: '-75.5934622' };
+    const { body: alta } = await api.post('/reportes').set('Cookie', cookie(ciudadano))
+      .send({ ...datosReporte, ciudad: 'Medellín', ...ubicacion }).expect(201);
     const id = alta.reporte.id;
     expect(alta.reporte.estado).toBe('PENDIENTE');
     expect(alta.reporte.usuario).not.toHaveProperty('passwordHash');
@@ -155,12 +157,30 @@ describe.skipIf(!testUrl)('Perfiles y moderación con HTTP y PostgreSQL', () => 
     await api.get(`/reportes/${id}`).set('Cookie', cookie(vecino, 'ADMINISTRADOR')).expect(403);
     await api.patch(`/reportes/${id}`).set('Cookie', cookie(ciudadano)).send({ estadoAprobacion: 'APROBADO' }).expect(403);
     await api.patch(`/reportes/${id}`).set('Cookie', cookie(admin)).send({ estadoAprobacion: 'APROBADO' }).expect(200);
-    await api.get(`/reportes/${id}`).expect(200);
+    const { body: ficha } = await api.get(`/reportes/${id}`).expect(200);
+    expect(ficha).toMatchObject({ ...ubicacion, barrioSector: 'Laureles', ciudad: 'Medellín' });
+    const { body: feedAprobado } = await api.get('/reportes?limite=100&pagina=1').expect(200);
+    expect(feedAprobado.datos).toContainEqual(expect.objectContaining({ id, ...ubicacion }));
     await api.patch(`/reportes/${id}`).set('Cookie', cookie(admin)).send({ estado: 'RESUELTO' }).expect(403);
     await api.patch(`/reportes/${id}`).set('Cookie', cookie(vecino)).send({ estado: 'RESUELTO' }).expect(403);
     await api.patch(`/reportes/${id}`).set('Cookie', cookie(ciudadano)).send({ estado: 'RESUELTO' }).expect(200);
+    const { body: feedResuelto } = await api.get('/reportes').expect(200);
+    expect(feedResuelto.datos.map((reporte: Reporte) => reporte.id)).not.toContain(id);
     const { body: propios } = await api.get('/reportes/mis-reportes').set('Cookie', cookie(ciudadano)).expect(200);
     expect(propios).toContainEqual(expect.objectContaining({ id, estado: 'RESUELTO' }));
+  });
+
+  it('mantiene fuera del feed un reporte geolocalizado rechazado por moderación', async () => {
+    const admin = await crearCuenta('ADMINISTRADOR');
+    const { body: alta } = await api.post('/reportes').set('Cookie', cookie(ciudadano))
+      .send({ ...datosReporte, latitud: '6.2459659', longitud: '-75.5934622' }).expect(201);
+    const id = alta.reporte.id;
+    await api.patch(`/reportes/${id}`).set('Cookie', cookie(admin))
+      .send({ estadoAprobacion: 'RECHAZADO' }).expect(200);
+    const { body: feed } = await api.get('/reportes').expect(200);
+    expect(feed.datos.map((reporte: Reporte) => reporte.id)).not.toContain(id);
+    const { body: propios } = await api.get('/reportes/mis-reportes').set('Cookie', cookie(ciudadano)).expect(200);
+    expect(propios).toContainEqual(expect.objectContaining({ id, estado: 'RECHAZADO' }));
   });
 
   it('limita aprobación, sedes y suspensión al rol y titular correctos', async () => {

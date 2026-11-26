@@ -1,35 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-
-export interface MapItem {
-  id: string;
-  name: string;
-  category: 'perro' | 'gato' | 'veterinaria' | 'refugio';
-  status?: 'PERDIDO' | 'HALLAZGO';
-  locationName: string;
-  lat: number;
-  lng: number;
-  address?: string;
-  phone?: string;
-}
+import { etiquetaReporteMapa, type MapItem } from '@/lib/reportes-mapa';
 
 interface MapClientProps {
   items: MapItem[];
   selectedItem: MapItem | null;
+  scrollWheelZoom?: boolean;
 }
 
-function MapFlyTo({ selectedItem }: { selectedItem: MapItem | null }) {
+function VistaMapa({ selectedItem, items }: MapClientProps) {
   const map = useMap();
+  const centrado = useRef(false);
 
   useEffect(() => {
     if (selectedItem) {
+      centrado.current = true;
       map.flyTo([selectedItem.lat, selectedItem.lng], 16, { duration: 1.5 });
+    } else if (!centrado.current && items.length > 0) {
+      centrado.current = true;
+      map.fitBounds(items.map(({ lat, lng }) => [lat, lng]), { padding: [24, 24], maxZoom: 14 });
     }
-  }, [selectedItem, map]);
+  }, [selectedItem, items, map]);
 
   return null;
 }
@@ -82,30 +78,13 @@ function UserLocationControl({ onLocate }: { onLocate: (coords: [number, number]
 }
 
 // Iconos temáticos de animales y lugares
-const getCustomIcon = (category: string, status?: string) => {
-  let bgColor = 'bg-blue-600';
-  let emoji = '📍';
-  let extraClasses = '';
-
-  if (category === 'perro') {
-    bgColor = status === 'PERDIDO' ? 'bg-red-500' : 'bg-emerald-600';
-    emoji = '🐶';
-    if (status === 'PERDIDO') extraClasses = 'animate-bounce shadow-red-500/50';
-  } else if (category === 'gato') {
-    bgColor = status === 'PERDIDO' ? 'bg-red-500' : 'bg-emerald-600';
-    emoji = '🐱';
-    if (status === 'PERDIDO') extraClasses = 'animate-bounce shadow-red-500/50';
-  } else if (category === 'veterinaria') {
-    bgColor = 'bg-sky-600';
-    emoji = '🏥';
-  } else if (category === 'refugio') {
-    bgColor = 'bg-amber-600';
-    emoji = '🏠';
-  }
+const getCustomIcon = (category: MapItem['category'], status: MapItem['status']) => {
+  const emoji = { perro: '🐶', gato: '🐱', otro: '🐾' }[category];
+  const bgColor = status === 'PERDIDA' ? 'bg-rose-600' : 'bg-emerald-600';
 
   return L.divIcon({
     className: 'custom-leaflet-marker',
-    html: `<div class="${bgColor} ${extraClasses} text-white rounded-full w-11 h-11 flex items-center justify-center shadow-xl border-[3px] border-white text-lg cursor-pointer hover:scale-110 transition-transform">
+    html: `<div class="${bgColor} text-white rounded-full w-11 h-11 flex items-center justify-center shadow-xl border-[3px] border-white text-lg cursor-pointer hover:scale-110 transition-transform">
             ${emoji}
            </div>`,
     iconSize: [44, 44],
@@ -123,7 +102,7 @@ const userIcon = L.divIcon({
   iconAnchor: [18, 18],
 });
 
-export default function MapClient({ items, selectedItem }: MapClientProps) {
+export default function MapClient({ items, selectedItem, scrollWheelZoom = true }: MapClientProps) {
   const medellinCenter: [number, number] = [6.2442, -75.5812];
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
 
@@ -132,7 +111,7 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
       <MapContainer
         center={medellinCenter}
         zoom={13}
-        scrollWheelZoom={true}
+        scrollWheelZoom={scrollWheelZoom}
         style={{ height: '100%', width: '100%', position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 0 }}
       >
         <TileLayer
@@ -140,7 +119,7 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapFlyTo selectedItem={selectedItem} />
+        <VistaMapa items={items} selectedItem={selectedItem} />
         <UserLocationControl onLocate={(coords) => setUserCoords(coords)} />
 
         {userCoords && (
@@ -153,19 +132,18 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
 
         {items.map((item) => (
           <Marker 
-            key={item.id} 
+            key={item.id}
+            title={item.name}
             position={[item.lat, item.lng]} 
             icon={getCustomIcon(item.category, item.status)}
           >
             <Popup>
               <div className="p-2 space-y-2 max-w-[200px]">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {item.status && (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.status === 'PERDIDO' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                      {item.status}
-                    </span>
-                  )}
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${item.status === 'PERDIDA' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {etiquetaReporteMapa[item.status]}
+                  </span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
                     {item.category}
                   </span>
                 </div>
@@ -173,12 +151,12 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
                   <h4 className="font-bold text-gray-900 leading-tight">{item.name}</h4>
                   <p className="text-xs text-gray-500 mt-1">📍 {item.locationName}</p>
                 </div>
-                <button 
-                  onClick={() => alert(`Reporte seleccionado: ${item.name}`)}
-                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition"
+                <Link
+                  href={`/reportes/${item.id}`}
+                  className="block w-full rounded-lg bg-indigo-50 py-1.5 text-center text-xs font-bold text-indigo-700 hover:bg-indigo-100"
                 >
-                  Ver Información
-                </button>
+                  Ver reporte
+                </Link>
               </div>
             </Popup>
           </Marker>
