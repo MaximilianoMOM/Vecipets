@@ -517,6 +517,15 @@ function FormularioReportarContenido() {
       }
     } catch (err: any) {
       console.error('Error al procesar reporte:', err);
+      if (err.response?.status === 409 && formData.esTurbo && borradorId) {
+        const pago = await apiClient.post('/pagos/verificar-transaccion', { reporteId: borradorId })
+          .catch(() => null);
+        if (pago?.data?.aprobado) {
+          setPagoAprobado(true);
+          setMensajePago('Wompi confirmó el pago. Ya puedes publicar tu reporte con Alerta Turbo.');
+          return;
+        }
+      }
       const backendMessage = err.response?.data?.message;
       setErrorValidacion(
         Array.isArray(backendMessage)

@@ -21,9 +21,10 @@ interface Campana {
 interface Props {
     campana: Campana;
     onApartarCupo: (campana: Campana) => void;
+    tieneCupos: boolean;
 }
 
-export default function TarjetaCampana({ campana, onApartarCupo }: Props) {
+export default function TarjetaCampana({ campana, onApartarCupo, tieneCupos }: Props) {
     return (
         <div
             className={`bg-white rounded-3xl border overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
@@ -80,7 +81,7 @@ export default function TarjetaCampana({ campana, onApartarCupo }: Props) {
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[11px] text-slate-500">Comisión de reserva:</p>
+                            <p className="text-[11px] text-slate-500">Valor del apartado:</p>
                             <p className="text-xs font-bold text-blue-600">
                                 {campana.comisionReserva}
                             </p>
@@ -92,10 +93,20 @@ export default function TarjetaCampana({ campana, onApartarCupo }: Props) {
             <div className="p-5 pt-0">
                 <button
                     onClick={() => onApartarCupo(campana)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2"
+                    disabled={!tieneCupos}
+                    className={`w-full font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                        tieneCupos
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
                 >
-                    <Syringe className="w-4 h-4" /> Apartar Cupo en la App
+                    <Syringe className="w-4 h-4" /> Reservar cupo
                 </button>
+                {!tieneCupos && (
+                    <p className="text-xs text-slate-400 text-center mt-2">
+                        Cupos agotados
+                    </p>
+                )}
             </div>
         </div>
     );

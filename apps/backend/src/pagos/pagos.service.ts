@@ -5,10 +5,11 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Raw, type EntityManager } from 'typeorm';
 
 import {
   Pago,
@@ -27,6 +28,13 @@ import {
   EstadoReporte,
 } from '../reportes/reporte.entity';
 
+import { Jornada } from '../jornadas/jornada.entity';
+import {
+  ReservaJornada,
+  EstadoReservaJornada,
+  MENSAJE_RESERVA_EN_REVISION,
+} from '../jornadas/reserva-jornada.entity';
+
 import { WompiService } from './wompi.service';
 import { ConfigService } from '@nestjs/config';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
@@ -34,17 +42,28 @@ import { NotificacionesService } from '../notificaciones/notificaciones.service'
 const PRECIO_TURBO_CENTAVOS = 1500000;
 const DURACION_TURBO_DIAS = 7;
 
-const INDICE_PAGO_TURBO_PENDIENTE =
-  'uq_pagos_turbo_pendiente_reporte';
+export function referenciaOriginalPago(referencia: string): string {
+  return referencia.replace(/_[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i, '');
+}
+
+export const MENSAJE_PAGO_EN_CONFIRMACION =
+  'Aún estamos verificando el pago anterior. Consulta el resultado de Wompi o espera la confirmación antes de volver a pagar.';
 
 @Injectable()
 export class PagosService {
+  private readonly logger = new Logger(PagosService.name);
   constructor(
     @InjectRepository(Pago)
     private readonly pagoRepository: Repository<Pago>,
 
     @InjectRepository(Reporte)
     private readonly reporteRepository: Repository<Reporte>,
+
+    @InjectRepository(Jornada)
+    private readonly jornadaRepository: Repository<Jornada>,
+
+    @InjectRepository(ReservaJornada)
+    private readonly reservaJornadaRepository: Repository<ReservaJornada>,
 
     private readonly wompiService: WompiService,
     private readonly configService: ConfigService,
@@ -84,209 +103,186 @@ export class PagosService {
       );
     }
 
-    const ahora = new Date();
+    const anterior = await this.buscarUltimoPagoTurbo(usuarioId, reporteId);
+    const turboActivo = reporte.esTurbo && reporte.turboVenceEn && reporte.turboVenceEn > new Date();
+    if (turboActivo) throw new ConflictException('Este reporte ya tiene una Alerta Turbo activa.');
+    const renovacion = anterior?.estado === EstadoPago.APROBADO && !turboActivo &&
+      !!reporte.turboVenceEn && reporte.turboVenceEn <= new Date();
+    const resultadoAnterior = anterior && !renovacion
+      ? await this.reconciliarAntesDeReintentar(anterior)
+      : null;
 
-    if (
-      reporte.esTurbo &&
-      reporte.turboVenceEn &&
-      reporte.turboVenceEn > ahora
-    ) {
-      throw new ConflictException(
-        'Este reporte ya tiene una Alerta Turbo activa.',
-      );
-    }
-
-    // Limpiar únicamente un Turbo vencido.
-    if (
-      reporte.esTurbo &&
-      reporte.turboVenceEn &&
-      reporte.turboVenceEn <= ahora
-    ) {
-      reporte.esTurbo = false;
-      reporte.turboActivadaEn = null;
-      reporte.turboVenceEn = null;
-
-      await this.reporteRepository.save(reporte);
-    }
-
-    // Buscar un pago Turbo pendiente antes de crear otro.
-    const pagoPendiente = await this.buscarPagoTurboPendiente(
-      usuarioId,
-      reporteId,
-    );
-
-    if (pagoPendiente) {
-      return this.respuestaPagoPendiente(
-        pagoPendiente,
-        reporteId,
-      );
-    }
-
-    const referencia = this.wompiService.generarReferencia();
-    const moneda = 'COP';
-    const montoCentavos = PRECIO_TURBO_CENTAVOS;
-
-    const frontendUrl = (
-      this.configService.get<string>('FRONTEND_URL') ??
-      'http://localhost:3000'
-    )
-      .trim()
-      .replace(/\/+$/, '');
-
-    // Redirigir al formulario /reportar después del pago de Wompi
-    const redirectUrl = `${frontendUrl}/reportar`;
-
-    const checkout = this.wompiService.obtenerDatosCheckout(
-      referencia,
-      montoCentavos,
-      moneda,
-      redirectUrl,
-    );
-
-    const parametros = new URLSearchParams({
-      'public-key': checkout.publicKey,
-      currency: checkout.currency,
-      'amount-in-cents': String(checkout.amountInCents),
-      reference: checkout.reference,
-      'signature:integrity': checkout.signature.integrity,
-    });
-
-    // Siempre enviar la URL de retorno para que Wompi muestre el botón
-    // "Volver al comercio" después del pago. En desarrollo con localhost
-    // Wompi podría rechazarla; en producción usar un dominio real en
-    // FRONTEND_URL.
-    parametros.set('redirect-url', redirectUrl);
-
-    const queryString = parametros
-      .toString()
-      .replace('signature%3Aintegrity', 'signature:integrity');
-
-    const checkoutUrl =
-      `${this.wompiService.obtenerUrlCheckout()}?${queryString}`;
-
-    const pago = this.pagoRepository.create({
-      usuario: { id: usuarioId },
-      referencia,
-      montoCentavos,
-      moneda,
-      concepto: ConceptoPago.ALERTA_TURBO,
-      estado: EstadoPago.PENDIENTE,
-      reporte,
-      checkoutUrl,
-    });
-
-    try {
-      await this.pagoRepository.save(pago);
-    } catch (error: any) {
-      const codigo = error?.code ?? error?.driverError?.code;
-
-      const restriccion =
-        error?.constraint ?? error?.driverError?.constraint;
-
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT id FROM reportes WHERE id = $1 FOR UPDATE', [reporteId]);
+      const vigente = await manager.findOneOrFail(Reporte, { where: { id: reporteId } });
+      const ultimo = await this.buscarUltimoPagoTurbo(usuarioId, reporteId, manager);
+      if (vigente.esTurbo && vigente.turboVenceEn && vigente.turboVenceEn > new Date()) {
+        throw new ConflictException('Este reporte ya tiene una Alerta Turbo activa.');
+      }
       if (
-        codigo === '23505' &&
-        restriccion === INDICE_PAGO_TURBO_PENDIENTE
+        ultimo?.id !== anterior?.id ||
+        (ultimo && !renovacion && resultadoAnterior !== 'disponible' && !this.permiteReintento(ultimo))
       ) {
-        const pagoExistente = await this.buscarPagoTurboPendiente(
-          usuarioId,
-          reporteId,
-        );
-
-        if (pagoExistente) {
-          return this.respuestaPagoPendiente(
-            pagoExistente,
-            reporteId,
-          );
-        }
-
-        throw new ConflictException(
-          'Ya existe un pago Turbo pendiente para este reporte, pero no fue posible recuperarlo.',
-        );
+        throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+      }
+      if (vigente.esTurbo && vigente.turboVenceEn && vigente.turboVenceEn <= new Date()) {
+        vigente.esTurbo = false;
+        vigente.turboActivadaEn = null;
+        vigente.turboVenceEn = null;
+        await manager.save(Reporte, vigente);
       }
 
-      throw error;
-    }
+      if (ultimo && !renovacion) await this.verificarHistorialBloqueado(ultimo, manager);
 
-    return {
-      mensaje: 'Pago de Alerta Turbo creado correctamente.',
-      reutilizado: false,
-      pago: {
-        id: pago.id,
-        referencia: pago.referencia,
-        concepto: pago.concepto,
-        montoCentavos: pago.montoCentavos,
-        moneda: pago.moneda,
-        estado: pago.estado,
-        reporteId,
-      },
-      checkout,
-      checkoutUrl,
-    };
-  }
+      if (ultimo && resultadoAnterior === 'disponible') {
+        if (!this.puedeContinuarCheckout(ultimo)) throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+        return {
+          mensaje: 'Wompi confirmó que este enlace aún no tiene una transacción.',
+          reutilizado: true,
+          pago: {
+            id: ultimo.id,
+            referencia: ultimo.referencia,
+            estado: ultimo.estado,
+            montoCentavos: ultimo.montoCentavos,
+            concepto: ultimo.concepto,
+            moneda: ultimo.moneda,
+            reporteId,
+          },
+          checkoutUrl: ultimo.checkoutUrl,
+        };
+      }
 
-  // ==========================================
-  // BUSCAR PAGO TURBO PENDIENTE
-  // ==========================================
+      const referencia = this.wompiService.generarReferencia(
+        ultimo && !renovacion ? referenciaOriginalPago(ultimo.referencia) : undefined,
+      );
+      const moneda = 'COP';
+      const montoCentavos = ultimo && !renovacion ? ultimo.montoCentavos : PRECIO_TURBO_CENTAVOS;
 
-  private async buscarPagoTurboPendiente(
-    usuarioId: number,
-    reporteId: number,
-  ): Promise<Pago | null> {
-    return this.pagoRepository.findOne({
-      where: {
+      const frontendUrl = (
+        this.configService.get<string>('FRONTEND_URL') ??
+        'http://localhost:3000'
+      )
+        .trim()
+        .replace(/\/+$/, '');
+
+      // Redirigir al formulario /reportar después del pago de Wompi
+      const redirectUrl = `${frontendUrl}/reportar`;
+
+      const { checkout, checkoutUrl } = this.wompiService.prepararCheckout(
+        referencia, montoCentavos, moneda, redirectUrl,
+      );
+
+      const pago = manager.create(Pago, {
         usuario: { id: usuarioId },
-        reporte: { id: reporteId },
+        referencia,
+        montoCentavos,
+        moneda,
         concepto: ConceptoPago.ALERTA_TURBO,
         estado: EstadoPago.PENDIENTE,
-      },
+        reporte: vigente,
+        checkoutUrl,
+      });
+
+      await manager.save(Pago, pago);
+
+      return {
+        mensaje: 'Pago de Alerta Turbo creado correctamente.',
+        reutilizado: false,
+        pago: {
+          id: pago.id,
+          referencia: pago.referencia,
+          concepto: pago.concepto,
+          montoCentavos: pago.montoCentavos,
+          moneda: pago.moneda,
+          estado: pago.estado,
+          reporteId,
+        },
+        checkout,
+        checkoutUrl,
+      };
     });
   }
 
-  // ==========================================
-  // RESPUESTA DE PAGO PENDIENTE
-  // ==========================================
+  permiteReintento(pago: Pago): boolean {
+    return [EstadoPago.RECHAZADO, EstadoPago.ANULADO, EstadoPago.ERROR, EstadoPago.EXPIRADO].includes(pago.estado) &&
+      !!pago.wompiTransactionId;
+  }
 
-  private async respuestaPagoPendiente(
-    pago: Pago,
-    reporteId: number,
-  ) {
-    if (!pago.checkoutUrl) {
-      throw new ConflictException(
-        'Existe un pago pendiente sin enlace de Wompi. Se requiere revisión.',
-      );
+  puedeContinuarCheckout(pago: Pago): pago is Pago & { checkoutUrl: string } {
+    return [EstadoPago.PENDIENTE, EstadoPago.EXPIRADO].includes(pago.estado) &&
+      !pago.wompiTransactionId && !!pago.checkoutUrl;
+  }
+
+  private referenciasDeOperacion(referencia: string) {
+    const original = referenciaOriginalPago(referencia);
+    return Raw(
+      (column) => `(${column} = :original OR left(${column}, length(:original) + 1) = :prefijo)`,
+      { original, prefijo: `${original}_` },
+    );
+  }
+
+  async reconciliarAntesDeReintentar(pago: Pago): Promise<'disponible' | 'reintentar'> {
+    const historial = await this.pagoRepository.find({
+      where: { referencia: this.referenciasDeOperacion(pago.referencia), concepto: pago.concepto },
+      order: { id: 'ASC' },
+    });
+    for (const anterior of historial) {
+      if (anterior.id !== pago.id) await this.reconciliarReferencia(anterior);
+    }
+    return this.reconciliarReferencia(pago);
+  }
+
+  async verificarHistorialBloqueado(pago: Pago, manager: EntityManager): Promise<void> {
+    const historial = await manager.find(Pago, {
+      where: { referencia: this.referenciasDeOperacion(pago.referencia), concepto: pago.concepto },
+      relations: { intentos: true },
+    });
+    for (const anterior of historial) {
+      if (anterior.estado === EstadoPago.APROBADO ||
+          anterior.intentos.some((intento) => intento.estado === EstadoIntentoPago.PENDIENTE)) {
+        throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+      }
+    }
+  }
+
+  private async reconciliarReferencia(pago: Pago): Promise<'disponible' | 'reintentar'> {
+    if (pago.estado === EstadoPago.APROBADO) {
+      throw new ConflictException('El pago anterior ya fue aprobado. Consulta el estado de tu operación.');
     }
 
-    const frontendUrl = (
-      this.configService.get<string>('FRONTEND_URL') ??
-      'http://localhost:3000'
-    )
-      .trim()
-      .replace(/\/+$/, '');
-    const redirectUrl = `${frontendUrl}/reportar`;
+    // La búsqueda por referencia también encuentra transacciones de las que aún no llegó el webhook.
+    const idsRemotos = await this.wompiService.consultarIdsPorReferencia(pago.referencia).catch(() => {
+      throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+    });
+    const intentos = await this.dataSource.getRepository(IntentoPago).find({
+      where: { pago: { id: pago.id } },
+    });
+    const ids = new Set([...idsRemotos, ...intentos.map((intento) => intento.wompiTransactionId)]);
+    if (pago.wompiTransactionId) ids.add(pago.wompiTransactionId);
+    if (!ids.size) return 'disponible';
 
-    let checkoutUrl = pago.checkoutUrl;
-    try {
-      const urlObj = new URL(checkoutUrl);
-      urlObj.searchParams.set('redirect-url', redirectUrl);
-      checkoutUrl = urlObj.toString();
-    } catch {
-      // conservar checkoutUrl si no es parseable
+    let pendiente = false;
+    for (const id of ids) {
+      const transaccion = await this.wompiService.consultarTransaccion(id).catch(() => {
+        throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+      });
+      if (transaccion.id !== id || transaccion.reference !== pago.referencia ||
+          transaccion.amount_in_cents !== pago.montoCentavos || transaccion.currency !== pago.moneda) {
+        throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+      }
+      const resultado = await this.procesarEventoWompi(transaccion);
+      if (resultado.estado === EstadoPago.APROBADO) {
+        throw new ConflictException('Wompi confirmó el pago anterior. Consulta el estado de tu operación.');
+      }
+      const finalizado = Date.parse(transaccion.finalized_at ?? '');
+      const reintentoEnWompi = transaccion.status === 'DECLINED' &&
+        finalizado + 180_000 > Date.now();
+      pendiente ||= !['DECLINED', 'VOIDED', 'ERROR', 'EXPIRED'].includes(transaccion.status ?? '') ||
+        reintentoEnWompi || !resultado.intento;
     }
 
-    return {
-      mensaje: 'Se recuperó el pago Turbo pendiente.',
-      reutilizado: true,
-      pago: {
-        id: pago.id,
-        referencia: pago.referencia,
-        concepto: pago.concepto,
-        montoCentavos: pago.montoCentavos,
-        moneda: pago.moneda,
-        estado: pago.estado,
-        reporteId,
-      },
-      checkoutUrl,
-    };
+    if (pendiente) throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
+    return 'reintentar';
   }
 
   // ==========================================
@@ -405,6 +401,7 @@ export class PagosService {
       'DECLINED',
       'ERROR',
       'VOIDED',
+      'EXPIRED',
     ];
 
     if (
@@ -440,8 +437,7 @@ export class PagosService {
     }
 
     // 8. Procesar usando el mismo mecanismo del webhook.
-    const resultado =
-      await this.procesarEventoWompi(transaccion);
+    const resultado = await this.procesarEventoWompi(transaccion);
 
     // 9. Comprobar que el procesamiento realmente haya
     // encontrado y actualizado el pago.
@@ -513,6 +509,10 @@ export class PagosService {
         estadoRecibido = EstadoIntentoPago.RECHAZADO;
         break;
 
+      case 'EXPIRED':
+        estadoRecibido = EstadoIntentoPago.EXPIRADO;
+        break;
+
       case 'ERROR':
         estadoRecibido = EstadoIntentoPago.ERROR;
         break;
@@ -534,7 +534,30 @@ export class PagosService {
     await queryRunner.startTransaction();
 
     try {
-      // Bloquear el pago para serializar los eventos de una referencia.
+      const referenciaOriginal = referenciaOriginalPago(referencia);
+      // En reservas, mantener el mismo orden de bloqueo que al liberar
+      // vencimientos y crear cupos: jornada antes que pago.
+      const jornadasBloqueadas: { id: number }[] = await queryRunner.manager.query(
+        `SELECT jornada.id
+         FROM jornadas jornada
+         JOIN reservas_jornadas reserva ON reserva.jornada_id = jornada.id
+         JOIN pagos pago ON pago.referencia = $1 AND pago.concepto = $2
+         WHERE reserva.pago_id = pago.id OR reserva.referencia_pago = $3
+         FOR UPDATE OF jornada`,
+        [referencia, ConceptoPago.APARTADO_RESERVA, referenciaOriginal],
+      );
+
+      if (!jornadasBloqueadas.length) {
+        await queryRunner.manager.query(
+          `SELECT reporte.id FROM reportes reporte
+           JOIN pagos pago ON pago.reporte_id = reporte.id
+           WHERE pago.referencia = $1 AND pago.concepto = $2
+           FOR UPDATE OF reporte`,
+          [referencia, ConceptoPago.ALERTA_TURBO],
+        );
+      }
+
+      // Los eventos y la emisión de otro checkout comparten el bloqueo de la operación.
       const pagosBloqueados = await queryRunner.manager.query(
         `SELECT id, reporte_id
          FROM pagos
@@ -560,6 +583,7 @@ export class PagosService {
 
       const pago = await queryRunner.manager.findOne(Pago, {
         where: { id: pagoId },
+        relations: { usuario: true },
       });
 
       if (!pago) {
@@ -583,6 +607,13 @@ export class PagosService {
           mensaje: 'Los datos de la transacción no coinciden.',
         };
       }
+
+      const aprobacionesOtrasReferencias: { id: number }[] =
+        await queryRunner.manager.query(
+          `SELECT id FROM pagos WHERE estado = $1 AND id <> $2
+           AND (referencia = $3 OR left(referencia, length($3) + 1) = $3 || '_')`,
+          [EstadoPago.APROBADO, pago.id, referenciaOriginal],
+        );
 
       const pagoYaEstabaAprobado =
         pago.estado === EstadoPago.APROBADO;
@@ -625,6 +656,8 @@ export class PagosService {
 
       const yaExistiaIntentoAprobado = !!aprobacionAnterior;
 
+      const intentoYaAprobado = intento?.estado === EstadoIntentoPago.APROBADO;
+
       // Registrar una transacción nueva, aunque el pago ya esté aprobado.
       if (!intento) {
         intento = queryRunner.manager.create(IntentoPago, {
@@ -636,9 +669,8 @@ export class PagosService {
           metodoPago,
         });
       } else {
-        // Un intento terminal no retrocede a pendiente ni cambia
-        // de estado por eventos posteriores.
-        if (intento.estado === EstadoIntentoPago.PENDIENTE) {
+        // Una aprobación tardía prevalece. Un evento pendiente o terminal atrasado no la revierte.
+        if (intento.estado === EstadoIntentoPago.PENDIENTE || estadoRecibido === EstadoIntentoPago.APROBADO) {
           intento.estado = estadoRecibido;
         }
 
@@ -672,7 +704,8 @@ export class PagosService {
 
       // Dos identificadores distintos aprobados para el mismo pago
       // requieren revisión por posible cobro duplicado.
-      const requiereRevision = intentosAprobados.length > 1;
+      const cantidadAprobadas = intentosAprobados.length + aprobacionesOtrasReferencias.length;
+      const requiereRevision = intentosAprobados.length > 0 && cantidadAprobadas > 1;
 
       let nuevoEstado: EstadoPago;
 
@@ -696,6 +729,10 @@ export class PagosService {
             nuevoEstado = EstadoPago.ANULADO;
             break;
 
+          case EstadoIntentoPago.EXPIRADO:
+            nuevoEstado = EstadoPago.EXPIRADO;
+            break;
+
           case EstadoIntentoPago.ERROR:
             nuevoEstado = EstadoPago.ERROR;
             break;
@@ -715,7 +752,7 @@ export class PagosService {
           (a, b) => a.id - b.id,
         )[0];
 
-        if (!pago.wompiTransactionId) {
+        if (!pagoYaEstabaAprobado || !pago.wompiTransactionId) {
           pago.wompiTransactionId =
             primeraAprobacion.wompiTransactionId;
         }
@@ -729,12 +766,89 @@ export class PagosService {
 
       await queryRunner.manager.save(Pago, pago);
 
+      let reservaEnRevision = false;
+      let reservaId: number | undefined;
+      if (pago.concepto === ConceptoPago.APARTADO_RESERVA) {
+        const jornadaId = jornadasBloqueadas[0]?.id;
+        const reserva = jornadaId
+          ? await queryRunner.manager.findOne(ReservaJornada, {
+              where: [
+                { pago: { id: pago.id }, jornada: { id: jornadaId } },
+                { referenciaPago: referenciaOriginal, jornada: { id: jornadaId } },
+              ],
+              relations: { jornada: true, pago: true },
+            })
+          : null;
+
+        if (reserva) {
+          reservaId = reserva.id;
+          const jornada = reserva.jornada;
+          const ahora = new Date();
+          const retieneCupo = reserva.estado === EstadoReservaJornada.PENDIENTE;
+          const jornadaAbierta = jornada.activa && jornada.fechaFin > ahora;
+          const reservaVigente = reserva.expiraEn > ahora;
+
+          if (
+            nuevoEstado === EstadoPago.APROBADO &&
+            !pagoYaEstabaAprobado &&
+            !yaExistiaIntentoAprobado &&
+            !aprobacionesOtrasReferencias.length &&
+            reserva.estado !== EstadoReservaJornada.CONFIRMADA
+          ) {
+            const puedeUsarCupoRetenido = retieneCupo && (reservaVigente || jornadaAbierta);
+            const puedeRecuperarCupo =
+              (reserva.estado === EstadoReservaJornada.EXPIRADA ||
+                reserva.estado === EstadoReservaJornada.RECHAZADA) &&
+              jornadaAbierta &&
+              jornada.cuposDisponibles > 0;
+
+            const otraReservaConfirmada = await queryRunner.manager.exists(ReservaJornada, {
+              where: {
+                jornada: { id: jornada.id },
+                usuario: { id: pago.usuario.id },
+                estado: EstadoReservaJornada.CONFIRMADA,
+              },
+            });
+            reserva.pago = pago;
+            reserva.referenciaPago = referenciaOriginal;
+            if (!otraReservaConfirmada && (puedeUsarCupoRetenido || puedeRecuperarCupo)) {
+              if (puedeRecuperarCupo) {
+                jornada.cuposDisponibles -= 1;
+                await queryRunner.manager.save(Jornada, jornada);
+              }
+              reserva.estado = EstadoReservaJornada.CONFIRMADA;
+              reserva.confirmadaEn = ahora;
+              await queryRunner.manager.save(ReservaJornada, reserva);
+            } else if (retieneCupo) {
+              await this.liberarCupo(queryRunner.manager, reserva, EstadoReservaJornada.EXPIRADA);
+            } else {
+              await queryRunner.manager.save(ReservaJornada, reserva);
+            }
+          } else if (
+            retieneCupo && reserva.pago?.id === pago.id &&
+            [EstadoPago.RECHAZADO, EstadoPago.ANULADO, EstadoPago.ERROR, EstadoPago.EXPIRADO].includes(nuevoEstado)
+          ) {
+            await this.liberarCupo(
+              queryRunner.manager, reserva,
+              nuevoEstado === EstadoPago.EXPIRADO ? EstadoReservaJornada.EXPIRADA : EstadoReservaJornada.RECHAZADA,
+            );
+          }
+        }
+
+        reservaEnRevision =
+          nuevoEstado === EstadoPago.APROBADO &&
+          reserva?.estado !== EstadoReservaJornada.CONFIRMADA;
+      }
+
+      // Turbo solo se activa en la primera aprobación del pago.
+
       // Turbo solo se activa en la primera aprobación del pago.
       // Una segunda transacción aprobada no extiende su duración.
       const esPrimeraAprobacion =
         nuevoEstado === EstadoPago.APROBADO &&
         !pagoYaEstabaAprobado &&
-        !yaExistiaIntentoAprobado;
+        !yaExistiaIntentoAprobado &&
+        !aprobacionesOtrasReferencias.length;
 
       if (
         esPrimeraAprobacion &&
@@ -755,7 +869,7 @@ export class PagosService {
             relations: { usuario: true },
           });
 
-          if (reporte) {
+          if (reporte && !(reporte.esTurbo && reporte.turboVenceEn && reporte.turboVenceEn > new Date())) {
             const fechaActivacion = new Date();
             const fechaVencimiento = new Date(fechaActivacion);
             fechaVencimiento.setDate(
@@ -797,17 +911,44 @@ export class PagosService {
 
       await queryRunner.commitTransaction();
 
+      if (requiereRevision && !intentoYaAprobado) {
+        this.logger.warn({
+          mensaje: 'Cobro duplicado pendiente de revisión administrativa',
+          referenciaOriginal,
+          referencia,
+          transactionId,
+          concepto: pago.concepto,
+        });
+      }
+
+      if (requiereRevision && estadoRecibido === EstadoIntentoPago.APROBADO) {
+        await this.notificacionesService.registrarNotificacionPagoTurbo({
+          clave: `cobro-duplicado:${referenciaOriginal}`,
+          titulo: 'Cobro duplicado para revisión',
+          usuarioNombre: pago.usuario.nombre,
+          reporteId,
+          reservaId,
+          monto: `${(pago.montoCentavos / 100).toLocaleString('es-CO')} ${pago.moneda}`,
+          referencia,
+          fechaPago: new Date(),
+          estado: 'En revisión',
+          enlaceReporte: reporteId ? `/reportes/${reporteId}` : '/jornadas',
+        });
+      }
+
       return {
         recibido: true,
         mensaje: requiereRevision
           ? 'Se detectaron varias transacciones aprobadas para el mismo pago. Se requiere revisión.'
-          : nuevoEstado === EstadoPago.APROBADO
+          : reservaEnRevision
+            ? MENSAJE_RESERVA_EN_REVISION
+            : nuevoEstado === EstadoPago.APROBADO
             ? 'Pago aprobado y procesado correctamente.'
             : 'Historial de intento actualizado correctamente.',
         referencia: pago.referencia,
         estado: pago.estado,
-        requiereRevision,
-        cantidadTransaccionesAprobadas: intentosAprobados.length,
+        requiereRevision: requiereRevision || reservaEnRevision,
+        cantidadTransaccionesAprobadas: cantidadAprobadas,
         intento: {
           id: intento.id,
           wompiTransactionId: intento.wompiTransactionId,
@@ -825,12 +966,40 @@ export class PagosService {
     }
   }
 
+  private async liberarCupo(
+    manager: EntityManager,
+    reserva: ReservaJornada,
+    estado: EstadoReservaJornada.EXPIRADA | EstadoReservaJornada.RECHAZADA,
+  ) {
+    const jornada = reserva.jornada;
+    if (jornada.cuposDisponibles < jornada.cuposTotales) {
+      jornada.cuposDisponibles += 1;
+      await manager.save(Jornada, jornada);
+    }
+    reserva.estado = estado;
+    await manager.save(ReservaJornada, reserva);
+  }
+
   // ==========================================
   // CONSULTAR PAGO ASOCIADO A UN REPORTE
   // ==========================================
 
   async consultarPagoPorReporte(usuarioId: number, reporteId: number): Promise<Pago | null> {
-    return this.pagoRepository.findOne({
+    const ultimo = await this.buscarUltimoPagoTurbo(usuarioId, reporteId);
+    if (!ultimo || ultimo.estado === EstadoPago.APROBADO) return ultimo;
+    return (await this.pagoRepository.findOne({
+      where: {
+        referencia: this.referenciasDeOperacion(ultimo.referencia),
+        concepto: ConceptoPago.ALERTA_TURBO,
+        estado: EstadoPago.APROBADO,
+      },
+      order: { id: 'ASC' },
+      relations: { reporte: true },
+    })) ?? ultimo;
+  }
+
+  private buscarUltimoPagoTurbo(usuarioId: number, reporteId: number, manager = this.dataSource.manager) {
+    return manager.findOne(Pago, {
       where: {
         reporte: { id: reporteId },
         usuario: { id: usuarioId },
@@ -877,7 +1046,8 @@ export class PagosService {
       }
 
       // Procesar e idempotentemente actualizar estado
-      await this.procesarEventoWompi(transaccion);
+      const resultado = await this.procesarEventoWompi(transaccion);
+      if (!resultado.intento) throw new BadRequestException('Wompi devolvió datos que no coinciden con el pago.');
 
       const pagoActualizado = await this.pagoRepository.findOne({
         where: { id: pago.id },
@@ -886,15 +1056,72 @@ export class PagosService {
 
       const aprobado = pagoActualizado?.estado === EstadoPago.APROBADO;
 
+      let reservaInfo: {
+        id: number;
+        codigo: string;
+        nombrePropietario: string;
+        nombreMascota: string;
+        estado: EstadoReservaJornada;
+        precioProcedimientoCentavos: number;
+        precioApartadoCentavos: number;
+        saldoPendienteCentavos: number;
+        jornadaTitulo?: string;
+        veterinaria?: string;
+        direccion?: string;
+        fechaTexto?: string;
+        horaTexto?: string;
+      } | null = null;
+      if (pago.concepto === ConceptoPago.APARTADO_RESERVA) {
+        const reserva = await this.dataSource.getRepository(ReservaJornada).findOne({
+          where: [{ pago: { id: pago.id } }, { referenciaPago: referenciaOriginalPago(pago.referencia) }],
+          relations: { jornada: true, pago: true },
+        });
+        if (reserva) {
+          reservaInfo = {
+            id: reserva.id,
+            codigo: reserva.codigo,
+            nombrePropietario: reserva.nombrePropietario,
+            nombreMascota: reserva.nombreMascota,
+            estado: reserva.estado,
+            precioProcedimientoCentavos:
+              reserva.precioProcedimientoHistoricoCentavos,
+            precioApartadoCentavos:
+              reserva.precioApartadoHistoricoCentavos,
+            saldoPendienteCentavos: Math.max(
+              0,
+              reserva.precioProcedimientoHistoricoCentavos -
+                reserva.precioApartadoHistoricoCentavos,
+            ),
+            jornadaTitulo: reserva.jornada?.titulo,
+            veterinaria: reserva.jornada?.veterinaria,
+            direccion: reserva.jornada?.direccion,
+            fechaTexto: reserva.jornada?.fechaTexto,
+            horaTexto: reserva.jornada?.horaTexto,
+          };
+        }
+      }
+
+      const esApartado = pago.concepto === ConceptoPago.APARTADO_RESERVA;
+      const requiereRevision = esApartado && aprobado &&
+        reservaInfo?.estado !== EstadoReservaJornada.CONFIRMADA;
+
       return {
         aprobado,
+        ...((esApartado || resultado.requiereRevision) && { requiereRevision: requiereRevision || resultado.requiereRevision }),
         estado: pagoActualizado?.estado ?? EstadoPago.PENDIENTE,
+        concepto: pago.concepto,
         mensaje: aprobado
-          ? 'Pago aprobado. Alerta Turbo activada para este reporte'
+          ? (pago.concepto === ConceptoPago.APARTADO_RESERVA
+              ? (requiereRevision
+                  ? MENSAJE_RESERVA_EN_REVISION
+                  : '¡Tu cupo ha sido reservado exitosamente!')
+              : 'Pago aprobado. Alerta Turbo activada para este reporte')
           : `El pago se encuentra en estado ${pagoActualizado?.estado}.`,
         reporteId: pagoActualizado?.reporte?.id,
+        reserva: reservaInfo,
         pagoId: pago.id,
         referencia: pago.referencia,
+        montoCentavos: pago.montoCentavos,
       };
     }
 

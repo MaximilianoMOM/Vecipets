@@ -11,8 +11,11 @@ export const API_BASE_URL = backendUrl.endsWith('/api/v1')
   : `${backendUrl}/api/v1`;
 
 // Cliente Axios con el prefijo global de la API
+const usarProxyLocal = process.env.NODE_ENV === 'development' &&
+  ['localhost', '127.0.0.1'].includes(new URL(backendUrl).hostname);
+
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: usarProxyLocal ? '/api/vecipets' : API_BASE_URL,
   withCredentials: true,
 });
 

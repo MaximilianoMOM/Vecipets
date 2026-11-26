@@ -41,7 +41,7 @@ export class NotificacionesService {
         const items: NotificacionAdminTurbo[] = JSON.parse(contenido);
         this.notificaciones.clear();
         for (const item of items) {
-          this.notificaciones.set(item.referencia, item);
+          this.notificaciones.set(item.clave ?? item.referencia, item);
         }
         this.logger.log(`Cargadas ${this.notificaciones.size} notificaciones desde almacenamiento persistente.`);
       }
@@ -73,13 +73,14 @@ export class NotificacionesService {
     dto: RegistrarNotificacionTurboDto,
   ): Promise<NotificacionAdminTurbo> {
     const referencia = dto.referencia.trim();
+    const clave = dto.clave ?? referencia;
 
     // Idempotencia: si ya existe para esta referencia, no duplicar
-    if (this.notificaciones.has(referencia)) {
+    if (this.notificaciones.has(clave)) {
       this.logger.log(
         `Notificación para la referencia ${referencia} ya existía previamente. Omitiendo duplicado.`,
       );
-      return this.notificaciones.get(referencia)!;
+      return this.notificaciones.get(clave)!;
     }
 
     const nuevaNotificacion: NotificacionAdminTurbo = {
@@ -87,6 +88,8 @@ export class NotificacionesService {
       titulo: dto.titulo || 'Nuevo pago de Alerta Turbo',
       usuarioNombre: dto.usuarioNombre.trim(),
       reporteId: dto.reporteId,
+      reservaId: dto.reservaId,
+      clave: dto.clave,
       monto: dto.monto || '$15.000 COP',
       referencia,
       fechaPago: dto.fechaPago instanceof Date ? dto.fechaPago.toISOString() : dto.fechaPago,
@@ -96,7 +99,7 @@ export class NotificacionesService {
       creadoEn: new Date().toISOString(),
     };
 
-    this.notificaciones.set(referencia, nuevaNotificacion);
+    this.notificaciones.set(clave, nuevaNotificacion);
     this.guardarEnDisco();
 
     this.logger.log(

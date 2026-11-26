@@ -58,7 +58,7 @@ export default function PublicarJornadaPage() {
       <Link href="/perfil" className={accountSecondary}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver a mi perfil</Link>
       {loading ? (
         <p role="status" className={accountCard}>Cargando tu cuenta…</p>
-      ) : user?.rol === 'VETERINARIA' ? (
+      ) : user?.rol === 'VETERINARIA' || user?.rol === 'REFUGIO' ? (
         <form onSubmit={publicar} className={`${accountCard} max-w-4xl space-y-6`}>
           <fieldset disabled={guardando} className="grid min-w-0 gap-x-6 gap-y-5 sm:grid-cols-2">
             {fields.map(({ name, label, ...props }) => (
@@ -69,8 +69,7 @@ export default function PublicarJornadaPage() {
             ))}
           </fieldset>
           <p className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-relaxed text-indigo-900">
-            La tarifa por cupo es de $2.000 si el procedimiento es gratuito,
-            $5.000 si tiene costo y la jornada ofrece hasta 50 cupos, o $10.000 si tiene costo y ofrece más de 50.
+            El valor del apartado se calcula según el costo del procedimiento: $2.000 COP si es gratuito, $5.000 COP si cuesta entre $1 y $49.999 COP, y $10.000 COP si cuesta $50.000 COP o más. Este valor lo abona el ciudadano al apartar su cupo mediante VeciPets.
           </p>
           {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
           {publicada && (
@@ -85,7 +84,7 @@ export default function PublicarJornadaPage() {
         </form>
       ) : (
         <section className={accountCard}>
-          <p>Solo las cuentas de veterinaria pueden publicar jornadas.</p>
+          <p>Solo las cuentas de veterinaria o refugio pueden publicar jornadas.</p>
           {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
         </section>
       )}

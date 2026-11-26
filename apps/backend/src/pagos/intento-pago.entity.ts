@@ -17,6 +17,7 @@ export enum EstadoIntentoPago {
   RECHAZADO = 'DECLINED',
   ERROR = 'ERROR',
   ANULADO = 'VOIDED',
+  EXPIRADO = 'EXPIRED',
 }
 
 @Entity('intentos_pago')

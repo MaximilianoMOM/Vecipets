@@ -22,7 +22,6 @@ interface CheckoutTurboModalProps {
     isOpen: boolean;
     onClose: () => void;
     reporteId?: number;
-    checkoutUrl?: string;
     nombreMascota: string;
     onSuccess?: () => void;
 }
@@ -35,7 +34,6 @@ export default function CheckoutTurboModal({
     isOpen,
     onClose,
     reporteId,
-    checkoutUrl: checkoutUrlProp,
     nombreMascota,
     onSuccess,
 }: CheckoutTurboModalProps) {
@@ -50,11 +48,6 @@ export default function CheckoutTurboModal({
     // ==========================================
 
     const handlePagarConWompi = async () => {
-        if (checkoutUrlProp && checkoutUrlProp.startsWith('https://checkout.wompi.co/')) {
-            window.location.href = checkoutUrlProp;
-            return;
-        }
-
         if (!reporteId) {
             setError(
                 'No se identificó el número de reporte para activar la Alerta Turbo.',
@@ -71,11 +64,6 @@ export default function CheckoutTurboModal({
                 {
                     reporteId,
                 },
-            );
-
-            console.log(
-                'RESPUESTA DEL PAGO TURBO:',
-                respuesta.data,
             );
 
             const checkoutUrl = respuesta.data?.checkoutUrl;

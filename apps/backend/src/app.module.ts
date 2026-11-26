@@ -45,6 +45,7 @@ import { JornadasModule } from './jornadas/jornadas.module';
     UsuariosModule,
     AuthModule,
     PagosModule,
+    JornadasModule,
     ReportesModule,
     ValidacionImagenesModule,
     NotificacionesModule,

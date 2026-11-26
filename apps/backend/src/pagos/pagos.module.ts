@@ -6,6 +6,9 @@ import { ConfigModule } from '@nestjs/config';
 import { Pago } from './pago.entity';
 import { IntentoPago } from './intento-pago.entity';
 import { Reporte } from '../reportes/reporte.entity';
+import { Jornada } from '../jornadas/jornada.entity';
+import { ReservaJornada } from '../jornadas/reserva-jornada.entity';
+import { Usuario } from '../usuarios/usuario.entity';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
@@ -20,6 +23,9 @@ import { WompiWebhookController } from './wompi-webhook.controller';
       Pago,
       Reporte,
       IntentoPago,
+      Jornada,
+      ReservaJornada,
+      Usuario,
     ]),
     ConfigModule,
     UsuariosModule,
@@ -33,6 +39,6 @@ import { WompiWebhookController } from './wompi-webhook.controller';
     PagosService,
     WompiService,
   ],
-  exports: [PagosService],
+  exports: [PagosService, WompiService],
 })
 export class PagosModule {}

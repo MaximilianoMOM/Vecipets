@@ -20,7 +20,13 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect('Content-Type', /json/)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          estado: 'Backend funcionando correctamente',
+          servicio: 'API VeciPets',
+        });
+      });
   });
 
   afterEach(async () => {
