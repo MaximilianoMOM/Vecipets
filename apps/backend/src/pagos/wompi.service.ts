@@ -22,6 +22,7 @@ interface RespuestaTransaccionWompi {
     amount_in_cents?: number;
     currency?: string;
     payment_method_type?: string;
+    finalized_at?: string;
     [key: string]: any;
   };
 }
@@ -100,7 +101,8 @@ export class WompiService {
   // REFERENCIAS Y FIRMAS
   // ==========================================
 
-  generarReferencia(): string {
+  generarReferencia(referenciaOriginal?: string): string {
+    if (referenciaOriginal) return `${referenciaOriginal}_${randomUUID()}`;
     return `VECIPETS-${Date.now()}-${randomUUID()}`;
   }
 
@@ -108,9 +110,10 @@ export class WompiService {
     referencia: string,
     montoCentavos: number,
     moneda: string,
+    expiraEn = '',
   ): string {
     const cadena =
-      `${referencia}${montoCentavos}${moneda}${this.integritySecret}`;
+      `${referencia}${montoCentavos}${moneda}${expiraEn}${this.integritySecret}`;
 
     return createHash('sha256')
       .update(cadena)
@@ -126,6 +129,7 @@ export class WompiService {
     montoCentavos: number,
     moneda: string,
     urlRedireccion: string,
+    expiraEn?: string,
   ) {
     return {
       publicKey: this.publicKey,
@@ -137,10 +141,32 @@ export class WompiService {
           referencia,
           montoCentavos,
           moneda,
+          expiraEn,
         ),
       },
       redirectUrl: urlRedireccion,
     };
+  }
+
+  prepararCheckout(
+    referencia: string,
+    montoCentavos: number,
+    moneda: string,
+    redirectUrl: string,
+    expiraEn?: string,
+  ) {
+    const checkout = this.obtenerDatosCheckout(referencia, montoCentavos, moneda, redirectUrl, expiraEn);
+    const parametros = new URLSearchParams({
+      'public-key': checkout.publicKey,
+      currency: moneda,
+      'amount-in-cents': String(montoCentavos),
+      reference: referencia,
+      'signature:integrity': checkout.signature.integrity,
+      'redirect-url': redirectUrl,
+    });
+    if (expiraEn) parametros.set('expiration-time', expiraEn);
+    const query = parametros.toString().replace('signature%3Aintegrity', 'signature:integrity');
+    return { checkout, checkoutUrl: `${this.obtenerUrlCheckout()}?${query}` };
   }
 
   obtenerUrlCheckout(): string {
@@ -150,6 +176,20 @@ export class WompiService {
   // ==========================================
   // CONSULTAR TRANSACCIÓN EN WOMPI
   // ==========================================
+
+  async consultarIdsPorReferencia(referencia: string): Promise<string[]> {
+    const query = new URLSearchParams({ reference: referencia });
+    const respuesta = await this.solicitarDatos(`/transactions?${query}`);
+
+    const transacciones: unknown = respuesta?.data;
+    if (!Array.isArray(transacciones) || transacciones.some(
+      (item) => item?.reference !== referencia || typeof item.id !== 'string' || !item.id.trim(),
+    )) {
+      throw new InternalServerErrorException('La consulta por referencia de Wompi devolvió datos inesperados.');
+    }
+
+    return transacciones.map((item) => item.id);
+  }
 
   async consultarTransaccion(
     transactionId: string,
@@ -163,14 +203,27 @@ export class WompiService {
       );
     }
 
-    const url =
-      `${this.apiBaseUrl}/transactions/` +
-      encodeURIComponent(transactionId.trim());
+    const resultado: RespuestaTransaccionWompi = await this.solicitarDatos(
+      `/transactions/${encodeURIComponent(transactionId.trim())}`,
+    );
 
+    if (
+      !resultado?.data ||
+      typeof resultado.data !== 'object'
+    ) {
+      throw new InternalServerErrorException(
+        'Wompi no devolvió los datos de la transacción.',
+      );
+    }
+
+    return resultado.data;
+  }
+
+  private async solicitarDatos(ruta: string) {
     let respuesta: Response;
 
     try {
-      respuesta = await fetch(url, {
+      respuesta = await fetch(`${this.apiBaseUrl}${ruta}`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -190,26 +243,11 @@ export class WompiService {
       );
     }
 
-    let resultado: RespuestaTransaccionWompi;
-
     try {
-      resultado = await respuesta.json();
+      return await respuesta.json();
     } catch {
-      throw new InternalServerErrorException(
-        'Wompi devolvió una respuesta JSON inválida.',
-      );
+      throw new InternalServerErrorException('Wompi devolvió una respuesta JSON inválida.');
     }
-
-    if (
-      !resultado?.data ||
-      typeof resultado.data !== 'object'
-    ) {
-      throw new InternalServerErrorException(
-        'Wompi no devolvió los datos de la transacción.',
-      );
-    }
-
-    return resultado.data;
   }
 
   // ==========================================

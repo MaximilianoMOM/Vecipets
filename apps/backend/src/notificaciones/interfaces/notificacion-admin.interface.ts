@@ -2,7 +2,9 @@ export interface NotificacionAdminTurbo {
   id: string;
   titulo: string;
   usuarioNombre: string;
-  reporteId: number;
+  reporteId: number | null;
+  reservaId?: number;
+  clave?: string;
   monto: string;
   referencia: string;
   fechaPago: Date | string;
@@ -15,7 +17,9 @@ export interface NotificacionAdminTurbo {
 export interface RegistrarNotificacionTurboDto {
   titulo?: string;
   usuarioNombre: string;
-  reporteId: number;
+  reporteId: number | null;
+  reservaId?: number;
+  clave?: string;
   monto?: string;
   referencia: string;
   fechaPago: Date | string;

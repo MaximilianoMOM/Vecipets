@@ -72,7 +72,7 @@ export default function Header() {
     { name: 'Reportes', href: '/reportes' },
     { name: 'Clínicas y Vet.', href: '/clinicas' },
     { name: 'Jornadas', href: '/jornadas' },
-    ...(esAdmin ? [{ name: 'Moderación', href: '/admin' }] : []),
+    ...(esAdmin ? [{ name: 'Administración', href: '/admin' }] : []),
   ];
 
   const isActive = (path: string) => pathname === path;
@@ -191,7 +191,7 @@ export default function Header() {
                           onClick={() => setDropdownAbierto(false)}
                           className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
                         >
-                          🛡️ Panel de Moderación
+                          Panel de administración
                         </Link>
                       )}
 
@@ -310,7 +310,7 @@ export default function Header() {
                         onClick={() => setMenuMovilAbierto(false)}
                         className="w-full text-center bg-purple-50 text-purple-700 font-semibold py-2.5 rounded-xl text-sm"
                       >
-                        🛡️ Panel de Moderación
+                        Panel de administración
                       </Link>
                     )}
 

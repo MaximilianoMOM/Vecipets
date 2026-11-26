@@ -18,12 +18,16 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+import AccountLayout, { accountCard } from '../components/common/AccountLayout';
+import UsuariosAdmin from './UsuariosAdmin';
 
 interface NotificacionAdmin {
   id: string;
   titulo: string;
   usuarioNombre: string;
-  reporteId: number;
+  reporteId: number | null;
+  reservaId?: number;
   monto: string;
   referencia: string;
   fechaPago: string;
@@ -53,7 +57,29 @@ interface ReporteModeracion {
   };
 }
 
-export default function AdminDashboardPage() {
+export default function AdminPage() {
+    const { user, loading } = useAuth();
+
+    return (
+        <AccountLayout title={<span className="text-indigo-600">Administración</span>} description="Gestiona las cuentas, los reportes y las notificaciones de VeciPets.">
+            {loading ? (
+                <p role="status" className={accountCard}>Cargando el panel…</p>
+            ) : user?.rol === 'ADMINISTRADOR' ? (
+                <>
+                    <UsuariosAdmin />
+                    <AdminDashboard />
+                </>
+            ) : (
+                <section className={accountCard}>
+                    <p>{user ? 'Esta página requiere permisos de administrador.' : 'Inicia sesión para acceder al panel.'}</p>
+                    {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
+                </section>
+            )}
+        </AccountLayout>
+    );
+}
+
+function AdminDashboard() {
   const [tabActiva, setTabActiva] = useState<'notificaciones' | 'moderacion'>('notificaciones');
 
   // Estado Notificaciones Turbo
@@ -143,8 +169,8 @@ export default function AdminDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
 
         {/* Cabecera del Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
@@ -152,9 +178,9 @@ export default function AdminDashboardPage() {
             <span className="text-[11px] font-black tracking-widest text-emerald-700 uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
               Panel Administrativo • VeciPets 🛡️
             </span>
-            <h1 className="text-2xl font-black text-slate-900 mt-2">
+            <h2 className="text-2xl font-black text-slate-900 mt-2">
               Centro de Gestión y Notificaciones
-            </h1>
+            </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Supervisión informativa de pagos Turbo y moderación de contenido comunitario.
             </p>
@@ -242,7 +268,7 @@ export default function AdminDashboardPage() {
             ) : notificaciones.length === 0 ? (
               <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-2">
                 <p className="text-3xl">⚡</p>
-                <p className="text-sm font-bold text-slate-800">No hay notificaciones de Alerta Turbo</p>
+                <p className="text-sm font-bold text-slate-800">No hay notificaciones de pagos</p>
                 <p className="text-xs text-slate-400">
                   Las confirmaciones de pago exitoso de $15.000 COP aparecerán automáticamente aquí.
                 </p>
@@ -291,7 +317,11 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex items-center gap-1.5 text-slate-700">
                           <FileText className="w-3.5 h-3.5 text-slate-400" />
-                          <span><strong>Reporte ID:</strong> #{notif.reporteId}</span>
+                          {notif.reservaId ? (
+                            <span><strong>Reserva ID:</strong> #{notif.reservaId}</span>
+                          ) : notif.reporteId ? (
+                            <span><strong>Reporte ID:</strong> #{notif.reporteId}</span>
+                          ) : null}
                         </div>
                         <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
                           <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
@@ -309,7 +339,7 @@ export default function AdminDashboardPage() {
                         href={notif.enlaceReporte}
                         className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Ver Reporte
+                        <Eye className="w-3.5 h-3.5" /> {notif.reservaId ? "Ver jornadas" : "Ver reporte"}
                       </Link>
 
                       {!notif.leida && (

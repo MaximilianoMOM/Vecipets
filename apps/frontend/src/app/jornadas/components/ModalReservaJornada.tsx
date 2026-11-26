@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { isAxiosError } from 'axios';
 import {
   X,
   CreditCard,
@@ -46,6 +47,7 @@ interface RespuestaReserva {
 
 interface Props {
   jornada: Jornada;
+  tieneReservaPendiente: boolean;
   onClose: () => void;
 }
 
@@ -55,6 +57,7 @@ interface Props {
 
 export default function ModalReservaJornada({
   jornada,
+  tieneReservaPendiente,
   onClose,
 }: Props) {
   const { user } = useAuth();
@@ -70,6 +73,7 @@ export default function ModalReservaJornada({
 
   const [error, setError] =
     useState<string | null>(null);
+  const [reservaEnConsulta, setReservaEnConsulta] = useState<number | null>(null);
 
   const precioProcedimiento =
     jornada.precioProcedimientoCentavos / 100;
@@ -77,8 +81,10 @@ export default function ModalReservaJornada({
   const precioApartado =
     jornada.precioApartadoCentavos / 100;
 
-  const saldoPendiente =
-    precioProcedimiento - precioApartado;
+  const saldoPendiente = Math.max(
+    0,
+    precioProcedimiento - precioApartado,
+  );
 
   const formatearMoneda = (valor: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -115,12 +121,13 @@ export default function ModalReservaJornada({
       return;
     }
 
-    if (jornada.cuposDisponibles <= 0) {
+    if (jornada.cuposDisponibles <= 0 && !tieneReservaPendiente) {
       setError('No hay cupos disponibles.');
       return;
     }
 
     setProcesando(true);
+    setReservaEnConsulta(null);
 
     try {
       const respuesta =
@@ -170,25 +177,23 @@ export default function ModalReservaJornada({
     } catch (err: unknown) {
       console.error('Error creando reserva:', err);
 
-      const detalle = err as {
-        response?: {
-          data?: {
-            message?: string | string[];
-          };
+      let mensajeError = 'No se pudo iniciar el pago.';
+
+      if (isAxiosError(err)) {
+        const respuestaData = err.response?.data as {
+          message?: string | string[];
+          error?: string;
+          reservaId?: number;
         };
-        message?: string;
-      };
 
-      const mensaje = detalle.response?.data?.message;
+        setReservaEnConsulta(respuestaData?.reservaId ?? null);
+        const msg = respuestaData?.message || respuestaData?.error || err.message;
+        mensajeError = Array.isArray(msg) ? msg.join('. ') : String(msg);
+      } else if (err instanceof Error) {
+        mensajeError = err.message;
+      }
 
-      setError(
-        Array.isArray(mensaje)
-          ? mensaje.join('. ')
-          : mensaje ||
-            detalle.message ||
-            'No se pudo iniciar el pago.',
-      );
-
+      setError(mensajeError);
       setProcesando(false);
     }
   };
@@ -378,6 +383,11 @@ export default function ModalReservaJornada({
               className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
             >
               {error}
+              {reservaEnConsulta && (
+                <a className="ml-2 underline font-semibold" href={`/jornadas/reserva-resultado?reservaId=${reservaEnConsulta}`}>
+                  Consultar mi reserva
+                </a>
+              )}
             </div>
           )}
 
@@ -389,7 +399,7 @@ export default function ModalReservaJornada({
               procesando ||
               !nombrePropietario.trim() ||
               !nombreMascota.trim() ||
-              jornada.cuposDisponibles <= 0
+              (jornada.cuposDisponibles <= 0 && !tieneReservaPendiente)
             }
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-4 font-bold text-white shadow-md transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
           >

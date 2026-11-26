@@ -2,6 +2,7 @@
 import {
   Controller,
   Get,
+  Logger,
   Req,
   Res,
   UseGuards,
@@ -23,6 +24,7 @@ interface RequestGoogle extends Request {
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
   constructor(
     private readonly usuariosService: UsuariosService,
   ) { }
@@ -53,9 +55,10 @@ export class AuthController {
 
     // Redirige al frontend después de establecer la cookie.
     const frontendUrl = (
-      process.env.FRONTEND_URL || 'http://localhost:3000'
+      process.env.GOOGLE_FRONTEND_URL || process.env.FRONTEND_URL || 'http://localhost:3000'
     ).replace(/\/+$/, '');
 
+    this.logger.log('Sesión de Google iniciada');
     return respuesta.redirect(`${frontendUrl}/`);
   }
 }

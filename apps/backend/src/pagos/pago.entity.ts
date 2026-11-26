@@ -47,7 +47,7 @@ export class Pago {
     length: 100,
     unique: true,
   })
-  referencia: string;
+  referencia: string; // Inmutable. Cada nuevo checkout firmado tiene su propio pago.
 
   @Column({
     type: 'integer',

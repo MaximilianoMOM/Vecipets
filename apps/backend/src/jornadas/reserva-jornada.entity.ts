@@ -12,6 +12,9 @@ import { Jornada } from './jornada.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 import { Pago } from '../pagos/pago.entity';
 
+export const MENSAJE_RESERVA_EN_REVISION =
+  'Recibimos tu pago, pero no pudimos confirmar tu cupo. El caso está pendiente de revisión administrativa.';
+
 export enum EstadoReservaJornada {
   PENDIENTE = 'PENDIENTE',
   CONFIRMADA = 'CONFIRMADA',
@@ -36,6 +39,7 @@ export class ReservaJornada {
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
 
+  // Pago vigente o primer pago aprobado de esta reserva.
   @ManyToOne(() => Pago, { nullable: true })
   @JoinColumn({ name: 'pago_id' })
   pago: Pago | null;
@@ -46,7 +50,7 @@ export class ReservaJornada {
     nullable: true,
     name: 'referencia_pago',
   })
-  referenciaPago: string | null;
+  referenciaPago: string | null; // Referencia original, conservada para reconciliar reintentos.
 
   @Column({
     type: 'varchar',

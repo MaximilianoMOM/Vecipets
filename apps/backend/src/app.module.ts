@@ -49,6 +49,7 @@ import { JornadasModule } from './jornadas/jornadas.module';
     ReportesModule,
     ValidacionImagenesModule,
     NotificacionesModule,
+    JornadasModule,
   ],
   controllers: [AppController],
 })

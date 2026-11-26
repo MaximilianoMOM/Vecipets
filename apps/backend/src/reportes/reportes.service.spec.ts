@@ -14,6 +14,8 @@ import {
 import { Usuario } from '../usuarios/usuario.entity';
 import { ValidacionImagenesService } from '../validacion-imagenes/validacion-imagenes.service';
 import { AlmacenamientoService } from './almacenamiento.service';
+import { PagosService } from '../pagos/pagos.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 describe('ReportesService', () => {
   let service: ReportesService;
@@ -96,6 +98,19 @@ describe('ReportesService', () => {
         {
           provide: AlmacenamientoService,
           useValue: mockAlmacenamientoService,
+        },
+        {
+          provide: PagosService,
+          useValue: {
+            crearPagoAlertaTurbo: vi.fn(),
+            consultarPagoPorReporte: vi.fn(),
+          },
+        },
+        {
+          provide: NotificacionesService,
+          useValue: {
+            crearNotificacion: vi.fn(),
+          },
         },
       ],
     }).compile();
