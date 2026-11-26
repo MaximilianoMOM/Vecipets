@@ -11,6 +11,7 @@ import { ReportesModule } from './reportes/reportes.module';
 import { ValidacionImagenesModule } from './validacion-imagenes/validacion-imagenes.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { JornadasModule } from './jornadas/jornadas.module';
+import { SedesModule } from './sedes/sedes.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { JornadasModule } from './jornadas/jornadas.module';
     AuthModule,
     PagosModule,
     JornadasModule,
+    SedesModule,
     ReportesModule,
     ValidacionImagenesModule,
     NotificacionesModule,

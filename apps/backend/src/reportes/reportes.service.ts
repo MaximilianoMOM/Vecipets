@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -86,8 +87,8 @@ export class ReportesService {
       dto.esTurbo === 'true' ||
       dto.esTurbo === '1';
 
-    let estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
-    let estado = EstadoReporte.PENDIENTE;
+    const estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+    const estado = EstadoReporte.PENDIENTE;
 
     let mensajeValidacion =
       'El reporte está pendiente de revisión administrativa.';
@@ -115,26 +116,14 @@ export class ReportesService {
         );
       }
 
-      if (esTurboDeseado) {
-        // En Alerta Turbo, el reporte se guarda internamente como PENDIENTE sin ser público
-        // hasta que el pago en Wompi sea confirmado.
-        estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
-        estado = EstadoReporte.PENDIENTE;
+      if (decision.aprobada && !decision.errorServicio) {
         mensajeValidacion =
-          'Reporte registrado como pendiente de pago de Alerta Turbo ($15.000 COP).';
-      } else if (decision.aprobada && !decision.errorServicio) {
-        // Reporte gratuito aprobado automáticamente por análisis de imagen
-        estadoAprobacion = EstadoAprobacionReporte.APROBADO;
-        estado = EstadoReporte.PUBLICO;
-        mensajeValidacion =
-          'Identificación de mascota aprobada automáticamente.';
-      } else {
-        estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
-        estado = EstadoReporte.PENDIENTE;
+          'Imagen validada. El reporte está pendiente de revisión por el administrador.';
       }
-    } else if (esTurboDeseado) {
-      estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
-      estado = EstadoReporte.PENDIENTE;
+    }
+
+    if (esTurboDeseado) {
+      mensajeValidacion = 'Reporte registrado como pendiente de pago de Alerta Turbo ($15.000 COP).';
     }
 
     let reporte: Reporte;
@@ -146,6 +135,9 @@ export class ReportesService {
       });
 
       if (existente) {
+        if (existente.enviadoRevision || existente.estado !== EstadoReporte.PENDIENTE) {
+          throw new ConflictException('Este reporte ya no está disponible como borrador.');
+        }
         reporte = existente;
         reporte.tipo = dto.tipo;
         reporte.nombre = dto.nombre.trim();
@@ -236,6 +228,7 @@ export class ReportesService {
       });
     }
 
+    reporte.enviadoRevision = !esTurboDeseado;
     const guardado = await this.reporteRepository.save(reporte);
 
     // Si el usuario seleccionó Alerta Turbo, generar la transacción asociada con Wompi
@@ -253,7 +246,7 @@ export class ReportesService {
           estadoReporte: estado,
           detalles: mensajeValidacion,
         },
-        reporte: guardado,
+        reporte: this.serializarReporte({ ...guardado, usuario }),
         borradorId: guardado.id,
         pago: resultadoPago.pago,
         checkout: (resultadoPago as any).checkout,
@@ -263,16 +256,13 @@ export class ReportesService {
     }
 
     return {
-      mensaje:
-        estado === EstadoReporte.PUBLICO
-          ? 'Tu reporte fue publicado correctamente.'
-          : 'Tu reporte fue recibido y está pendiente de revisión.',
+      mensaje: 'Tu reporte fue recibido y está pendiente de revisión.',
       validacion: {
         estadoAprobacion,
         estadoReporte: estado,
         detalles: mensajeValidacion,
       },
-      reporte: guardado,
+      reporte: this.serializarReporte({ ...guardado, usuario }),
       borradorId: guardado.id,
     };
   }
@@ -294,7 +284,7 @@ export class ReportesService {
     const pagoAprobado = pago?.estado === EstadoPago.APROBADO;
 
     return {
-      reporte,
+      reporte: this.serializarReporte(reporte),
       pago,
       pagoAprobado,
       mensaje: pagoAprobado
@@ -318,6 +308,10 @@ export class ReportesService {
 
     if (!reporte) {
       throw new NotFoundException('No se encontró el reporte o no te pertenece.');
+    }
+    const esBorrador = reporte.estado === EstadoReporte.PENDIENTE && !reporte.enviadoRevision;
+    if (!esBorrador && reporte.estado !== EstadoReporte.RECHAZADO) {
+      throw new ConflictException('Este reporte ya no está disponible para enviar a revisión.');
     }
 
     // Aplicar modificaciones finales si el usuario editó algún campo antes de enviar
@@ -373,6 +367,7 @@ export class ReportesService {
     // El reporte queda formalmente enviado y en estado PENDIENTE de aprobación por el administrador
     reporte.estado = EstadoReporte.PENDIENTE;
     reporte.estadoAprobacion = EstadoAprobacionReporte.PENDIENTE;
+    reporte.enviadoRevision = true;
 
     const guardado = await this.reporteRepository.save(reporte);
 
@@ -380,7 +375,7 @@ export class ReportesService {
       mensaje: pagoAprobado
         ? 'Reporte enviado con Alerta Turbo activa. Queda pendiente de aprobación por el administrador.'
         : 'Reporte enviado con éxito. Queda pendiente de aprobación por el administrador.',
-      reporte: guardado,
+      reporte: this.serializarReporte(guardado),
       esTurbo: reporte.esTurbo,
       estadoAprobacion: reporte.estadoAprobacion,
       estado: reporte.estado,
@@ -388,6 +383,15 @@ export class ReportesService {
   }
 
   // OBTENER REPORTES PÚBLICOS
+  async obtenerParaModeracion() {
+    const reportes = await this.reporteRepository.find({
+      where: { enviadoRevision: true },
+      relations: { usuario: true },
+      order: { creadoEn: 'DESC' },
+    });
+    return reportes.map((reporte) => this.serializarReporte(reporte));
+  }
+
   async obtenerPublicos(filtros: FiltrarReportesDto) {
     const pagina = filtros.pagina ?? 1;
     const limite = filtros.limite ?? 50;
@@ -460,7 +464,7 @@ export class ReportesService {
     const inicio = (pagina - 1) * limite;
 
     return {
-      datos: filtrados.slice(inicio, inicio + limite),
+      datos: filtrados.slice(inicio, inicio + limite).map((reporte) => this.serializarReporte(reporte)),
       total,
       pagina,
       limite,
@@ -470,7 +474,7 @@ export class ReportesService {
 
   // OBTENER REPORTES DEL CIUDADANO
   async obtenerMisReportes(usuarioId: number) {
-    return this.reporteRepository.find({
+    const reportes = await this.reporteRepository.find({
       where: {
         usuario: { id: usuarioId },
       },
@@ -481,6 +485,7 @@ export class ReportesService {
         creadoEn: 'DESC',
       },
     });
+    return reportes.map((reporte) => this.serializarReporte(reporte));
   }
 
   // OBTENER UN REPORTE POR ID
@@ -512,7 +517,11 @@ export class ReportesService {
       );
     }
 
-    return reporte;
+    return this.serializarReporte(reporte);
+  }
+
+  private serializarReporte({ usuario, ...reporte }: Reporte) {
+    return { ...reporte, usuario: { id: usuario.id, nombre: usuario.nombre, correo: usuario.correo } };
   }
 
   // ACTUALIZAR REPORTE
@@ -540,22 +549,52 @@ export class ReportesService {
         'No tienes permiso para modificar este reporte.',
       );
     }
+    const campos = (Object.keys(dto) as (keyof ActualizarReporteDto)[])
+      .filter((campo) => dto[campo] !== undefined);
 
-    if (!esAdmin) {
+    if (esAdmin) {
+      const decision = dto.estadoAprobacion;
       if (
-        dto.estado &&
-        ![EstadoReporte.RESUELTO, EstadoReporte.CERRADO].includes(dto.estado)
+        campos.length !== 1 ||
+        (decision !== EstadoAprobacionReporte.APROBADO && decision !== EstadoAprobacionReporte.RECHAZADO)
       ) {
+        throw new ForbiddenException('El administrador solo puede aprobar o rechazar la publicación.');
+      }
+      const pendiente = reporte.enviadoRevision && reporte.estado === EstadoReporte.PENDIENTE &&
+        reporte.estadoAprobacion === EstadoAprobacionReporte.PENDIENTE;
+      if (!pendiente) {
+        throw new ConflictException('El reporte ya no está disponible para esta acción.');
+      }
+      return this.guardarModeracion(reporte, {
+        estadoAprobacion: decision,
+        estado: decision === EstadoAprobacionReporte.APROBADO ? EstadoReporte.PUBLICO : EstadoReporte.RECHAZADO,
+      });
+    }
+
+    if (dto.estadoAprobacion !== undefined) {
+      throw new ForbiddenException(
+        'Solo un administrador puede modificar la aprobación.',
+      );
+    }
+
+    if (dto.estado) {
+      if (![EstadoReporte.RESUELTO, EstadoReporte.CERRADO].includes(dto.estado)) {
         throw new ForbiddenException(
           'El propietario solo puede marcar su reporte como RESUELTO o CERRADO.',
         );
       }
-
-      if (dto.estadoAprobacion !== undefined) {
-        throw new ForbiddenException(
-          'Solo un administrador puede modificar la aprobación.',
-        );
+      if (reporte.estadoAprobacion !== EstadoAprobacionReporte.APROBADO ||
+        ![EstadoReporte.PUBLICO, EstadoReporte.RESUELTO].includes(reporte.estado)) {
+        throw new ConflictException('Solo puedes resolver o cerrar un reporte aprobado.');
       }
+      if (campos.length !== 1) {
+        throw new BadRequestException('Actualiza el estado por separado de los datos del reporte.');
+      }
+      return this.guardarModeracion(reporte, { estado: dto.estado });
+    }
+
+    if (![EstadoReporte.PENDIENTE, EstadoReporte.RECHAZADO].includes(reporte.estado)) {
+      throw new ConflictException('Solo puedes editar los datos de un reporte pendiente o rechazado.');
     }
 
     if (dto.tipo !== undefined) reporte.tipo = dto.tipo;
@@ -589,28 +628,26 @@ export class ReportesService {
       reporte.recompensa = dto.recompensa ? Number(dto.recompensa) : null;
     }
 
-    if (esAdmin) {
-      if (dto.estadoAprobacion !== undefined) {
-        reporte.estadoAprobacion = dto.estadoAprobacion;
+    const cambios = Object.fromEntries(
+      campos.map((campo) => [campo, reporte[campo]]),
+    ) as Partial<Omit<Reporte, 'usuario'>>;
+    if (!Object.keys(cambios).length) return this.serializarReporte(reporte);
+    return this.guardarModeracion(reporte, cambios);
+  }
 
-        if (
-          dto.estadoAprobacion === EstadoAprobacionReporte.APROBADO
-        ) {
-          reporte.estado = EstadoReporte.PUBLICO;
-        } else if (
-          dto.estadoAprobacion === EstadoAprobacionReporte.RECHAZADO
-        ) {
-          reporte.estado = EstadoReporte.RECHAZADO;
-        } else {
-          reporte.estado = EstadoReporte.PENDIENTE;
-        }
-      } else if (dto.estado !== undefined) {
-        reporte.estado = dto.estado;
-      }
-    } else if (dto.estado !== undefined) {
-      reporte.estado = dto.estado;
+  private async guardarModeracion(
+    reporte: Reporte,
+    cambios: Partial<Omit<Reporte, 'usuario'>>,
+  ) {
+    const resultado = await this.reporteRepository.update({
+      id: reporte.id,
+      estado: reporte.estado,
+      estadoAprobacion: reporte.estadoAprobacion,
+      enviadoRevision: reporte.enviadoRevision,
+    }, cambios);
+    if (!resultado.affected) {
+      throw new ConflictException('El reporte cambió. Recarga la página e intenta de nuevo.');
     }
-
-    return this.reporteRepository.save(reporte);
+    return this.serializarReporte({ ...reporte, ...cambios });
   }
 }

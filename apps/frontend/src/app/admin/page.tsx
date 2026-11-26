@@ -111,9 +111,7 @@ function AdminDashboard() {
   const cargarReportes = useCallback(async () => {
     setCargandoReportes(true);
     try {
-      const res = await apiClient.get('/reportes', {
-        params: { limite: 100 },
-      });
+      const res = await apiClient.get('/reportes/moderacion');
       const datos = res.data?.datos ?? res.data ?? [];
       setReportes(Array.isArray(datos) ? datos : []);
     } catch (err) {
@@ -140,7 +138,7 @@ function AdminDashboard() {
     }
   };
 
-  // Moderar reporte (aprobar o retirar si hay irregularidades)
+  // Moderar reportes enviados a revisión.
   const handleModerarReporte = async (id: number, estadoAprobacion: 'APROBADO' | 'RECHAZADO') => {
     try {
       await apiClient.patch(`/reportes/${id}`, { estadoAprobacion });
@@ -249,8 +247,7 @@ function AdminDashboard() {
               <div>
                 <p className="font-bold">Notificaciones estrictamente informativas</p>
                 <p className="text-amber-800 mt-0.5">
-                  Los reportes con Alerta Turbo confirmada por Wompi se publican de forma <strong>100% automática</strong>.
-                  No requieren aprobación manual administrativa. El administrador puede consultar la información y marcar la notificación como leída.
+                  Wompi confirma el pago de la Alerta Turbo. El reporte se publica después de la revisión en la pestaña de moderación.
                 </p>
               </div>
             </div>
@@ -446,7 +443,7 @@ function AdminDashboard() {
                       <Eye className="w-3.5 h-3.5" /> Ver Detalle
                     </Link>
 
-                    {reporte.estadoAprobacion === 'PENDIENTE' ? (
+                    {reporte.estado === 'PENDIENTE' && reporte.estadoAprobacion === 'PENDIENTE' && (
                       <>
                         <button
                           onClick={() => handleModerarReporte(reporte.id, 'RECHAZADO')}
@@ -461,18 +458,6 @@ function AdminDashboard() {
                           Aprobar
                         </button>
                       </>
-                    ) : reporte.estado === 'PUBLICO' ? (
-                      <button
-                        onClick={() => handleModerarReporte(reporte.id, 'RECHAZADO')}
-                        className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl transition"
-                        title="Retirar reporte del mapa y feed público"
-                      >
-                        Retirar Reporte
-                      </button>
-                    ) : (
-                      <span className="text-xs text-rose-600 font-bold px-2 py-1 bg-rose-50 rounded-lg">
-                        Rechazado / Retirado
-                      </span>
                     )}
                   </div>
                 </div>

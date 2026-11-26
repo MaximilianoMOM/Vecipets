@@ -1,50 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api-client';
 import HeaderAliados from './components/HeaderAliados';
 import BuscadorFiltros from './components/BuscadorFiltros';
 import TarjetaAliado, { Aliado } from './components/TarjetaAliado';
 import ModalDetalleAliado from './components/ModalDetalleAliado';
 
-// Datos de prueba 1
-const ALIADOS_MOCK: Aliado[] = [
-    {
-        id: '1',
-        nombre: 'Refugio Huellitas de Amor',
-        tipo: 'REFUGIO',
-        direccion: 'Av. Las Palmas #45-12, Bogotá',
-        horario: 'Lunes a Sábado: 8:00 AM - 5:00 PM',
-        servicios: ['Adopciones', 'Rescate', 'Hogar de paso'],
-        telefono: '+57 312 456 7890',
-        imagenUrl: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=600&auto=format&fit=crop',
-    },
-    {
-        id: '2',
-        nombre: 'Clinica Veterinaria San Francisco 24h',
-        tipo: 'VETERINARIA',
-        direccion: 'Calle 100 #19-60, Bogotá',
-        horario: 'Urgencias 24 Horas',
-        servicios: ['Urgencias 24h', 'Cirugía', 'Ecografía', 'Hospitalización'],
-        telefono: '+57 300 987 6543',
-        imagenUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=600&auto=format&fit=crop',
-    },
-    {
-        id: '3',
-        nombre: 'Centro Veterinario Comunitario San Rafael',
-        tipo: 'CLINICA',
-        direccion: 'Cra 15 #72-30, Medellín',
-        horario: 'Lunes a Viernes: 7:00 AM - 7:00 PM',
-        servicios: ['Esterilización', 'Vacunación', 'Microchip de identificación'],
-        telefono: '+57 315 222 3344',
-        imagenUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=600&auto=format&fit=crop',
-    },
-];
-
 export default function DirectoriodeAliadosPage() {
-    const [aliados, setAliados] = useState<Aliado[]>(ALIADOS_MOCK);
+    const [aliados, setAliados] = useState<Aliado[]>([]);
+    const [estado, setEstado] = useState<'cargando' | 'listo' | 'error'>('cargando');
     const [busqueda, setBusqueda] = useState('');
     const [categoriaActiva, setCategoriaActiva] = useState('TODOS');
     const [aliadoSeleccionado, setAliadoSeleccionado] = useState<Aliado | null>(null);
+
+    useEffect(() => {
+        const abort = new AbortController();
+        apiClient.get<Aliado[]>('/sedes', { signal: abort.signal })
+            .then(({ data }) => {
+                if (abort.signal.aborted) return;
+                setAliados(data);
+                setEstado('listo');
+            })
+            .catch(() => { if (!abort.signal.aborted) setEstado('error'); });
+        return () => abort.abort();
+    }, []);
 
     const aliadosFiltrados = aliados.filter((item) => {
         const coincideCategoria =
@@ -69,7 +49,11 @@ export default function DirectoriodeAliadosPage() {
                     setCategoriaActiva={setCategoriaActiva}
                 />
 
-                {aliadosFiltrados.length > 0 ? (
+                {estado === 'cargando' ? (
+                    <p role="status" className="text-slate-600">Cargando el directorio…</p>
+                ) : estado === 'error' ? (
+                    <p role="alert" className="text-rose-700">No se pudo cargar el directorio. Intenta recargar la página.</p>
+                ) : aliadosFiltrados.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
                         {aliadosFiltrados.map((aliado) => (
                             <TarjetaAliado

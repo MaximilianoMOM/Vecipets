@@ -69,11 +69,11 @@ export default function ModalDetalleAliado({ aliado, alCerrar }: ModalDetalleAli
 
                 {/* Imagen Superior */}
                 <div className="relative h-64 w-full bg-slate-100">
-                    <img
+                    {aliadoExtendido.imagenUrl ? <img
                         src={aliadoExtendido.imagenUrl}
                         alt={aliadoExtendido.nombre}
                         className="w-full h-full object-cover"
-                    />
+                    /> : <div className="grid h-full place-items-center bg-indigo-50 text-lg font-bold text-indigo-700">{aliadoExtendido.nombre}</div>}
                     <span className="absolute bottom-4 left-6 bg-slate-900/70 backdrop-blur-md text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-lg">
                         {aliadoExtendido.tipo}
                     </span>
