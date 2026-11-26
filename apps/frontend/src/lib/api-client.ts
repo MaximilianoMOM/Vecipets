@@ -1,17 +1,16 @@
 
 import axios from 'axios';
+import { backendApiUrl } from './api-url';
 
-// Dirección base del backend
-const backendUrl = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-).replace(/\/+$/, '');
+const backendUrl = backendApiUrl(process.env.NEXT_PUBLIC_API_URL);
+const usarProxy = process.env.NEXT_PUBLIC_API_USE_PROXY === 'true';
 
-export const API_BASE_URL = backendUrl.endsWith('/api/v1')
-  ? backendUrl
-  : `${backendUrl}/api/v1`;
+export const API_BASE_URL = usarProxy
+  ? '/api/v1'
+  : backendUrl;
 
 // Cliente Axios con el prefijo global de la API
-const usarProxyLocal = process.env.NODE_ENV === 'development' &&
+const usarProxyLocal = !usarProxy && process.env.NODE_ENV === 'development' &&
   ['localhost', '127.0.0.1'].includes(new URL(backendUrl).hostname);
 
 export const apiClient = axios.create({

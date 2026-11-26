@@ -50,7 +50,10 @@ export default function LoginPage() {
 
     try {
       await apiClient.post('/usuarios/login', { ...data, recaptchaToken });
-      await refreshUser();
+      if (!(await refreshUser())) {
+        setApiError('El navegador no pudo mantener la sesión. Intenta nuevamente.');
+        return;
+      }
       router.push('/');
     } catch (err: any) {
       if (err.response?.status === 401) {
