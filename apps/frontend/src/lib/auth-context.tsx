@@ -17,14 +17,14 @@ interface AuthContextProps {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextProps>({
   user: null,
   loading: true,
   logout: async () => {},
-  refreshUser: async () => {},
+  refreshUser: async () => false,
 });
 
 export const AuthProvider = ({
@@ -40,8 +40,10 @@ export const AuthProvider = ({
     try {
       const response = await apiClient.get<User>('/usuarios/me');
       setUser(response.data);
+      return true;
     } catch {
       setUser(null);
+      return false;
     } finally {
       setLoading(false);
     }
