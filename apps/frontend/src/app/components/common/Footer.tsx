@@ -57,7 +57,6 @@ export default function Footer() {
                 <div className="space-y-4">
                     <h4 className="text-white font-bold text-sm tracking-wider uppercase">Comunidad</h4>
                     <ul className="space-y-2.5 text-sm text-slate-400">
-                        <li><Link href="/moderacion" className="hover:text-white transition">Centro de Moderación</Link></li>
                         <li><Link href="/contacto" className="hover:text-white transition">Contacto y Ayuda</Link></li>
                         <li><Link href="/terminos" className="hover:text-white transition">Términos y Condiciones</Link></li>
                         <li><Link href="/privacidad" className="hover:text-white transition">Políticas de Privacidad</Link></li>

@@ -28,6 +28,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../usuarios/decorators/roles.decorator';
 import { UsuarioAutenticado } from '../usuarios/decorators/usuario-autenticado.decorator';
+import { UsuariosService } from '../usuarios/usuarios.service';
 
 interface ArchivoSubido {
   originalname: string;
@@ -47,6 +48,7 @@ export class ReportesController {
   constructor(
     private readonly reportesService: ReportesService,
     private readonly jwtService: JwtService,
+    private readonly usuariosService: UsuariosService,
   ) {}
 
   /**
@@ -86,7 +88,8 @@ export class ReportesController {
    * Consultar borrador de reporte con su estado de pago.
    */
   @Get('borrador/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
   async obtenerBorrador(
     @Param('id', ParseIntPipe) id: number,
     @UsuarioAutenticado() usuario: UsuarioSesion,
@@ -99,7 +102,8 @@ export class ReportesController {
    * El reporte queda formalmente registrado y pendiente de aprobación por el administrador.
    */
   @Post(':id/publicar')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
   async publicarReporte(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ActualizarReporteDto,
@@ -122,11 +126,19 @@ export class ReportesController {
    * Debe ir antes de ':id' para evitar colisión de rutas.
    */
   @Get('mis-reportes')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
   async obtenerMisReportes(
     @UsuarioAutenticado() usuario: UsuarioSesion,
   ) {
     return this.reportesService.obtenerMisReportes(usuario.sub);
+  }
+
+  @Get('moderacion')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMINISTRADOR')
+  obtenerParaModeracion() {
+    return this.reportesService.obtenerParaModeracion();
   }
 
   /**
@@ -144,12 +156,17 @@ export class ReportesController {
 
     const token = req.cookies?.vecipets_access_token;
     if (token) {
+      let id: number | undefined;
       try {
         const payload = await this.jwtService.verifyAsync(token);
-        usuarioId = payload?.sub;
-        esAdmin = payload?.rol === 'ADMINISTRADOR';
+        if (Number.isSafeInteger(payload?.sub) && payload.sub > 0) id = payload.sub;
       } catch {
         // Token no válido o expirado: se trata como visitante anónimo
+      }
+      const cuenta = id === undefined ? null : await this.usuariosService.obtenerPorId(id);
+      if (cuenta?.correoVerificado && cuenta.estadoAprobacion === 'APROBADO') {
+        usuarioId = cuenta.id;
+        esAdmin = cuenta.rol === 'ADMINISTRADOR';
       }
     }
 
@@ -159,10 +176,11 @@ export class ReportesController {
   /**
    * Actualizar reporte:
    * - Propietario: editar datos o marcar como RESUELTO / CERRADO.
-   * - Administrador: retirar reporte publicado o moderar.
+   * - Administrador: aprobar o rechazar reportes enviados a revisión.
    */
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO', 'ADMINISTRADOR')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ActualizarReporteDto,

@@ -8,6 +8,8 @@ import type { User } from '@/lib/auth-context';
 import { accountStatus, roleLabels } from '@/lib/account-labels';
 import { accountCard, accountIcon, accountPrimary } from '../components/common/AccountLayout';
 
+const destructiveButton = 'rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:opacity-50';
+
 export default function UsuariosAdmin() {
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [busqueda, setBusqueda] = useState('');
@@ -26,28 +28,43 @@ export default function UsuariosAdmin() {
     return () => { vigente = false; };
   }, []);
 
-  async function cambiarSuspension(usuario: User) {
-    const suspendido = usuario.estadoAprobacion === 'APROBADO';
-    if (suspendido && !window.confirm(`¿Suspender la cuenta de ${usuario.nombre}? Se bloqueará su acceso a VeciPets.`)) return;
-
+  async function actualizarCuenta(
+    usuario: User,
+    endpoint: 'suspension' | 'aprobacion',
+    cambios: { suspendido: boolean } | { estado: 'APROBADO' | 'RECHAZADO' },
+    aviso: string,
+  ) {
     setOperacion(usuario.id);
     setError('');
     setMensaje('');
     try {
       const { data } = await apiClient.patch<Pick<User, 'estadoAprobacion'>>(
-        `/usuarios/${usuario.id}/suspension`,
-        { suspendido },
+        `/usuarios/${usuario.id}/${endpoint}`,
+        cambios,
       );
       setUsuarios((actuales) => actuales.map((actual) =>
         actual.id === usuario.id ? { ...actual, estadoAprobacion: data.estadoAprobacion } : actual,
       ));
-      setMensaje(suspendido ? 'Cuenta suspendida.' : 'Cuenta reactivada.');
+      setMensaje(aviso);
     } catch (err) {
       const detalle = isAxiosError(err) ? err.response?.data?.message : null;
       setError(typeof detalle === 'string' ? detalle : 'No se pudo actualizar la cuenta. Intenta nuevamente.');
     } finally {
       setOperacion(null);
     }
+  }
+
+  function cambiarSuspension(usuario: User) {
+    const suspendido = usuario.estadoAprobacion === 'APROBADO';
+    if (suspendido && !window.confirm(`¿Suspender la cuenta de ${usuario.nombre}?`)) return;
+    void actualizarCuenta(usuario, 'suspension', { suspendido },
+      suspendido ? 'Cuenta suspendida.' : 'Cuenta reactivada.');
+  }
+
+  function moderarAliado(usuario: User, estado: 'APROBADO' | 'RECHAZADO') {
+    if (estado === 'RECHAZADO' && !window.confirm(`¿Rechazar la solicitud de ${usuario.nombre}?`)) return;
+    void actualizarCuenta(usuario, 'aprobacion', { estado },
+      estado === 'APROBADO' ? 'Solicitud aprobada.' : 'Solicitud rechazada.');
   }
 
   const consulta = busqueda.trim().toLowerCase();
@@ -81,6 +98,8 @@ export default function UsuariosAdmin() {
           {visibles.map((usuario) => {
             const inactivo = usuario.estadoAprobacion === 'INACTIVO';
             const puedeCambiar = usuario.rol !== 'ADMINISTRADOR' && (inactivo || usuario.estadoAprobacion === 'APROBADO');
+            const aliadoPendiente = (usuario.rol === 'VETERINARIA' || usuario.rol === 'REFUGIO') &&
+              usuario.estadoAprobacion === 'PENDIENTE';
             return (
               <li key={usuario.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
                 <div className="min-w-0 flex-1 basis-48">
@@ -91,8 +110,14 @@ export default function UsuariosAdmin() {
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${inactivo ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
                   {accountStatus[usuario.estadoAprobacion] ?? usuario.estadoAprobacion}
                 </span>
+                {aliadoPendiente && (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={operacion !== null} className={accountPrimary} onClick={() => moderarAliado(usuario, 'APROBADO')}>Aprobar</button>
+                    <button type="button" disabled={operacion !== null} className={destructiveButton} onClick={() => moderarAliado(usuario, 'RECHAZADO')}>Rechazar</button>
+                  </div>
+                )}
                 {puedeCambiar && (
-                  <button type="button" disabled={operacion !== null} onClick={() => void cambiarSuspension(usuario)} className={inactivo ? accountPrimary : 'rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:opacity-50'}>
+                  <button type="button" disabled={operacion !== null} onClick={() => cambiarSuspension(usuario)} className={inactivo ? accountPrimary : destructiveButton}>
                     {operacion === usuario.id ? 'Guardando…' : inactivo ? 'Reactivar' : 'Suspender'}
                   </button>
                 )}

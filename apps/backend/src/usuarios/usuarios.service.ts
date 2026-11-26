@@ -9,7 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   randomInt,
   createHash,
@@ -106,9 +106,32 @@ export class UsuariosService {
     return { id, estadoAprobacion: siguiente };
   }
 
+  async moderarAliado(id: number, estado: 'APROBADO' | 'RECHAZADO') {
+    const resultado = await this.usuariosRepository.update({
+      id,
+      rol: In(['REFUGIO', 'VETERINARIA']),
+      estadoAprobacion: 'PENDIENTE',
+    }, { estadoAprobacion: estado });
+
+    if (resultado.affected) return { id, estadoAprobacion: estado };
+
+    const cuenta = await this.obtenerPorId(id);
+    if (!cuenta) throw new NotFoundException('Usuario no encontrado.');
+    if (cuenta.rol !== 'REFUGIO' && cuenta.rol !== 'VETERINARIA') {
+      throw new ForbiddenException('La cuenta no corresponde a un aliado.');
+    }
+    if (cuenta.estadoAprobacion !== estado) {
+      throw new ConflictException('La solicitud del aliado ya fue revisada.');
+    }
+    return { id, estadoAprobacion: estado };
+  }
+
   private comprobarAcceso(estadoAprobacion: string): void {
     if (estadoAprobacion === 'INACTIVO') {
       throw new ForbiddenException('Tu cuenta está suspendida. Contacta con VeciPets.');
+    }
+    if (estadoAprobacion === 'RECHAZADO') {
+      throw new ForbiddenException('La solicitud de tu cuenta fue rechazada. Contacta con VeciPets.');
     }
     if (estadoAprobacion !== 'APROBADO') {
       throw new ForbiddenException(

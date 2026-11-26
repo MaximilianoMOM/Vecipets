@@ -24,6 +24,7 @@ import { UsuariosService } from './usuarios.service';
 import { RegistroUsuarioDto } from './dto/crear-usuario.dto';
 import { VerificarCorreoDto } from './dto/verificar-correo.dto';
 import { LoginConRecaptchaDto } from './dto/login.dto';
+import { ModerarAliadoDto } from './dto/moderar-aliado.dto';
 import { SolicitarRecuperacionDto } from './dto/solicitar-recuperacion.dto';
 import { RestablecerContrasenaDto } from './dto/restablecer-contrasena.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -59,6 +60,16 @@ export class UsuariosController {
     @Body('suspendido', ParseBoolPipe) suspendido: boolean,
   ) {
     return this.usuariosService.cambiarSuspension(id, suspendido);
+  }
+
+  @Patch(':id/aprobacion')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMINISTRADOR')
+  moderarAliado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() datos: ModerarAliadoDto,
+  ) {
+    return this.usuariosService.moderarAliado(id, datos.estado);
   }
 
   // CONSULTAR USUARIO DE LA SESIÓN ACTUAL
