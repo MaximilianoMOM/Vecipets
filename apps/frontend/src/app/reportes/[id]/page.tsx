@@ -10,9 +10,6 @@ import {
   AlertTriangle,
   Zap,
   ArrowLeft,
-  User,
-  Mail,
-  ShieldCheck,
 } from 'lucide-react';
 
 import apiClient from '@/lib/api-client';
@@ -392,50 +389,6 @@ export default function ReporteDetallePage() {
               </div>
 
             </div>
-
-            {/* CONTACTO AUTORIZADO DEL TUTOR */}
-
-            {reporte.usuario && (
-              <div className="bg-emerald-50/60 border border-emerald-100 p-5 rounded-2xl space-y-2">
-
-                <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-
-                  Contacto Autorizado del Tutor
-
-                </h4>
-
-                <div className="text-xs text-slate-700 space-y-1 pt-1">
-
-                  <p className="flex items-center gap-2">
-
-                    <User className="w-3.5 h-3.5 text-emerald-600" />
-
-                    <span>
-                      <strong>Publicado por:</strong>{' '}
-                      {reporte.usuario.nombre}
-                    </span>
-
-                  </p>
-
-                  {reporte.usuario.correo && (
-                    <p className="flex items-center gap-2">
-
-                      <Mail className="w-3.5 h-3.5 text-emerald-600" />
-
-                      <span className="break-all">
-                        <strong>Correo de contacto:</strong>{' '}
-                        {reporte.usuario.correo}
-                      </span>
-
-                    </p>
-                  )}
-
-                </div>
-
-              </div>
-            )}
 
           </div>
 

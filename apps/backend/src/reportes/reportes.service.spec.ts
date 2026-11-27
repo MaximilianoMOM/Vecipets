@@ -78,6 +78,32 @@ describe('ReportesService', () => {
     buffer: Buffer.from('mock-image-data'),
   };
 
+  it('omite el contacto del tutor en las respuestas p?blicas y lo conserva para el propietario y administraci?n', async () => {
+    const reporte = {
+      ...mockDto,
+      id: 1,
+      creadoEn: new Date(),
+      estado: EstadoReporte.PUBLICO,
+      estadoAprobacion: EstadoAprobacionReporte.APROBADO,
+      usuario: mockUsuarioCiudadano,
+    };
+    mockReporteRepo.find.mockResolvedValueOnce([reporte]);
+    mockReporteRepo.findOne.mockResolvedValue(reporte);
+
+    const lista = await service.obtenerPublicos({});
+    expect(lista.datos[0].usuario).toEqual({ id: mockUsuarioCiudadano.id });
+    expect((await service.obtenerPorId(1)).usuario).toEqual({ id: mockUsuarioCiudadano.id });
+    expect((await service.obtenerPorId(1, 999)).usuario).toEqual({ id: mockUsuarioCiudadano.id });
+    expect((await service.obtenerPorId(1, mockUsuarioCiudadano.id)).usuario).toEqual({
+      id: mockUsuarioCiudadano.id,
+      nombre: mockUsuarioCiudadano.nombre,
+      correo: mockUsuarioCiudadano.correo,
+    });
+    expect((await service.obtenerPorId(1, 999, true)).usuario).toHaveProperty(
+      'correo', mockUsuarioCiudadano.correo,
+    );
+  });
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
