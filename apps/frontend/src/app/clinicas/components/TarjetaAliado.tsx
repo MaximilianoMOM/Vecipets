@@ -36,7 +36,7 @@ export default function TarjetaAliado({ aliado, onClick }: TarjetaAliadoProps) {
                         src={aliado.imagenUrl}
                         alt={aliado.nombre}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    /> : <div className="grid h-full place-items-center bg-indigo-50 text-indigo-600">
+                    /> : <div className="grid h-full place-items-center bg-primary-50 text-primary">
                         <MapPin className="h-10 w-10" aria-hidden="true" />
                     </div>}
                     {/* Tag flotante con el tipo de aliado */}
@@ -84,7 +84,7 @@ export default function TarjetaAliado({ aliado, onClick }: TarjetaAliadoProps) {
 
             {/* Botón de Información / Acción */}
             <div className="p-6 pt-0">
-                <div className="w-full bg-slate-100 group-hover:bg-indigo-500 group-hover:text-white text-slate-600 text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
+                <div className="w-full bg-slate-100 group-hover:bg-primary-500 group-hover:text-white text-slate-600 text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
                     Ver más información y reseñas
                 </div>
             </div>

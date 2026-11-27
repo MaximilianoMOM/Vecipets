@@ -217,7 +217,7 @@ export default function ModalReservaJornada({
 
         {/* ENCABEZADO */}
 
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
+        <div className="bg-gradient-to-r from-blue-600 to-primary-hover p-6 text-white">
 
           <button
             type="button"
@@ -414,7 +414,7 @@ export default function ModalReservaJornada({
               !nombreMascota.trim() ||
               (jornada.cuposDisponibles <= 0 && !tieneReservaPendiente)
             }
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-4 font-bold text-white shadow-md transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-hover px-4 py-4 font-bold text-white shadow-md transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
 
             {procesando ? (

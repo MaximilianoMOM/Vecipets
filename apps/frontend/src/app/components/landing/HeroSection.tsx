@@ -14,14 +14,14 @@ export default function HeroSection() {
                 <div className="lg:col-span-7 space-y-6 text-left">
 
                     {/* Badge superior */}
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-xs font-bold tracking-wide">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 border border-primary-100/80 text-primary-hover text-xs font-bold tracking-wide">
                         <span className="text-base">🐾</span> RED COMUNITARIA DE RESCATE Y ALERTA
                     </div>
 
                     {/* Título Principal */}
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15]">
                         Ayudamos a reunir <br className="hidden sm:inline" />
-                        <span className="text-indigo-600">familias con sus mascotas</span>
+                        <span className="text-primary">familias con sus mascotas</span>
                     </h1>
 
                     {/* Subtítulo */}
@@ -43,9 +43,9 @@ export default function HeroSection() {
                         {/* Botón 2: Redirige al Feed Global de Reportes */}
                         <Link
                             href="/reportes"
-                            className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-white hover:bg-slate-50 text-indigo-600 font-bold text-sm rounded-2xl border border-indigo-200 shadow-sm hover:shadow transition-all duration-200 transform active:scale-95"
+                            className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-white hover:bg-slate-50 text-primary font-bold text-sm rounded-2xl border border-primary-200 shadow-sm hover:shadow transition-all duration-200 transform active:scale-95"
                         >
-                            <Search className="w-5 h-5 text-indigo-600" />
+                            <Search className="w-5 h-5 text-primary" />
                             <span>Buscar Mascotas</span>
                         </Link>
 
@@ -54,7 +54,7 @@ export default function HeroSection() {
                     {/* Métricas rápidas en la parte inferior */}
                     <div className="pt-8 border-t border-slate-200/60 grid grid-cols-3 gap-4 max-w-md">
                         <div>
-                            <p className="text-2xl md:text-3xl font-black text-indigo-600">1,240+</p>
+                            <p className="text-2xl md:text-3xl font-black text-primary">1,240+</p>
                             <p className="text-xs font-medium text-slate-500">Reuniones Exitosas</p>
                         </div>
                         <div>
@@ -96,7 +96,7 @@ export default function HeroSection() {
                         {/* Información del caso */}
                         <div className="mt-4 space-y-2">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary transition-colors">
                                     Bruno <span className="text-slate-500 font-normal text-sm">(Beagle)</span>
                                 </h3>
                                 <span className="text-xs font-medium text-slate-400">Hace 2h</span>
@@ -113,7 +113,7 @@ export default function HeroSection() {
                                     <Tag className="w-3 h-3" /> Recompensa
                                 </span>
 
-                                <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                <span className="text-xs font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                                     Ver caso completo <ArrowRight className="w-3.5 h-3.5" />
                                 </span>
                             </div>

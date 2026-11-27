@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useListaPerfil } from '@/lib/use-lista-perfil';
 import AccountLayout, { accountCard, accountPrimary, accountSecondary } from '../../components/common/AccountLayout';
 
-const inputClass = 'mt-2 block min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-normal text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200';
+const inputClass = 'mt-2 block min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-normal text-slate-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200';
 const fields = [
   { name: 'titulo', label: 'Nombre de la jornada', maxLength: 120, minLength: 4 },
   { name: 'comuna', label: 'Comuna o sector', maxLength: 80, minLength: 2 },
@@ -95,7 +95,7 @@ function FormularioJornada() {
   }
 
   return (
-    <AccountLayout title={<>{editarId ? 'Editar' : 'Publicar'} <span className="text-indigo-600">jornada</span></>} description="Completa los datos que aparecerán en la tarjeta pública de tu jornada.">
+    <AccountLayout title={<>{editarId ? 'Editar' : 'Publicar'} <span className="text-primary">jornada</span></>} description="Completa los datos que aparecerán en la tarjeta pública de tu jornada.">
       <Link href="/perfil/jornadas/organizador" className={accountSecondary}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver a mis jornadas</Link>
       {loading ? (
         <p role="status" className={accountCard}>Cargando tu cuenta…</p>
@@ -113,7 +113,7 @@ function FormularioJornada() {
               </label>
             ))}
           </fieldset>
-          <p className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-relaxed text-indigo-900">
+          <p className="rounded-2xl border border-primary-100 bg-primary-50 px-4 py-3 text-sm leading-relaxed text-primary-900">
             El valor del apartado se calcula según el costo del procedimiento: $2.000 COP si es gratuito, $5.000 COP si cuesta entre $1 y $49.999 COP, y $10.000 COP si cuesta $50.000 COP o más. Este valor lo abona el ciudadano al apartar su cupo mediante VeciPets.
           </p>
           {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
@@ -130,7 +130,7 @@ function FormularioJornada() {
       ) : (
         <section className={accountCard}>
           <p>Solo las cuentas de veterinaria o refugio pueden publicar jornadas.</p>
-          {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
+          {!user && <Link href="/login" className="mt-3 inline-block font-bold text-primary-hover hover:underline">Iniciar sesión</Link>}
         </section>
       )}
     </AccountLayout>

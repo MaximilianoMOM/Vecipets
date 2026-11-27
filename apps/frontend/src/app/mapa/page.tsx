@@ -438,7 +438,7 @@ export default function MapaPage() {
                   onClick={() => setCategoria(id)}
                   className={`rounded-lg px-1 py-2 text-xs font-bold ${
                     categoria === id
-                      ? 'bg-white text-indigo-700 shadow-sm'
+                      ? 'bg-white text-primary-hover shadow-sm'
                       : 'text-slate-600 hover:bg-white/60'
                   }`}
                 >
@@ -461,7 +461,7 @@ export default function MapaPage() {
                 setFilters(all);
                 setCategoria('todos');
               }}
-              className="text-sm font-semibold text-indigo-700"
+              className="text-sm font-semibold text-primary-hover"
             >
               Mostrar todas
             </button>
@@ -551,7 +551,7 @@ export default function MapaPage() {
               <button
                 type="button"
                 onClick={recargar}
-                className="font-bold text-indigo-700 underline"
+                className="font-bold text-primary-hover underline"
               >
                 Volver a intentar
               </button>
@@ -595,7 +595,7 @@ export default function MapaPage() {
                     key={`${item.category}-${item.id}`}
                     className={`rounded-2xl border p-3 ${
                       seleccion === item.id
-                        ? 'border-indigo-500 bg-indigo-50'
+                        ? 'border-primary-500 bg-primary-50'
                         : 'border-slate-200'
                     }`}
                   >
@@ -603,15 +603,15 @@ export default function MapaPage() {
                       type="button"
                       aria-pressed={seleccion === item.id}
                       onClick={() => setSeleccion(item.id)}
-                      className="flex w-full items-start gap-2 rounded-lg text-left focus-visible:outline-indigo-600"
+                      className="flex w-full items-start gap-2 rounded-lg text-left focus-visible:outline-primary"
                     >
                       <MapPin
-                        className="mt-1 h-4 w-4 shrink-0 text-indigo-600"
+                        className="mt-1 h-4 w-4 shrink-0 text-primary"
                         aria-hidden="true"
                       />
 
                       <span className="min-w-0">
-                        <span className="block text-xs font-bold text-indigo-700">
+                        <span className="block text-xs font-bold text-primary-hover">
                           {obtenerEtiqueta(item)}
                         </span>
 
@@ -634,7 +634,7 @@ export default function MapaPage() {
                     {seleccion === item.id && enlace && (
                       <Link
                         href={enlace}
-                        className="mt-2 inline-block text-xs font-bold text-indigo-700 hover:underline"
+                        className="mt-2 inline-block text-xs font-bold text-primary-hover hover:underline"
                       >
                         {esAliado
                           ? 'Ver más'
@@ -651,7 +651,7 @@ export default function MapaPage() {
 
           <Link
             href="/reportes"
-            className="text-sm font-bold text-indigo-700 hover:underline"
+            className="text-sm font-bold text-primary-hover hover:underline"
           >
             Ir al listado de reportes
           </Link>
