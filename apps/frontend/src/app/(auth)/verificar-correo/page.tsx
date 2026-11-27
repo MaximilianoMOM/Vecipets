@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import axios from 'axios';
 
@@ -14,6 +15,7 @@ export default function VerificarCorreoPage() {
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [pendiente, setPendiente] = useState(false);
 
   useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
@@ -38,13 +40,18 @@ export default function VerificarCorreoPage() {
     setCargando(true);
 
     try {
-      const respuesta = await apiClient.post(
+      const respuesta = await apiClient.post<{ mensaje: string; estadoAprobacion?: string }>(
         '/usuarios/verificar-correo',
         {
           correo: correo.trim().toLowerCase(),
           codigo,
         },
       );
+
+      if (respuesta.data.estadoAprobacion === 'PENDIENTE') {
+        setPendiente(true);
+        return;
+      }
 
       setMensaje(
         respuesta.data?.mensaje || 'Correo verificado correctamente.',
@@ -71,6 +78,19 @@ export default function VerificarCorreoPage() {
       setCargando(false);
     }
   };
+
+  if (pendiente) {
+    return (
+      <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
+        <div className="w-full max-w-md space-y-4 rounded-xl bg-white/90 p-8 text-center shadow-lg">
+          <h1 className="text-xl font-bold text-gray-800">Correo verificado. Tu solicitud está pendiente</h1>
+          <Link href="/" className="block w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700">
+            Volver al inicio
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
