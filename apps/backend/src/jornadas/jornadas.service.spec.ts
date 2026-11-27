@@ -13,6 +13,7 @@ import { EstadoReservaJornada, ReservaJornada } from './reserva-jornada.entity';
 it('reutiliza, solo después de consultar a Wompi, el checkout de una reserva vigente que ya retuvo el último cupo', async () => {
   const jornada = {
     id: 1,
+    organizadorId: 8,
     activa: true,
     fechaFin: new Date(Date.now() + 86_400_000),
     cuposDisponibles: 0,
@@ -37,6 +38,7 @@ it('reutiliza, solo después de consultar a Wompi, el checkout de una reserva vi
     pago,
   };
   const manager = {
+    existsBy: vi.fn().mockResolvedValue(true),
     find: vi.fn().mockResolvedValue([]),
     getRepository: vi.fn(() => ({ findOne: vi.fn().mockResolvedValue(reserva) })),
     findOne: vi.fn((entity, options) => {

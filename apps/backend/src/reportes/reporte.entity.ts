@@ -35,6 +35,9 @@ export class Reporte {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ name: 'enviado_revision', type: 'boolean', default: true })
+  enviadoRevision: boolean;
+
   @ManyToOne(() => Usuario, {
     nullable: false,
     onDelete: 'RESTRICT',

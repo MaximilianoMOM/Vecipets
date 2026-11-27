@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { isAxiosError } from 'axios';
 import { ArrowLeft, CalendarPlus } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
+import { useListaPerfil } from '@/lib/use-lista-perfil';
 import AccountLayout, { accountCard, accountPrimary, accountSecondary } from '../../components/common/AccountLayout';
 
 const inputClass = 'mt-2 block min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 font-normal text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200';
@@ -19,8 +21,42 @@ const fields = [
   { name: 'precioCop', label: 'Costo del procedimiento en COP (0 si es gratuito)', type: 'number', min: 0, max: 21474836 },
 ];
 
+type JornadaEditable = {
+  id: number;
+  titulo: string;
+  comuna: string;
+  direccion: string;
+  fechaInicio: string;
+  fechaFin: string;
+  cuposTotales: number;
+  precioProcedimientoCentavos: number;
+};
+
+function fechaLocal(iso: string) {
+  return new Date(Date.parse(iso) - 5 * 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
 export default function PublicarJornadaPage() {
+  return <Suspense fallback={<p role="status">Cargando formulario…</p>}><FormularioJornada /></Suspense>;
+}
+
+function FormularioJornada() {
   const { user, loading } = useAuth();
+  const editarId = useSearchParams().get('editar');
+  const organizador = user?.rol === 'VETERINARIA' || user?.rol === 'REFUGIO';
+  const { datos, error: errorCarga } = useListaPerfil<JornadaEditable>(
+    '/jornadas/organizador/mis-jornadas', organizador && editarId ? user.id : undefined,
+  );
+  const jornada = datos?.find(({ id }) => String(id) === editarId);
+  const valores = jornada ? {
+    titulo: jornada.titulo,
+    comuna: jornada.comuna,
+    direccion: jornada.direccion,
+    inicio: fechaLocal(jornada.fechaInicio),
+    fin: fechaLocal(jornada.fechaFin),
+    cupos: jornada.cuposTotales,
+    precioCop: jornada.precioProcedimientoCentavos / 100,
+  } : undefined;
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [publicada, setPublicada] = useState(false);
@@ -33,7 +69,7 @@ export default function PublicarJornadaPage() {
     setError('');
     setPublicada(false);
     try {
-      await apiClient.post('/jornadas', {
+      const datosJornada = {
         titulo: data.get('titulo'),
         comuna: data.get('comuna'),
         direccion: data.get('direccion'),
@@ -41,8 +77,13 @@ export default function PublicarJornadaPage() {
         fin: `${data.get('fin')}:00-05:00`,
         cupos: Number(data.get('cupos')),
         precioCop: Number(data.get('precioCop')),
-      });
-      form.reset();
+      };
+      if (jornada) {
+        await apiClient.patch(`/jornadas/${jornada.id}`, datosJornada);
+      } else {
+        await apiClient.post('/jornadas', datosJornada);
+        form.reset();
+      }
       setPublicada(true);
     } catch (err) {
       const message = isAxiosError(err) ? err.response?.data?.message : null;
@@ -54,17 +95,21 @@ export default function PublicarJornadaPage() {
   }
 
   return (
-    <AccountLayout title={<>Publicar <span className="text-indigo-600">jornada</span></>} description="Completa los datos que aparecerán en la tarjeta pública de tu jornada.">
-      <Link href="/perfil" className={accountSecondary}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver a mi perfil</Link>
+    <AccountLayout title={<>{editarId ? 'Editar' : 'Publicar'} <span className="text-indigo-600">jornada</span></>} description="Completa los datos que aparecerán en la tarjeta pública de tu jornada.">
+      <Link href="/perfil/jornadas/organizador" className={accountSecondary}><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver a mis jornadas</Link>
       {loading ? (
         <p role="status" className={accountCard}>Cargando tu cuenta…</p>
-      ) : user?.rol === 'VETERINARIA' || user?.rol === 'REFUGIO' ? (
-        <form onSubmit={publicar} className={`${accountCard} max-w-4xl space-y-6`}>
+      ) : organizador ? (
+        editarId && !jornada ? (
+          <p className={accountCard} role={errorCarga || datos ? 'alert' : 'status'}>
+            {errorCarga ? 'No se pudo cargar la jornada.' : datos ? 'La jornada no pertenece a tu cuenta o ya no está disponible.' : 'Cargando jornada…'}
+          </p>
+        ) : <form key={jornada?.id ?? 'nueva'} onSubmit={publicar} className={`${accountCard} max-w-4xl space-y-6`}>
           <fieldset disabled={guardando} className="grid min-w-0 gap-x-6 gap-y-5 sm:grid-cols-2">
             {fields.map(({ name, label, ...props }) => (
               <label key={name} className={`min-w-0 text-sm font-bold text-slate-800 ${name === 'titulo' ? 'sm:col-span-2' : ''}`}>
                 {label}
-                <input {...props} name={name} required className={inputClass} />
+                <input {...props} name={name} defaultValue={valores?.[name as keyof typeof valores]} required className={inputClass} />
               </label>
             ))}
           </fieldset>
@@ -74,12 +119,12 @@ export default function PublicarJornadaPage() {
           {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
           {publicada && (
             <p role="status" className="text-sm font-medium text-emerald-800">
-              Jornada publicada. <Link href="/jornadas" className="font-bold underline">Ver el listado público</Link>
+              {jornada ? 'Cambios guardados.' : 'Jornada publicada.'} <Link href="/perfil/jornadas/organizador" className="font-bold underline">Ver mis jornadas</Link>
             </p>
           )}
           <button disabled={guardando} className={`${accountPrimary} w-full sm:w-auto`}>
             <CalendarPlus className="h-4 w-4" aria-hidden="true" />
-            {guardando ? 'Publicando…' : 'Publicar jornada'}
+            {guardando ? 'Guardando…' : jornada ? 'Guardar cambios' : 'Publicar jornada'}
           </button>
         </form>
       ) : (

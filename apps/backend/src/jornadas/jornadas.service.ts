@@ -226,6 +226,15 @@ export class JornadasService {
         );
       }
 
+      const organizadorActivo = await manager.existsBy(Usuario, {
+        id: jornada.organizadorId,
+        estadoAprobacion: 'APROBADO',
+        correoVerificado: true,
+      });
+      if (!organizadorActivo) {
+        throw new ConflictException('La jornada no está disponible para reservas.');
+      }
+
       const ahora = new Date();
 
       if (
@@ -649,25 +658,18 @@ export class JornadasService {
   async consultarReservasDeJornada(
     usuarioId: number,
     jornadaId: number,
-    esAdmin: boolean,
   ) {
     const jornada = await this.jornadaRepository.findOne({
-      where: { id: jornadaId },
+      where: { id: jornadaId, organizadorId: usuarioId },
     });
 
     if (!jornada) {
-      throw new NotFoundException('No se encontró la jornada.');
-    }
-
-    if (!esAdmin && jornada.organizadorId !== usuarioId) {
-      throw new ConflictException(
-        'No tienes permiso para consultar las reservas de esta jornada.',
-      );
+      throw new NotFoundException('No se encontró una jornada de tu cuenta.');
     }
 
     const reservas = await this.reservaRepository.find({
       where: { jornada: { id: jornadaId } },
-      relations: { pago: true, usuario: true, jornada: true },
+      relations: { pago: true, jornada: true },
       order: { creadoEn: 'DESC' },
     });
 

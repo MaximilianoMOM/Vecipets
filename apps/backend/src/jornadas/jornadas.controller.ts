@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   ParseIntPipe,
@@ -9,12 +10,14 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Jornada } from './jornada.entity';
+import { ReservaJornada } from './reserva-jornada.entity';
 import { JornadasService } from './jornadas.service';
 
 import { CrearJornadaDto } from './crear-jornada.dto';
@@ -129,6 +132,7 @@ export class JornadasController {
         ahora: new Date(),
       })
       .andWhere('jornada.activa = true')
+      .andWhere('organizador.correoVerificado = true')
       .andWhere(
         'organizador.estadoAprobacion = :estado',
         { estado: 'APROBADO' },
@@ -154,6 +158,51 @@ export class JornadasController {
     @Body() datos: CrearJornadaDto,
     @UsuarioAutenticado() veterinaria: UsuarioSesion,
   ) {
+    const datosJornada = this.prepararDatosJornada(datos);
+    const cuenta = await this.usuarios.obtenerPorId(veterinaria.sub);
+    if (!cuenta) throw new NotFoundException('No se encontró la cuenta organizadora.');
+    if ((cuenta.rol !== 'VETERINARIA' && cuenta.rol !== 'REFUGIO') ||
+      cuenta.estadoAprobacion !== 'APROBADO' || !cuenta.correoVerificado) {
+      throw new ForbiddenException('La entidad no está autorizada para publicar jornadas.');
+    }
+    const jornada = await this.jornadas.save(this.jornadas.create({
+      ...datosJornada,
+      organizadorId: cuenta.id,
+      veterinaria: cuenta.nombre,
+      imagenUrl: null,
+      destacado: false,
+      activa: true,
+    }));
+    return { id: jornada.id, mensaje: 'Jornada publicada correctamente.' };
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('VETERINARIA', 'REFUGIO')
+  async editar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() datos: CrearJornadaDto,
+    @UsuarioAutenticado() usuario: UsuarioSesion,
+  ) {
+    const cambios = this.prepararDatosJornada(datos);
+    return this.jornadas.manager.transaction(async (manager) => {
+      const jornada = await manager.findOne(Jornada, {
+        where: { id, organizadorId: usuario.sub },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!jornada) throw new NotFoundException('No se encontró una jornada de tu cuenta.');
+      if (!jornada.activa || jornada.fechaInicio <= new Date()) {
+        throw new ConflictException('Solo puedes editar una jornada activa que aún no ha comenzado.');
+      }
+      if (await manager.existsBy(ReservaJornada, { jornada: { id } })) {
+        throw new ConflictException('La jornada ya tiene reservas y sus datos están bloqueados.');
+      }
+      const actualizada = await manager.save(Jornada, { ...jornada, ...cambios });
+      return this.serializarJornada(actualizada);
+    });
+  }
+
+  private prepararDatosJornada(datos: CrearJornadaDto) {
     const inicio = new Date(datos.inicio);
     const fin = new Date(datos.fin);
 
@@ -178,73 +227,19 @@ export class JornadasController {
       );
     }
 
-    const cuenta = await this.usuarios.obtenerPorId(
-      veterinaria.sub,
-    );
-
-    if (!cuenta) {
-      throw new NotFoundException(
-        'No se encontró la cuenta organizadora.',
-      );
-    }
-
-    if (
-      (cuenta.rol !== 'VETERINARIA' && cuenta.rol !== 'REFUGIO') ||
-      cuenta.estadoAprobacion !== 'APROBADO'
-    ) {
-      throw new ForbiddenException(
-        'La entidad no está autorizada para publicar jornadas.',
-      );
-    }
-
-    if (!cuenta.correoVerificado) {
-      throw new ForbiddenException(
-        'Debes verificar tu correo electrónico.',
-      );
-    }
-
-    const precioCentavos = Math.round(
-      datos.precioCop * 100,
-    );
-
-    const precioApartadoCentavos =
-      this.calcularApartadoCentavos(precioCentavos);
-
-    const jornada = await this.jornadas.save(
-      this.jornadas.create({
-        titulo: datos.titulo,
-        comuna: datos.comuna,
-        direccion: datos.direccion,
-
-        fechaInicio: inicio,
-        fechaFin: fin,
-
-        organizadorId: cuenta.id,
-        veterinaria: cuenta.nombre,
-
-        fechaTexto: fechaColombia.format(inicio),
-        horaTexto: horaColombia.formatRange(
-          inicio,
-          fin,
-        ),
-
-        cuposTotales: datos.cupos,
-        cuposDisponibles: datos.cupos,
-
-        precioProcedimientoCentavos:
-          precioCentavos,
-
-        precioApartadoCentavos,
-
-        imagenUrl: null,
-        destacado: false,
-        activa: true,
-      }),
-    );
-
+    const precioCentavos = Math.round(datos.precioCop * 100);
     return {
-      id: jornada.id,
-      mensaje: 'Jornada publicada correctamente.',
+      titulo: datos.titulo,
+      comuna: datos.comuna,
+      direccion: datos.direccion,
+      fechaInicio: inicio,
+      fechaFin: fin,
+      fechaTexto: fechaColombia.format(inicio),
+      horaTexto: horaColombia.formatRange(inicio, fin),
+      cuposTotales: datos.cupos,
+      cuposDisponibles: datos.cupos,
+      precioProcedimientoCentavos: precioCentavos,
+      precioApartadoCentavos: this.calcularApartadoCentavos(precioCentavos),
     };
   }
 
@@ -271,7 +266,8 @@ export class JornadasController {
   // ==========================================
 
   @Get('reservas/:reservaId/estado')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
   async verificarEstadoReserva(
     @UsuarioAutenticado() usuario: UsuarioSesion,
     @Param('reservaId', ParseIntPipe)
@@ -288,7 +284,8 @@ export class JornadasController {
   // ==========================================
 
   @Get('mis-reservas')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CIUDADANO')
   async misReservas(
     @UsuarioAutenticado() usuario: UsuarioSesion,
   ) {
@@ -303,7 +300,7 @@ export class JornadasController {
 
   @Get('organizador/mis-jornadas')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('VETERINARIA', 'REFUGIO', 'ADMINISTRADOR')
+  @Roles('VETERINARIA', 'REFUGIO')
   async misJornadas(
     @UsuarioAutenticado() usuario: UsuarioSesion,
   ) {
@@ -317,16 +314,15 @@ export class JornadasController {
   // ==========================================
 
   @Get(':id/reservas')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('VETERINARIA', 'REFUGIO')
   async reservasDeJornada(
     @UsuarioAutenticado() usuario: UsuarioSesion,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    const esAdmin = usuario.rol === 'ADMINISTRADOR';
     return this.jornadasService.consultarReservasDeJornada(
       usuario.sub,
       id,
-      esAdmin,
     );
   }
 
@@ -343,7 +339,8 @@ export class JornadasController {
         id,
         activa: true,
         organizador: {
-          estadoAprobacion: 'APROBADO' as any,
+          estadoAprobacion: 'APROBADO',
+          correoVerificado: true,
         },
       },
     });

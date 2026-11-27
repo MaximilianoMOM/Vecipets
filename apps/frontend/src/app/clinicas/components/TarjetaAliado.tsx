@@ -1,14 +1,15 @@
 import React from 'react';
+import { MapPin } from 'lucide-react';
 
 export interface Aliado {
-    id: string;
+    id: number;
     nombre: string;
     tipo: 'REFUGIO' | 'VETERINARIA' | 'CLINICA';
     direccion: string;
     horario: string;
     servicios: string[];
     telefono: string;
-    imagenUrl: string;
+    imagenUrl: string | null;
 }
 
 interface TarjetaAliadoProps {
@@ -31,11 +32,13 @@ export default function TarjetaAliado({ aliado, onClick }: TarjetaAliadoProps) {
             <div>
                 {/* Banner e Imagen de la Sede (Altura fija h-48 para mantener simetría) */}
                 <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                    <img
+                    {aliado.imagenUrl ? <img
                         src={aliado.imagenUrl}
                         alt={aliado.nombre}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    /> : <div className="grid h-full place-items-center bg-indigo-50 text-indigo-600">
+                        <MapPin className="h-10 w-10" aria-hidden="true" />
+                    </div>}
                     {/* Tag flotante con el tipo de aliado */}
                     <span
                         className={`absolute top-4 left-4 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-md shadow-sm ${BADGE_COLORS[aliado.tipo]

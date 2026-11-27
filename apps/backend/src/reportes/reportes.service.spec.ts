@@ -1,7 +1,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportesService } from './reportes.service';
 
 import {
@@ -35,6 +35,7 @@ describe('ReportesService', () => {
     ),
     find: vi.fn(),
     findOne: vi.fn(),
+    update: vi.fn(),
     createQueryBuilder: vi.fn(),
   };
 
@@ -122,6 +123,51 @@ describe('ReportesService', () => {
     expect(service).toBeDefined();
   });
 
+  it('guarda las coordenadas ajustadas al enviar un borrador que le pertenece al ciudadano', async () => {
+    mockReporteRepo.findOne.mockResolvedValue({
+      id: 1, usuario: mockUsuarioCiudadano, enviadoRevision: false,
+      estado: EstadoReporte.PENDIENTE, estadoAprobacion: EstadoAprobacionReporte.PENDIENTE,
+      latitud: '6.2442', longitud: '-75.5812',
+    });
+    const posicion = { latitud: '6.2506', longitud: '-75.5928' };
+    const respuesta = await service.publicarBorrador(1, mockUsuarioCiudadano.id, posicion);
+    expect(mockReporteRepo.save).toHaveBeenCalledWith(expect.objectContaining({
+      ...posicion, enviadoRevision: true,
+    }));
+    expect(respuesta.reporte).toMatchObject(posicion);
+  });
+
+  it('solo permite al dueño resolver un reporte aprobado', async () => {
+    mockReporteRepo.findOne.mockResolvedValue({
+      id: 1, usuario: { ...mockUsuarioCiudadano, passwordHash: 'privado' },
+      estado: EstadoReporte.PUBLICO, estadoAprobacion: EstadoAprobacionReporte.APROBADO,
+      enviadoRevision: true,
+    });
+    mockReporteRepo.update.mockResolvedValue({ affected: 1 });
+
+    const cambios = { estado: EstadoReporte.RESUELTO };
+    await expect(service.actualizar(1, cambios, 11)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.actualizar(1, cambios, 11, true)).rejects.toBeInstanceOf(ForbiddenException);
+    const solucionado = await service.actualizar(1, cambios, 10);
+    expect(solucionado.estado).toBe(EstadoReporte.RESUELTO);
+    expect(solucionado.usuario).not.toHaveProperty('passwordHash');
+    expect(mockReporteRepo.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('excluye de la aprobación los borradores y los reportes ya cerrados', async () => {
+    const decision = { estadoAprobacion: EstadoAprobacionReporte.APROBADO };
+    mockReporteRepo.findOne.mockResolvedValueOnce({
+      id: 1, usuario: mockUsuarioCiudadano, enviadoRevision: false,
+      estado: EstadoReporte.PENDIENTE, estadoAprobacion: EstadoAprobacionReporte.PENDIENTE,
+    }).mockResolvedValueOnce({
+      id: 1, usuario: mockUsuarioCiudadano, enviadoRevision: true,
+      estado: EstadoReporte.CERRADO, estadoAprobacion: EstadoAprobacionReporte.APROBADO,
+    });
+    await expect(service.actualizar(1, decision, 11, true)).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.actualizar(1, decision, 11, true)).rejects.toBeInstanceOf(ConflictException);
+    expect(mockReporteRepo.update).not.toHaveBeenCalled();
+  });
+
   describe('crear reporte con validación de imagen', () => {
     beforeEach(() => {
       mockUsuarioRepo.findOne.mockResolvedValue(mockUsuarioCiudadano);
@@ -131,7 +177,7 @@ describe('ReportesService', () => {
       );
     });
 
-    it('debe publicar automáticamente cuando Roboflow aprueba la imagen', async () => {
+    it('deja pendiente el reporte hasta la revisión humana aunque la imagen sea válida', async () => {
       mockValidacionImagenesService.validarImagenReporte.mockResolvedValue({
         estado: 'APROBADA',
         aprobada: true,
@@ -144,17 +190,17 @@ describe('ReportesService', () => {
       const resultado = await service.crear(mockDto, 10, mockArchivo);
 
       expect(resultado.validacion.estadoAprobacion).toBe(
-        EstadoAprobacionReporte.APROBADO,
+        EstadoAprobacionReporte.PENDIENTE,
       );
 
       expect(resultado.validacion.estadoReporte).toBe(
-        EstadoReporte.PUBLICO,
+        EstadoReporte.PENDIENTE,
       );
 
       expect(mockReporteRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          estadoAprobacion: EstadoAprobacionReporte.APROBADO,
-          estado: EstadoReporte.PUBLICO,
+          estadoAprobacion: EstadoAprobacionReporte.PENDIENTE,
+          estado: EstadoReporte.PENDIENTE,
           imagenUrl: '/uploads/reportes/perro.jpg',
         }),
       );

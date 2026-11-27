@@ -10,7 +10,7 @@ const roleDetails = {
   CIUDADANO: {
     icon: HeartHandshake,
     description: 'Encuentra mascotas y comparte una alerta con tu comunidad.',
-    links: [{ href: '/reportar', label: 'Reportar mascota' }, { href: '/reportes', label: 'Ver reportes' }],
+    links: [{ href: '/mis-reportes', label: 'Mis reportes' }, { href: '/perfil/reservas', label: 'Mis reservas' }, { href: '/reportar', label: 'Reportar mascota' }],
   },
   ADMINISTRADOR: {
     icon: Shield,
@@ -20,12 +20,12 @@ const roleDetails = {
   REFUGIO: {
     icon: Building2,
     description: 'Consulta alertas de mascotas y jornadas de la comunidad.',
-    links: [{ href: '/reportes', label: 'Ver reportes' }, { href: '/jornadas', label: 'Ver jornadas' }],
+    links: [{ href: '/perfil/jornadas/organizador', label: 'Mis jornadas' }, { href: '/perfil/sedes', label: 'Mis sedes' }, { href: '/jornadas', label: 'Ver jornadas' }],
   },
   VETERINARIA: {
     icon: Stethoscope,
     description: 'Publica jornadas de atención para que la comunidad pueda verlas.',
-    links: [{ href: '/perfil/jornadas', label: 'Publicar jornada' }, { href: '/jornadas', label: 'Ver jornadas' }],
+    links: [{ href: '/perfil/jornadas/organizador', label: 'Mis jornadas' }, { href: '/perfil/sedes', label: 'Mis sedes' }, { href: '/jornadas', label: 'Ver jornadas' }],
   },
 };
 

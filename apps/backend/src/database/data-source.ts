@@ -11,6 +11,7 @@ import { Reporte } from '../reportes/reporte.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 import { Jornada } from '../jornadas/jornada.entity';
 import { ReservaJornada } from '../jornadas/reserva-jornada.entity';
+import { Sede } from '../sedes/sede.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -33,6 +34,7 @@ const AppDataSource = new DataSource({
     Usuario,
     Jornada,
     ReservaJornada,
+    Sede,
   ],
 
   migrations: ['src/database/migrations/*.ts'],

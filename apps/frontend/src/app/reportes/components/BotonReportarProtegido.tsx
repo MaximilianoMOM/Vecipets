@@ -25,6 +25,8 @@ export default function BotonReportarProtegido({
         setMontado(true);
     }, []);
 
+    if (user && user.rol !== 'CIUDADANO') return null;
+
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         e.stopPropagation();
