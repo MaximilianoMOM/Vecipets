@@ -10,14 +10,9 @@ import { GoogleAuthButton } from '../google-auth-button';
 import { useRecaptcha } from '../use-recaptcha';
 import { useState } from 'react';
 import axios from 'axios';
+import { enlaceSocialValido, mensajeSinRedes, redesSociales, type RedSocial } from '@/lib/solicitud-establecimiento';
 
-type RegisterData = {
-  email: string;
-  password: string;
-  name: string;
-  lastname: string;
-  rol: 'CIUDADANO' | 'REFUGIO' | 'VETERINARIA';
-};
+const plataformas = Object.keys(redesSociales) as RedSocial[];
 
 const schema = yup.object({
   email: yup
@@ -38,7 +33,29 @@ const schema = yup.object({
     .mixed<'CIUDADANO' | 'REFUGIO' | 'VETERINARIA'>()
     .oneOf(['CIUDADANO', 'REFUGIO', 'VETERINARIA'])
     .required('Selecciona un tipo de cuenta'),
+
+  establecimiento: yup.object({
+    nombre: yup.string().trim().required('El nombre del establecimiento es obligatorio').max(100, 'El nombre no puede superar 100 caracteres'),
+    direccion: yup.string().trim().required('La dirección del establecimiento es obligatoria').max(180, 'La dirección no puede superar 180 caracteres'),
+    instagram: campoRed('instagram'),
+    facebook: campoRed('facebook'),
+    tiktok: campoRed('tiktok'),
+  }).default(undefined).when('rol', {
+    is: (rol: string) => rol === 'REFUGIO' || rol === 'VETERINARIA',
+    then: (establecimiento) => establecimiento.required().test('al-menos-una-red', mensajeSinRedes, campos =>
+      plataformas.some(red => Boolean(campos?.[red])),
+    ),
+    otherwise: (establecimiento) => establecimiento.strip(),
+  }),
 });
+
+function campoRed(red: RedSocial) {
+  return yup.string().trim().test('enlace-social', 'Ingresa un enlace válido de ' + redesSociales[red] + '.', valor =>
+    !valor || enlaceSocialValido(valor, red),
+  );
+}
+
+type RegisterData = yup.InferType<typeof schema>;
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -52,6 +69,7 @@ export default function RegistroPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterData>({
     resolver: yupResolver(schema),
+    shouldUnregister: true,
     defaultValues: {
       rol: 'CIUDADANO',
     },
@@ -78,6 +96,7 @@ export default function RegistroPage() {
         correo: data.email.trim().toLowerCase(),
         password: data.password,
         rol: data.rol,
+        ...(data.rol !== 'CIUDADANO' ? { establecimiento: data.establecimiento } : {}),
         recaptchaToken,
       });
 
@@ -92,7 +111,9 @@ export default function RegistroPage() {
 
         if (status === 400) {
           setApiError(
-            'Revisa los datos. Verifica que la contraseña tenga mínimo 8 caracteres.',
+            typeof error.response?.data?.message === 'string' && data.rol !== 'CIUDADANO'
+              ? error.response.data.message
+              : 'Revisa los datos. Verifica que la contraseña tenga mínimo 8 caracteres.',
           );
         } else if (status === 409) {
           setApiError('Este correo ya está registrado.');
@@ -205,6 +226,37 @@ export default function RegistroPage() {
               </p>
             )}
           </div>
+
+          {(rol === 'REFUGIO' || rol === 'VETERINARIA') && (
+            <>
+              {([
+                ['nombre', rol === 'REFUGIO' ? 'Nombre del refugio' : 'Nombre de la veterinaria o clínica', 'text'],
+                ['direccion', 'Dirección física (calle o carrera)', 'text'],
+                ...plataformas.map(red => [red, redesSociales[red], 'url'] as const),
+              ] as const).map(([campo, etiqueta, tipo]) => {
+                const errorCampo = errors.establecimiento?.[campo]?.message;
+                const id = 'establecimiento-' + campo;
+                return (
+                  <div key={campo}>
+                    <label htmlFor={id} className="block text-sm font-medium text-gray-700">{etiqueta}</label>
+                    <input
+                      id={id}
+                      type="text"
+                      inputMode={tipo === 'url' ? 'url' : undefined}
+                      aria-invalid={Boolean(errorCampo)}
+                      aria-describedby={errorCampo ? id + '-error' : undefined}
+                      {...register(`establecimiento.${campo}`)}
+                      className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                    />
+                    {errorCampo && <p id={id + '-error'} className="mt-1 text-sm text-red-600">{errorCampo}</p>}
+                  </div>
+                );
+              })}
+              {errors.establecimiento?.message && (
+                <p role="alert" className="mt-1 text-sm text-red-600">{errors.establecimiento.message}</p>
+              )}
+            </>
+          )}
 
           {(rol === 'REFUGIO' || rol === 'VETERINARIA') && (
             <p role="status" className="rounded bg-indigo-50 p-3 text-sm text-indigo-900">

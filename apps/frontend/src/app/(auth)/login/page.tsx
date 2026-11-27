@@ -7,7 +7,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { apiClient } from '@/lib/api-client';
 import { GoogleAuthButton } from '../google-auth-button';
-import { useRecaptcha } from '../use-recaptcha';
+import { useRecaptchaV2 } from '../use-recaptcha-v2';
 import { useAuth } from '@/lib/auth-context';
 import { useState } from 'react';
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
-  const recaptcha = useRecaptcha('login');
+  const recaptcha = useRecaptchaV2();
 
   const {
     register,
@@ -40,11 +40,9 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginData> = async (data) => {
     setApiError(null);
 
-    let recaptchaToken: string;
-    try {
-      recaptchaToken = await recaptcha.getToken();
-    } catch {
-      setApiError('No se pudo completar reCAPTCHA. Intenta nuevamente.');
+    const recaptchaToken = recaptcha.tomarToken();
+    if (!recaptchaToken) {
+      setApiError('Completa la casilla de reCAPTCHA antes de ingresar.');
       return;
     }
 
@@ -74,7 +72,6 @@ export default function LoginPage() {
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
-      {recaptcha.script}
       <div className="w-full max-w-md rounded-xl bg-white/80 p-8 shadow-lg backdrop-blur-sm">
         <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">
           Iniciar sesión
@@ -134,14 +131,15 @@ export default function LoginPage() {
             </p>
           )}
 
+          {recaptcha.casilla}
+
           <button
             type="submit"
-            disabled={isSubmitting || !recaptcha.ready}
+            disabled={isSubmitting || !recaptcha.verificado}
             className="w-full rounded bg-indigo-600 py-2 font-semibold text-white transition-all hover:bg-indigo-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Iniciando...' : 'Ingresar'}
           </button>
-          {recaptcha.error}
         </form>
 
         <div className="relative py-4">

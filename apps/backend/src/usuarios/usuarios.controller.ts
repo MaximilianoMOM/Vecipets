@@ -130,12 +130,12 @@ export class UsuariosController {
   }
 
   private async verificarRecaptcha(recaptchaToken: string, accion: 'register' | 'login') {
-    const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
+    const secret = (accion === 'login' ? process.env.RECAPTCHA_V2_SECRET_KEY : process.env.RECAPTCHA_SECRET_KEY)?.trim();
     if (!secret) {
       throw new ServiceUnavailableException('La verificación reCAPTCHA no está disponible.');
     }
 
-    let verificacion: { success?: boolean; action?: string; score?: number };
+    let verificacion: { success?: boolean; action?: string; score?: number; 'error-codes'?: string[] };
     try {
       const respuesta = await fetch('https://www.google.com/recaptcha/api/siteverify', {
         method: 'POST',
@@ -150,11 +150,21 @@ export class UsuariosController {
       throw new ServiceUnavailableException('La verificación reCAPTCHA no está disponible.');
     }
 
+    if (accion === 'login' && verificacion?.['error-codes']?.includes('timeout-or-duplicate')) {
+      throw new ForbiddenException('La verificación reCAPTCHA venció o ya se usó. Marca la casilla nuevamente.');
+    }
+    if (accion === 'login' && verificacion?.['error-codes']?.some(codigo =>
+      codigo === 'invalid-input-secret' || codigo === 'missing-input-secret'
+    )) {
+      throw new ServiceUnavailableException('La verificación reCAPTCHA no está disponible.');
+    }
     if (
       verificacion?.success !== true ||
-      verificacion.action !== accion ||
-      typeof verificacion.score !== 'number' ||
-      verificacion.score < 0.5
+      (accion === 'register' && (
+        verificacion.action !== accion ||
+        typeof verificacion.score !== 'number' ||
+        verificacion.score < 0.5
+      ))
     ) {
       throw new ForbiddenException('No se pudo verificar reCAPTCHA. Intenta nuevamente.');
     }

@@ -5,6 +5,8 @@ import {
   Column,
 } from 'typeorm';
 
+import type { SolicitudEstablecimiento } from './solicitud-establecimiento';
+
 @Entity('usuarios')
 export class Usuario {
   @PrimaryGeneratedColumn()
@@ -23,6 +25,9 @@ export class Usuario {
     nullable: true,
   })
   passwordHash: string | null;
+
+  @Column({ name: 'solicitud_establecimiento', type: 'jsonb', nullable: true })
+  solicitudEstablecimiento: SolicitudEstablecimiento | null;
 
   @Column({
     type: 'varchar',

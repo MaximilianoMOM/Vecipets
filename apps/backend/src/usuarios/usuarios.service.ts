@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
   InternalServerErrorException,
@@ -24,6 +25,7 @@ import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { LoginDto } from './dto/login.dto';
 import { RestablecerContrasenaDto } from './dto/restablecer-contrasena.dto';
 import { CorreoService } from './correo.service';
+import { enlaceSocialValido, mensajeSinRedes, redesSociales, type RedSocial, type SolicitudEstablecimiento } from './solicitud-establecimiento';
 
 @Injectable()
 export class UsuariosService {
@@ -57,6 +59,7 @@ export class UsuariosService {
       rol: usuario.rol,
       estadoAprobacion: usuario.estadoAprobacion,
       correoVerificado: usuario.correoVerificado,
+      solicitudEstablecimiento: usuario.solicitudEstablecimiento,
     }));
   }
 
@@ -142,6 +145,7 @@ export class UsuariosService {
 
   // REGISTRO
   async crear(datos: CrearUsuarioDto): Promise<{ mensaje: string }> {
+    const solicitudEstablecimiento = datos.rol === 'CIUDADANO' ? null : this.validarEstablecimiento(datos.establecimiento);
     const correo = datos.correo.trim().toLowerCase();
 
     const existente = await this.usuariosRepository.findOneBy({ correo });
@@ -164,6 +168,7 @@ export class UsuariosService {
       correo,
       passwordHash,
       rol: datos.rol,
+      solicitudEstablecimiento,
       estadoAprobacion: esCiudadano ? 'APROBADO' : 'PENDIENTE',
       correoVerificado: false,
       codigoVerificacionHash: codigoHash,
@@ -184,6 +189,34 @@ export class UsuariosService {
     return {
       mensaje: 'Registro creado. Revisa tu correo para verificar tu cuenta.',
     };
+  }
+
+  private validarEstablecimiento(datos: unknown): SolicitudEstablecimiento {
+    const campos = datos && typeof datos === 'object' && !Array.isArray(datos)
+      ? datos as Record<string, unknown>
+      : {};
+    const nombre = typeof campos.nombre === 'string' ? campos.nombre.trim() : '';
+    const direccion = typeof campos.direccion === 'string' ? campos.direccion.trim() : '';
+    if (!nombre || nombre.length > 100) {
+      throw new BadRequestException('Ingresa el nombre del establecimiento (máximo 100 caracteres).');
+    }
+    if (!direccion || direccion.length > 180) {
+      throw new BadRequestException('Ingresa la dirección del establecimiento (máximo 180 caracteres).');
+    }
+
+    const solicitud: SolicitudEstablecimiento = { nombre, direccion };
+    let tieneRed = false;
+    for (const red of Object.keys(redesSociales) as RedSocial[]) {
+      const valor = campos[red];
+      if (valor == null || (typeof valor === 'string' && !valor.trim())) continue;
+      if (typeof valor !== 'string' || !enlaceSocialValido(valor.trim(), red)) {
+        throw new BadRequestException('Ingresa un enlace válido de ' + redesSociales[red] + '.');
+      }
+      solicitud[red] = valor.trim();
+      tieneRed = true;
+    }
+    if (!tieneRed) throw new BadRequestException(mensajeSinRedes);
+    return solicitud;
   }
 
   // VERIFICACIÓN DEL CORREO
