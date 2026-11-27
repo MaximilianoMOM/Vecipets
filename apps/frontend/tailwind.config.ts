@@ -13,7 +13,9 @@ const config: Config = {
             colors: {
                 // Paleta principal orientada a tonos claros y limpios
                 primary: {
-                    ...colors.blue,
+                    50: colors.blue[50],
+                    100: colors.blue[100],
+                    500: colors.blue[500],
                     DEFAULT: colors.blue[600],
                     hover: colors.blue[700],
                 },

@@ -22,7 +22,7 @@ export default function MapaSeccion() {
                 {/* Encabezado del apartado */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <span className="text-[11px] font-bold tracking-widest text-primary uppercase bg-primary-50 px-3.5 py-1.5 rounded-full border border-primary-100">
+                        <span className="text-[11px] font-bold tracking-widest text-indigo-600 uppercase bg-indigo-50 px-3.5 py-1.5 rounded-full border border-indigo-100">
                             Geolocalización en VIVO
                         </span>
                         <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mt-3">
@@ -37,7 +37,7 @@ export default function MapaSeccion() {
                     <div>
                         <Link
                             href="/mapa"
-                            className="px-5 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-hover transition shadow-lg flex items-center gap-2"
+                            className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition shadow-lg flex items-center gap-2"
                         >
                             <span>🗺️</span> Abrir Mapa a Pantalla Completa
                         </Link>

@@ -64,7 +64,7 @@ export default function MisReportesPage() {
                 <div className="grid gap-5 md:grid-cols-2">
                   {datos.map((reporte) => (
                     <article key={reporte.id} className={accountCard}>
-                      <p className="text-sm font-bold text-primary-hover">{reporte.enviadoRevision ? (estados[reporte.estado] ?? reporte.estado) : 'Borrador'}</p>
+                      <p className="text-sm font-bold text-indigo-700">{reporte.enviadoRevision ? (estados[reporte.estado] ?? reporte.estado) : 'Borrador'}</p>
                       <h2 className="mt-1 text-xl font-black">{reporte.nombre}</h2>
                       <p className="mt-1 text-sm text-slate-600">{reporte.barrioSector}</p>
                       <div className="mt-4 flex flex-wrap gap-2">

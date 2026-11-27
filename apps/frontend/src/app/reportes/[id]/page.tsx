@@ -425,7 +425,7 @@ export default function ReporteDetallePage() {
             {coordenadas && reportePublico && (
               <Link
                 href={`/mapa#reporte-${reporte.id}`}
-                className="text-xs font-bold text-primary-hover hover:underline"
+                className="text-xs font-bold text-indigo-700 hover:underline"
               >
                 Ver en el mapa general
               </Link>

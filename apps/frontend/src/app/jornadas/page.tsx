@@ -253,7 +253,7 @@ export default function PaginaJornadas() {
       title={
         <>
           Jornadas{' '}
-          <span className="text-primary">
+          <span className="text-indigo-600">
             veterinarias
           </span>
         </>
@@ -262,16 +262,16 @@ export default function PaginaJornadas() {
     >
       <div className="space-y-8">
 
-        {ciudadanoId !== undefined && <Link href="/jornadas/mis-reservas" className="font-semibold text-primary-hover underline">Mis reservas</Link>}
+        {ciudadanoId !== undefined && <Link href="/jornadas/mis-reservas" className="font-semibold text-indigo-700 underline">Mis reservas</Link>}
         {/* ESTADO DE SESIÓN */}
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
 
           <div className="flex items-center gap-3">
 
-            <div className="rounded-xl bg-primary-50 p-3">
+            <div className="rounded-xl bg-indigo-50 p-3">
 
-              <User className="h-5 w-5 text-primary" />
+              <User className="h-5 w-5 text-indigo-600" />
 
             </div>
 
@@ -304,7 +304,7 @@ export default function PaginaJornadas() {
             <button
               type="button"
               onClick={() => router.push('/login')}
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-hover"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700"
             >
               Iniciar sesión
             </button>
@@ -318,7 +318,7 @@ export default function PaginaJornadas() {
               onClick={() =>
                 router.push('/perfil/jornadas')
               }
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-hover"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700"
             >
               Gestionar mis jornadas
             </button>
@@ -329,7 +329,7 @@ export default function PaginaJornadas() {
 
         {/* ENCABEZADO */}
 
-        <section className="rounded-3xl bg-gradient-to-r from-primary-hover to-blue-600 p-6 text-white shadow-lg md:p-10">
+        <section className="rounded-3xl bg-gradient-to-r from-indigo-700 to-blue-600 p-6 text-white shadow-lg md:p-10">
 
           <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-bold uppercase">
 
@@ -345,7 +345,7 @@ export default function PaginaJornadas() {
 
           </h2>
 
-          <p className="max-w-2xl text-sm leading-relaxed text-primary-100 md:text-base">
+          <p className="max-w-2xl text-sm leading-relaxed text-indigo-100 md:text-base">
 
             Accede a jornadas de salud, vacunación
             y esterilización a precios comunitarios.
@@ -408,17 +408,17 @@ export default function PaginaJornadas() {
 
             </div>
 
-            <div className="rounded-2xl bg-primary-50 p-4">
+            <div className="rounded-2xl bg-indigo-50 p-4">
 
-              <p className="text-sm font-semibold text-primary-hover">
+              <p className="text-sm font-semibold text-indigo-700">
                 Desde $50.000
               </p>
 
-              <p className="mt-2 text-2xl font-black text-primary-800">
+              <p className="mt-2 text-2xl font-black text-indigo-800">
                 $10.000
               </p>
 
-              <p className="mt-1 text-xs text-primary-hover">
+              <p className="mt-1 text-xs text-indigo-700">
                 Apartado por cupo
               </p>
 
@@ -441,7 +441,7 @@ export default function PaginaJornadas() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
 
-          <h2 className="flex items-center gap-2 text-lg font-bold text-primary-hover">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-indigo-700">
 
             <Syringe className="h-5 w-5" />
 
@@ -449,7 +449,7 @@ export default function PaginaJornadas() {
 
           </h2>
 
-          <span className="flex items-center gap-2 rounded-full bg-primary-50 px-4 py-2 text-sm font-semibold text-primary-hover">
+          <span className="flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700">
 
             <Ticket className="h-4 w-4" />
 
@@ -468,7 +468,7 @@ export default function PaginaJornadas() {
             className="flex flex-col items-center justify-center gap-3 py-16"
           >
 
-            <Loader2 className="h-9 w-9 animate-spin text-primary" />
+            <Loader2 className="h-9 w-9 animate-spin text-indigo-600" />
 
             <p className="text-sm text-slate-500">
 
@@ -498,7 +498,7 @@ export default function PaginaJornadas() {
             <button
               type="button"
               onClick={() => void cargarJornadas()}
-              className="mt-4 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white"
+              className="mt-4 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white"
             >
 
               Volver a intentar
@@ -634,9 +634,9 @@ export default function PaginaJornadas() {
 
             </button>
 
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
 
-              <User className="h-7 w-7 text-primary" />
+              <User className="h-7 w-7 text-indigo-600" />
 
             </div>
 
@@ -659,7 +659,7 @@ export default function PaginaJornadas() {
             <button
               type="button"
               onClick={() => router.push('/login')}
-              className="w-full rounded-xl bg-primary py-3 font-bold text-white hover:bg-primary-hover"
+              className="w-full rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-700"
             >
 
               Iniciar sesión
@@ -671,7 +671,7 @@ export default function PaginaJornadas() {
               onClick={() =>
                 router.push('/registro')
               }
-              className="w-full rounded-xl bg-primary-50 py-3 font-bold text-primary-hover"
+              className="w-full rounded-xl bg-indigo-50 py-3 font-bold text-indigo-700"
             >
 
               Registrarse
@@ -727,7 +727,7 @@ export default function PaginaJornadas() {
             <button
               type="button"
               onClick={() => setMensajeAcceso(null)}
-              className="w-full rounded-xl bg-primary py-3 font-bold text-white"
+              className="w-full rounded-xl bg-indigo-600 py-3 font-bold text-white"
             >
 
               Entendido

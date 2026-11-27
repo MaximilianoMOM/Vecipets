@@ -39,7 +39,7 @@ export default function MisJornadasPage() {
                   <h2 className="text-xl font-black">{jornada.titulo}</h2>
                   <p className="mt-2 text-sm text-slate-600">{jornada.fechaTexto} · {jornada.horaTexto}</p>
                   <p className="mt-1 text-sm text-slate-600">{jornada.direccion}</p>
-                  <p className="mt-3 text-sm font-bold text-primary-hover">{jornada.cuposDisponibles} de {jornada.cuposTotales} cupos disponibles</p>
+                  <p className="mt-3 text-sm font-bold text-indigo-700">{jornada.cuposDisponibles} de {jornada.cuposTotales} cupos disponibles</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link href={`/perfil/jornadas/organizador/reservas/${jornada.id}`} className={accountSecondary}>Ver reservas</Link>
                     {jornada.activa && Date.parse(jornada.fechaInicio) > Date.now() && jornada.cuposDisponibles === jornada.cuposTotales && (

@@ -1814,7 +1814,7 @@ function FormularioReportarContenido() {
                   enviando ||
                   verificandoPago
                 }
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-hover disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
               >
 
                 {buscandoUbicacion ? (
@@ -1859,7 +1859,7 @@ function FormularioReportarContenido() {
             {mensajeUbicacion && (
               <p
                 role="status"
-                className="text-xs font-medium text-primary-800"
+                className="text-xs font-medium text-indigo-800"
               >
                 {mensajeUbicacion}
               </p>
@@ -1902,7 +1902,7 @@ function FormularioReportarContenido() {
                             false
                           )
                         }
-                        className="w-full rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-left text-sm text-primary-950 hover:border-primary-300"
+                        className="w-full rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-left text-sm text-indigo-950 hover:border-indigo-300"
                       >
 
                         <span className="block font-semibold">
@@ -1910,7 +1910,7 @@ function FormularioReportarContenido() {
                         </span>
 
                         {!resultado.numeroRegistrado && (
-                          <span className="block text-xs text-primary-hover">
+                          <span className="block text-xs text-indigo-700">
                             Ubicación aproximada.
                             Ajusta el punto si hace falta.
                           </span>
