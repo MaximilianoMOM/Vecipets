@@ -32,7 +32,7 @@ export default function ComoFunciona() {
 
                 {/* Encabezado */}
                 <div className="space-y-3">
-                    <span className="text-[11px] font-bold tracking-widest text-primary uppercase bg-primary-50/80 px-3.5 py-1.5 rounded-full border border-primary-100">
+                    <span className="text-[11px] font-bold tracking-widest text-indigo-600 uppercase bg-indigo-50/80 px-3.5 py-1.5 rounded-full border border-indigo-100">
                         Proceso sencillo y efectivo
                     </span>
                     <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
@@ -53,26 +53,26 @@ export default function ComoFunciona() {
                                 key={paso.id}
                                 onMouseEnter={() => setHoveredStep(paso.id)}
                                 className={`relative p-8 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between bg-white ${isActive
-                                        ? 'border-primary-500 shadow-2xl -translate-y-2 ring-4 ring-primary-500/10'
+                                        ? 'border-indigo-500 shadow-2xl -translate-y-2 ring-4 ring-indigo-500/10'
                                         : 'border-gray-100 shadow-lg shadow-gray-100 hover:border-gray-200'
                                     }`}
                             >
                                 <div>
                                     {/* Fila superior: Icono y Número Gigante Animado */}
                                     <div className="flex justify-between items-center mb-6">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-all duration-300 ${isActive ? 'bg-primary-50 text-primary shadow-sm' : 'bg-gray-50 text-gray-500'
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-all duration-300 ${isActive ? 'bg-indigo-50 text-indigo-600 shadow-sm' : 'bg-gray-50 text-gray-500'
                                             }`}>
                                             {paso.icono}
                                         </div>
 
-                                        <span className={`text-4xl font-black tracking-tighter transition-colors duration-300 select-none ${isActive ? 'text-primary/80' : 'text-gray-200'
+                                        <span className={`text-4xl font-black tracking-tighter transition-colors duration-300 select-none ${isActive ? 'text-indigo-600/80' : 'text-gray-200'
                                             }`}>
                                             {paso.id}
                                         </span>
                                     </div>
 
                                     {/* Título de la tarjeta */}
-                                    <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 ${isActive ? 'text-primary-950' : 'text-gray-900'
+                                    <h3 className={`text-xl font-bold mb-3 transition-colors duration-300 ${isActive ? 'text-indigo-950' : 'text-gray-900'
                                         }`}>
                                         {paso.titulo}
                                     </h3>
@@ -85,11 +85,11 @@ export default function ComoFunciona() {
 
                                 {/* Pie de tarjeta con enlace interactivo animado */}
                                 <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between">
-                                    <span className={`text-xs font-semibold transition-colors duration-300 ${isActive ? 'text-primary' : 'text-gray-400'
+                                    <span className={`text-xs font-semibold transition-colors duration-300 ${isActive ? 'text-indigo-600' : 'text-gray-400'
                                         }`}>
                                         Paso indispensable
                                     </span>
-                                    <span className={`text-xs font-bold transition-transform duration-300 ${isActive ? 'text-primary translate-x-1' : 'text-gray-300'
+                                    <span className={`text-xs font-bold transition-transform duration-300 ${isActive ? 'text-indigo-600 translate-x-1' : 'text-gray-300'
                                         }`}>
                                         →
                                     </span>

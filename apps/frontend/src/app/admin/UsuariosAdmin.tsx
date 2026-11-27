@@ -98,8 +98,8 @@ export default function UsuariosAdmin() {
           <span className={accountIcon}><Users className="h-5 w-5" aria-hidden="true" /></span>
           <h2 id="accounts-title" className="text-2xl font-black tracking-tight text-slate-900">Cuentas de usuarios</h2>
         </div>
-        <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200">
-          <Search className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+        <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200">
+          <Search className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
           <span className="sr-only">Buscar por nombre o correo</span>
           <input className="min-w-0 bg-transparent text-sm outline-none" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} placeholder="Buscar por nombre o correo" />
         </label>
@@ -142,7 +142,7 @@ export default function UsuariosAdmin() {
                   <p className="break-words font-bold text-slate-900">{usuario.nombre}</p>
                   <p className="break-all text-sm text-slate-600">{usuario.correo}</p>
                 </div>
-                <span className="text-sm font-semibold text-primary-hover">{roleLabels[usuario.rol]}</span>
+                <span className="text-sm font-semibold text-indigo-700">{roleLabels[usuario.rol]}</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${inactivo ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
                   {accountStatus[usuario.estadoAprobacion] ?? usuario.estadoAprobacion}
                 </span>

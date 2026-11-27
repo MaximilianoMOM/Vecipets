@@ -33,7 +33,7 @@ export default function MisReservasPage() {
   return (
     <AccountLayout title="Mis reservas" description="Consulta tus apartados y comprobantes de jornadas veterinarias.">
       <div className="space-y-4">
-        <Link href="/jornadas" className="font-semibold text-primary-hover underline">Volver a jornadas</Link>
+        <Link href="/jornadas" className="font-semibold text-indigo-700 underline">Volver a jornadas</Link>
         {loading ? <p role="status">Cargando sesión…</p>
           : ciudadanoId === undefined ? <Link href="/login" className="block underline">Inicia sesión para consultar tus reservas</Link>
           : reservas === undefined ? <p role="status">Cargando reservas…</p>

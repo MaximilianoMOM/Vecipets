@@ -133,7 +133,7 @@ function ContenidoResultado() {
   if (cargando || authLoading) {
     return (
       <div role="status" className="flex flex-col items-center justify-center gap-4 py-20">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
         <h2 className="text-xl font-bold text-slate-800">Verificando tu reserva...</h2>
         <p className="text-sm text-slate-500">
           Estamos consultando el estado de la transacción con Wompi.
@@ -202,7 +202,7 @@ function ContenidoResultado() {
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                     Código de reserva
                   </span>
-                  <span className="text-lg font-mono font-black text-primary-hover">
+                  <span className="text-lg font-mono font-black text-indigo-700">
                     {reserva.codigo}
                   </span>
                 </div>
@@ -223,7 +223,7 @@ function ContenidoResultado() {
                   </p>
                 )}
                 {reserva.veterinaria && (
-                  <p className="text-xs font-bold text-primary uppercase">
+                  <p className="text-xs font-bold text-indigo-600 uppercase">
                     {reserva.veterinaria}
                   </p>
                 )}
@@ -363,13 +363,13 @@ function ContenidoResultado() {
 export default function ReservaResultadoPage() {
   return (
     <AccountLayout
-      title={<>Resultado de tu <span className="text-primary">reserva</span></>}
+      title={<>Resultado de tu <span className="text-indigo-600">reserva</span></>}
       description="Consulta el estado de tu pago en Wompi y tu comprobante de reserva."
     >
       <Suspense
         fallback={
           <div role="status" className="flex flex-col items-center justify-center gap-3 py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
             <p className="text-sm text-slate-500">Cargando resultado...</p>
           </div>
         }

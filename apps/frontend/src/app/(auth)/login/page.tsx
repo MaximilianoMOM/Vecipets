@@ -73,7 +73,7 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-100 via-primary-50 to-primary-200 p-4">
+    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
       {recaptcha.script}
       <div className="w-full max-w-md rounded-xl bg-white/80 p-8 shadow-lg backdrop-blur-sm">
         <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">
@@ -90,7 +90,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               {...register('correo')}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
 
             {errors.correo && (
@@ -109,7 +109,7 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               {...register('password')}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
 
             {errors.password && (
@@ -122,7 +122,7 @@ export default function LoginPage() {
           <div className="text-right">
             <a
               href="/recuperar-contrasena"
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-indigo-600 hover:underline"
             >
               ¿Olvidaste tu contraseña?
             </a>
@@ -137,7 +137,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting || !recaptcha.ready}
-            className="w-full rounded bg-primary py-2 font-semibold text-white transition-all hover:bg-primary-hover disabled:opacity-50"
+            className="w-full rounded bg-indigo-600 py-2 font-semibold text-white transition-all hover:bg-indigo-700 disabled:opacity-50"
           >
             {isSubmitting ? 'Iniciando...' : 'Ingresar'}
           </button>
@@ -162,7 +162,7 @@ export default function LoginPage() {
           ¿No tienes cuenta?{' '}
           <a
             href="/registro"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-indigo-600 hover:underline"
           >
             Regístrate
           </a>

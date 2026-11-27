@@ -81,10 +81,10 @@ export default function VerificarCorreoPage() {
 
   if (pendiente) {
     return (
-      <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-100 via-primary-50 to-primary-200 p-4">
+      <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
         <div className="w-full max-w-md space-y-4 rounded-xl bg-white/90 p-8 text-center shadow-lg">
           <h1 className="text-xl font-bold text-gray-800">Correo verificado. Tu solicitud está pendiente</h1>
-          <Link href="/" className="block w-full rounded bg-primary py-2 font-semibold text-white hover:bg-primary-hover">
+          <Link href="/" className="block w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700">
             Volver al inicio
           </Link>
         </div>
@@ -93,7 +93,7 @@ export default function VerificarCorreoPage() {
   }
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-100 via-primary-50 to-primary-200 p-4">
+    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
       <div className="w-full max-w-md rounded-xl bg-white/90 p-8 shadow-lg">
         <h1 className="mb-3 text-center text-2xl font-bold text-gray-800">
           Verificar correo
@@ -149,7 +149,7 @@ export default function VerificarCorreoPage() {
           <button
             type="submit"
             disabled={cargando || mensaje !== ''}
-            className="w-full rounded bg-primary py-2 font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+            className="w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {cargando ? 'Verificando...' : 'Verificar correo'}
           </button>

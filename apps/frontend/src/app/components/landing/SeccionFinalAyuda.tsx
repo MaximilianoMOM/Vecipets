@@ -8,7 +8,7 @@ import BotonReportarProtegido from '@/app/reportes/components/BotonReportarProte
 
 export default function SeccionFinalAyuda() {
     return (
-        <section className="relative w-full bg-gradient-to-br from-primary-50 via-sky-50 to-slate-100 py-16 md:py-24 px-4 md:px-8 border-t border-slate-200">
+        <section className="relative w-full bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 py-16 md:py-24 px-4 md:px-8 border-t border-slate-200">
             <div className="max-w-4xl mx-auto text-center space-y-6">
 
                 {/* Icono superior flotante */}
@@ -41,9 +41,9 @@ export default function SeccionFinalAyuda() {
 
                     <Link
                         href="/registro"
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 bg-white hover:bg-slate-50 text-primary font-bold text-sm rounded-2xl border border-primary-200 shadow-sm hover:shadow transition-all transform active:scale-95"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 bg-white hover:bg-slate-50 text-indigo-600 font-bold text-sm rounded-2xl border border-indigo-200 shadow-sm hover:shadow transition-all transform active:scale-95"
                     >
-                        <Users className="w-5 h-5 text-primary" />
+                        <Users className="w-5 h-5 text-indigo-600" />
                         <span>Unirme 🤝</span>
                     </Link>
 
