@@ -1,5 +1,6 @@
 
 import {
+  Allow,
   IsEmail,
   IsIn,
   IsNotEmpty,
@@ -27,6 +28,9 @@ export class CrearUsuarioDto {
     message: 'El perfil seleccionado no es válido',
   })
   rol: 'CIUDADANO' | 'REFUGIO' | 'VETERINARIA';
+
+  @Allow()
+  establecimiento?: unknown;
 }
 
 export class RegistroUsuarioDto extends CrearUsuarioDto {

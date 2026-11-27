@@ -8,10 +8,14 @@ import type { User } from '@/lib/auth-context';
 import { accountStatus, roleLabels } from '@/lib/account-labels';
 import { accountCard, accountIcon, accountPrimary } from '../components/common/AccountLayout';
 
+import { redesSociales, enlaceSocialValido, type RedSocial, type SolicitudEstablecimiento } from '@/lib/solicitud-establecimiento';
+
+type CuentaAdmin = User & { solicitudEstablecimiento?: SolicitudEstablecimiento | null };
+
 const destructiveButton = 'rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:opacity-50';
 
 export default function UsuariosAdmin() {
-  const [usuarios, setUsuarios] = useState<User[]>([]);
+  const [usuarios, setUsuarios] = useState<CuentaAdmin[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(false);
@@ -27,7 +31,7 @@ export default function UsuariosAdmin() {
 
   useEffect(() => {
     let vigente = true;
-    apiClient.get<User[]>('/usuarios')
+    apiClient.get<CuentaAdmin[]>('/usuarios')
       .then(({ data }) => { if (vigente) setUsuarios(data); })
       .catch(() => { if (vigente) setErrorCarga(true); })
       .finally(() => { if (vigente) setCargando(false); });
@@ -141,6 +145,21 @@ export default function UsuariosAdmin() {
                 <div className="min-w-0 flex-1 basis-48">
                   <p className="break-words font-bold text-slate-900">{usuario.nombre}</p>
                   <p className="break-all text-sm text-slate-600">{usuario.correo}</p>
+                  {usuario.solicitudEstablecimiento && (
+                    <dl className="mt-2 space-y-1 break-words text-sm text-slate-700">
+                      <div><dt className="inline font-semibold">Establecimiento </dt><dd className="inline">{usuario.solicitudEstablecimiento.nombre}</dd></div>
+                      <div><dt className="inline font-semibold">Dirección </dt><dd className="inline">{usuario.solicitudEstablecimiento.direccion}</dd></div>
+                      {(Object.keys(redesSociales) as RedSocial[]).map(red => {
+                        const enlace = usuario.solicitudEstablecimiento?.[red];
+                        return enlace && enlaceSocialValido(enlace, red) ? (
+                          <div key={red}>
+                            <dt className="inline font-semibold">{redesSociales[red]} </dt>
+                            <dd className="inline"><a className="text-indigo-700 underline" href={enlace} target="_blank" rel="noopener noreferrer">{enlace}</a></dd>
+                          </div>
+                        ) : null;
+                      })}
+                    </dl>
+                  )}
                 </div>
                 <span className="text-sm font-semibold text-indigo-700">{roleLabels[usuario.rol]}</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${inactivo ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>

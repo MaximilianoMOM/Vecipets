@@ -15,8 +15,8 @@ export class LoginDto {
 }
 
 export class LoginConRecaptchaDto extends LoginDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: 'Completa la verificación reCAPTCHA.' })
+  @IsNotEmpty({ message: 'Completa la verificación reCAPTCHA.' })
   @MaxLength(8192)
   recaptchaToken: string;
 }
