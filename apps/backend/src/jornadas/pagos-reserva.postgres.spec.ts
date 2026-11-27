@@ -52,7 +52,8 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
       WOMPI_SANDBOX_PUBLIC_KEY: 'pub_test_fixture',
       WOMPI_SANDBOX_INTEGRITY_SECRET: 'fixture_integrity',
       WOMPI_SANDBOX_EVENTS_SECRET: 'fixture_events',
-      FRONTEND_URL: 'http://localhost:3000',
+      FRONTEND_URL: 'https://deployed.example.test',
+      WOMPI_FRONTEND_URL: 'http://localhost:3000/',
     });
     const wompi = new WompiService(config);
     vi.spyOn(wompi, 'consultarIdsPorReferencia').mockImplementation(async (referencia) =>
@@ -107,7 +108,7 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
 
   function reservar(usuarioId: number, jornadaId: number) {
     return jornadas.crearReserva(usuarioId, {
-      jornadaId, nombrePropietario: 'Persona', nombreMascota: 'Mascota',
+      jornadaId, nombrePropietario: 'Persona', nombreMascota: 'Mascota', aceptaCondiciones: true,
     });
   }
 
@@ -140,6 +141,16 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
       cupos: reserva.jornada.cuposDisponibles,
     };
   }
+
+  it('rechaza un nuevo apartado sin aceptación sin descontar cupos', async () => {
+    const jornada = await crearJornada();
+    const usuario = await crearUsuario();
+    await expect(jornadas.crearReserva(usuario.id, {
+      jornadaId: jornada.id, nombrePropietario: 'Persona', nombreMascota: 'Mascota',
+    })).rejects.toThrow(/aceptar las condiciones/);
+    expect(await db.manager.countBy(Pago, { usuario: { id: usuario.id } })).toBe(0);
+    expect((await db.manager.findOneByOrFail(Jornada, { id: jornada.id })).cuposDisponibles).toBe(1);
+  });
 
   it('confirma una reserva vigente usando el cupo retenido', async () => {
     const { reserva } = await crearReserva();
@@ -246,6 +257,19 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
       pago: { referencia: reserva.pago.referencia, montoCentavos: 200_000 },
       checkoutUrl: reserva.checkoutUrl,
     });
+    const url = new URL(reserva.checkoutUrl!);
+    expect(url.searchParams.get('redirect-url')).toBe('http://localhost:3000/jornadas/reserva-resultado');
+    expect(url.searchParams.get('reference')).toBe(reserva.pago.referencia);
+    expect(await estado(reserva.reserva.id)).toMatchObject({ cupos: 0 });
+  });
+
+  it('bloquea un enlace cuyo vencimiento difiere del cupo retenido', async () => {
+    const { jornada, usuario, reserva } = await crearReserva();
+    await db.manager.update(ReservaJornada, reserva.reserva.id, {
+      expiraEn: new Date(Date.now() + 60_000),
+    });
+    await expect(reservar(usuario.id, jornada.id)).rejects.toThrow(/verificando/);
+    expect(await db.manager.countBy(Pago, { usuario: { id: usuario.id } })).toBe(1);
     expect(await estado(reserva.reserva.id)).toMatchObject({ cupos: 0 });
   });
 
@@ -262,10 +286,11 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
     const { jornada, usuario, reserva } = await crearReserva();
     const aprobado = evento(reserva.pago);
     remotas.set(aprobado.id, aprobado);
-    await expect(reservar(usuario.id, jornada.id)).rejects.toThrow(/confirmó el pago/);
+    expect(await reservar(usuario.id, jornada.id)).toMatchObject({ checkoutUrl: null, reserva: { estado: 'CONFIRMADA', pagoEstado: 'APROBADO' } });
     expect(await estado(reserva.reserva.id)).toMatchObject({
       pago: EstadoPago.APROBADO, reserva: EstadoReservaJornada.CONFIRMADA, cupos: 0,
     });
+    expect(await reservar(usuario.id, jornada.id)).toMatchObject({ checkoutUrl: null, reserva: { id: reserva.reserva.id } });
     expect(await db.manager.countBy(Pago, { usuario: { id: usuario.id } })).toBe(1);
   });
 
@@ -280,7 +305,7 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
       expect(reintento.reserva.id).toBe(reserva.reserva.id);
       expect(reintento.pago.referencia).not.toBe(reserva.pago.referencia);
       expect(reintento.pago.montoCentavos).toBe(reserva.pago.montoCentavos);
-      const checkout = new URL(reintento.checkoutUrl);
+      const checkout = new URL(reintento.checkoutUrl!);
       expect(checkout.searchParams.get('reference')).toBe(reintento.pago.referencia);
       const expiracion = checkout.searchParams.get('expiration-time');
       expect(Date.parse(expiracion ?? '')).toBeGreaterThan(Date.now());
@@ -288,7 +313,7 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
         `${reintento.pago.referencia}${reintento.pago.montoCentavos}COP${expiracion}fixture_integrity`,
       ).digest('hex'));
       expect(checkout.searchParams.get('signature:integrity')).not.toBe(
-        new URL(reserva.checkoutUrl).searchParams.get('signature:integrity'),
+        new URL(reserva.checkoutUrl!).searchParams.get('signature:integrity'),
       );
       expect(await db.manager.countBy(Pago, { usuario: { id: usuario.id } })).toBe(2);
       expect(await db.manager.countBy(IntentoPago, { wompiTransactionId: terminado.id })).toBe(1);
@@ -342,6 +367,14 @@ describe.skipIf(!testDatabase)('Reservas y pagos con PostgreSQL', () => {
       barrioSector: 'Comuna', imagenUrl: '/prueba.png',
     });
     const iniciarPago = () => pagos.crearPagoAlertaTurbo(usuario.id, reporte.id);
+    const checkoutInicial = await iniciarPago();
+    const checkoutReutilizado = await iniciarPago();
+    expect(checkoutReutilizado.pago.referencia).toBe(checkoutInicial.pago.referencia);
+    for (const resultado of [checkoutInicial, checkoutReutilizado]) {
+      const url = new URL(resultado.checkoutUrl!);
+      expect(url.searchParams.get('redirect-url')).toBe('http://localhost:3000/reportar');
+      expect(url.searchParams.get('amount-in-cents')).toBe('1500000');
+    }
     const original = await iniciarPago();
     const rechazo = evento(original.pago, 'DECLINED');
     remotas.set(rechazo.id, { ...rechazo, finalized_at: new Date().toISOString() });

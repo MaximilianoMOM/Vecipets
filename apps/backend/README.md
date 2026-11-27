@@ -44,6 +44,21 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Desarrollo local
+
+En `apps/backend`, ejecuta `npm run build` y luego `npm run start`. En `apps/frontend`, ejecuta `npm run dev`. Para recarga automática en NestJS, puedes usar `npm run start:dev`.
+
+| Archivo | Variable | Valor local |
+| --- | --- | --- |
+| `apps/backend/.env` | `PORT` | `4000` |
+| `apps/backend/.env` | `GOOGLE_CALLBACK_URL` | `http://localhost:4000/api/v1/auth/google/callback` |
+| `apps/backend/.env` | `GOOGLE_FRONTEND_URL` | `http://localhost:3000` |
+| `apps/frontend/.env.local` | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` |
+
+NestJS atiende el callback de Google y `POST /api/v1/pagos/wompi/webhook` directamente en el puerto 4000. En desarrollo, Next.js reenvía las peticiones de Axios de `/api/vecipets/*` a `/api/v1/*` en NestJS.
+
+Si está ejecutándose `scripts/dev-port-4000.cjs`, detén ese relay antes de arrancar NestJS en 4000. Reinicia ambos servicios al cambiar sus archivos de entorno.
+
 ## Run tests
 
 ```bash

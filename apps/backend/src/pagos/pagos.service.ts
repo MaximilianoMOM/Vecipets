@@ -37,6 +37,7 @@ import {
 
 import { WompiService } from './wompi.service';
 import { ConfigService } from '@nestjs/config';
+import { redireccionWompi, reusarCheckoutWompi } from './wompi-redirect';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 const PRECIO_TURBO_CENTAVOS = 1500000;
@@ -148,7 +149,7 @@ export class PagosService {
             moneda: ultimo.moneda,
             reporteId,
           },
-          checkoutUrl: ultimo.checkoutUrl,
+          checkoutUrl: reusarCheckoutWompi(ultimo.checkoutUrl, this.configService, '/reportar'),
         };
       }
 
@@ -158,15 +159,7 @@ export class PagosService {
       const moneda = 'COP';
       const montoCentavos = ultimo && !renovacion ? ultimo.montoCentavos : PRECIO_TURBO_CENTAVOS;
 
-      const frontendUrl = (
-        this.configService.get<string>('FRONTEND_URL') ??
-        'http://localhost:3000'
-      )
-        .trim()
-        .replace(/\/+$/, '');
-
-      // Redirigir al formulario /reportar después del pago de Wompi
-      const redirectUrl = `${frontendUrl}/reportar`;
+      const redirectUrl = redireccionWompi(this.configService, '/reportar');
 
       const { checkout, checkoutUrl } = this.wompiService.prepararCheckout(
         referencia, montoCentavos, moneda, redirectUrl,

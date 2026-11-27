@@ -1,3 +1,4 @@
+import { IsLatitude, IsLongitude } from 'class-validator';
 
 import {
   IsEnum,
@@ -86,11 +87,11 @@ export class CrearReporteDto {
   imagenUrl?: string;
 
   @IsOptional()
-  @IsString()
+  @IsLatitude()
   latitud?: string | null;
 
   @IsOptional()
-  @IsString()
+  @IsLongitude()
   longitud?: string | null;
 
   @IsOptional()

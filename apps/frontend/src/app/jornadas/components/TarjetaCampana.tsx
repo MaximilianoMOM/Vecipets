@@ -22,9 +22,10 @@ interface Props {
     campana: Campana;
     onApartarCupo: (campana: Campana) => void;
     tieneCupos: boolean;
+    tieneReservaConfirmada?: boolean;
 }
 
-export default function TarjetaCampana({ campana, onApartarCupo, tieneCupos }: Props) {
+export default function TarjetaCampana({ campana, onApartarCupo, tieneCupos, tieneReservaConfirmada }: Props) {
     return (
         <div
             className={`bg-white rounded-3xl border overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
@@ -100,7 +101,7 @@ export default function TarjetaCampana({ campana, onApartarCupo, tieneCupos }: P
                             : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                     }`}
                 >
-                    <Syringe className="w-4 h-4" /> Reservar cupo
+                    <Syringe className="w-4 h-4" /> {tieneReservaConfirmada ? "Ver mi reserva" : "Reservar cupo"}
                 </button>
                 {!tieneCupos && (
                     <p className="text-xs text-slate-400 text-center mt-2">

@@ -331,6 +331,8 @@ export class ReportesService {
       if (dto.latitud !== undefined) reporte.latitud = dto.latitud;
       if (dto.longitud !== undefined) reporte.longitud = dto.longitud;
       if (dto.direccion !== undefined) reporte.direccion = dto.direccion?.trim() || null;
+      if (dto.latitud !== undefined) reporte.latitud = dto.latitud;
+      if (dto.longitud !== undefined) reporte.longitud = dto.longitud;
       if (dto.referencia !== undefined) reporte.referencia = dto.referencia?.trim() || null;
       if (dto.recompensa !== undefined) {
         reporte.recompensa =
