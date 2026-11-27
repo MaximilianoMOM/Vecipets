@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  CircleMarker,
   MapContainer,
   TileLayer,
   Marker,
@@ -33,6 +34,8 @@ export interface MapaInteractivoProps {
   lat?: number;
   lng?: number;
   etiqueta?: string;
+  hideMarker?: boolean;
+  markers?: { lat: number; lng: number; label: string; color: string }[];
   onSeleccionarUbicacion?: (seleccion: SeleccionMapa) => void;
 }
 
@@ -72,6 +75,8 @@ export default function MapaInteractivo({
   lng = -75.5812,
   etiqueta = '¡Vecipets activo en Medellín! 🐾',
   onSeleccionarUbicacion,
+  hideMarker = false,
+  markers = [],
 }: MapaInteractivoProps) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -103,9 +108,20 @@ export default function MapaInteractivo({
 />
 <CentradorMapa lat={lat} lng={lng} />
 <SelectorClicMapa onSeleccionar={onSeleccionarUbicacion} />
-<Marker position={[lat, lng]}>
+{!hideMarker && <Marker position={[lat, lng]} draggable={!!onSeleccionarUbicacion} eventHandlers={{
+  dragend(event) {
+    const { lat, lng } = event.target.getLatLng();
+    onSeleccionarUbicacion?.({ lat, lng });
+  },
+}}>
   <Popup>{etiqueta}</Popup>
-</Marker>
+</Marker>}
+{markers.map((point, index) => (
+  <CircleMarker key={index} center={[point.lat, point.lng]} radius={9}
+    pathOptions={{ color: point.color, fillColor: point.color, fillOpacity: 0.75 }}>
+    <Popup>{point.label}</Popup>
+  </CircleMarker>
+))}
       </MapContainer>
     </div>
   );

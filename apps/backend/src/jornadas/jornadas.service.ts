@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In, LessThanOrEqual, type EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { redireccionWompi, reusarCheckoutWompi } from '../pagos/wompi-redirect';
 
 import { Jornada } from './jornada.entity';
 
@@ -181,14 +182,29 @@ export class JornadasService {
     }
 
     const anterior = await this.buscarReservaParaPago(usuarioId, dto.jornadaId);
+    if (anterior?.estado === EstadoReservaJornada.CONFIRMADA && anterior.pago?.estado === EstadoPago.APROBADO) {
+      return this.respuestaConfirmada(anterior, anterior.pago);
+    }
+    if (dto.aceptaCondiciones !== true) {
+      throw new BadRequestException('Debes aceptar las condiciones del apartado.');
+    }
+    const respuestaAlConciliar: { confirmada?: ReturnType<JornadasService["respuestaConfirmada"]> } = {};
     const resultadoAnterior = anterior?.pago && anterior.estado !== EstadoReservaJornada.CONFIRMADA
-      ? await this.pagosService.reconciliarAntesDeReintentar(anterior.pago).catch((error: unknown) => {
+      ? await this.pagosService.reconciliarAntesDeReintentar(anterior.pago).catch(async (error: unknown) => {
           if (error instanceof ConflictException) {
+            const actual = await this.buscarReservaParaPago(usuarioId, dto.jornadaId);
+            if (actual?.estado === EstadoReservaJornada.CONFIRMADA && actual.pago?.estado === EstadoPago.APROBADO) {
+              respuestaAlConciliar.confirmada = this.respuestaConfirmada(actual, actual.pago);
+              return null;
+            }
             throw new ConflictException({ message: error.message, reservaId: anterior.id });
           }
           throw error;
         })
       : null;
+    if (respuestaAlConciliar.confirmada) {
+      return respuestaAlConciliar.confirmada;
+    }
 
     return this.dataSource.transaction(async (manager) => {
       // Bloquear jornada para evitar reservas simultáneas.
@@ -272,9 +288,13 @@ export class JornadasService {
             jornada: { id: jornada.id },
             estado: EstadoReservaJornada.CONFIRMADA,
           },
+          relations: { pago: true, jornada: true },
         },
       );
 
+      if (reservaConfirmada?.pago?.estado === EstadoPago.APROBADO) {
+        return this.respuestaConfirmada(reservaConfirmada, reservaConfirmada.pago);
+      }
       if (reservaConfirmada) {
         throw new ConflictException(
           `Ya tienes una reserva confirmada para esta jornada (Código: ${reservaConfirmada.codigo}).`,
@@ -292,11 +312,15 @@ export class JornadasService {
 
       const puedeContinuar = pagoAnterior && resultadoAnterior === 'disponible' &&
         this.pagosService.puedeContinuarCheckout(pagoAnterior);
-      const expiraCheckoutAnterior = puedeContinuar
-        ? new URL(pagoAnterior.checkoutUrl).searchParams.get('expiration-time')
-        : null;
-      const checkoutVencido = !!expiraCheckoutAnterior && Date.parse(expiraCheckoutAnterior) <= ahora.getTime();
-      const checkoutAnterior = puedeContinuar && !checkoutVencido ? pagoAnterior.checkoutUrl : null;
+      const urlAnterior = puedeContinuar ? URL.parse(pagoAnterior.checkoutUrl) : null;
+      const expiracion = urlAnterior?.searchParams.get('expiration-time');
+      const venceCheckout = Date.parse(expiracion ?? '');
+      const expiracionValida = Number.isFinite(venceCheckout) && new Date(venceCheckout).toISOString() === expiracion;
+      const checkoutVencido = expiracionValida && venceCheckout <= ahora.getTime();
+      const checkoutAnterior = puedeContinuar && expiracionValida && !checkoutVencido &&
+        reservaExistente?.estado === EstadoReservaJornada.PENDIENTE &&
+        venceCheckout === new Date(reservaExistente.expiraEn).getTime()
+        ? pagoAnterior.checkoutUrl : null;
       if (pagoAnterior && !checkoutAnterior && !checkoutVencido && !this.pagosService.permiteReintento(pagoAnterior)) {
         throw new ConflictException(MENSAJE_PAGO_EN_CONFIRMACION);
       }
@@ -307,9 +331,7 @@ export class JornadasService {
       const conservaCupo = reservaExistente?.estado === EstadoReservaJornada.PENDIENTE;
       const montoCentavos = reservaExistente?.precioApartadoHistoricoCentavos ?? precioApartadoCentavos;
 
-      const frontendUrl = (this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000')
-        .trim().replace(/\/+$/, '');
-      const redirectUrl = `${frontendUrl}/jornadas/reserva-resultado`;
+      const redirectUrl = redireccionWompi(this.configService, '/jornadas/reserva-resultado');
 
       // ==========================================
       // VALIDAR CUPOS
@@ -339,7 +361,7 @@ export class JornadasService {
       const moneda = 'COP';
 
       const { checkout, checkoutUrl } = checkoutAnterior
-        ? { checkout: undefined, checkoutUrl: checkoutAnterior }
+        ? { checkout: undefined, checkoutUrl: reusarCheckoutWompi(checkoutAnterior, this.configService, '/jornadas/reserva-resultado') }
         : this.wompiService.prepararCheckout(
             referencia, montoCentavos, moneda, redirectUrl, expiraEn.toISOString(),
           );
@@ -432,6 +454,19 @@ export class JornadasService {
   // ==========================================
   // CONSULTAR ESTADO DE RESERVA
   // ==========================================
+
+  private respuestaConfirmada(reserva: ReservaJornada, pago: Pago) {
+    return {
+      mensaje: 'Tu pago fue aprobado y tu reserva está confirmada.',
+      reutilizado: true,
+      reserva: this.serializarReserva(reserva),
+      pago: {
+        id: pago.id, referencia: pago.referencia, concepto: pago.concepto,
+        montoCentavos: pago.montoCentavos, moneda: pago.moneda, estado: pago.estado,
+      },
+      checkoutUrl: null,
+    };
+  }
 
   private buscarReservaParaPago(usuarioId: number, jornadaId: number, manager?: EntityManager) {
     const repository = manager?.getRepository(ReservaJornada) ?? this.reservaRepository;
@@ -559,6 +594,11 @@ export class JornadasService {
       ),
 
       estado: reserva.estado,
+      pagoEstado: reserva.pago?.estado ?? null,
+      instrucciones: null,
+      requisitos: null,
+      contacto: null,
+      procedimiento: null,
       requiereRevision: reserva.pago?.estado === EstadoPago.APROBADO &&
         reserva.estado !== EstadoReservaJornada.CONFIRMADA,
       expiraEn: reserva.expiraEn,

@@ -1,5 +1,7 @@
 'use client';
 
+import { abrirCheckoutWompi } from '@/lib/wompi-checkout';
+
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -19,6 +21,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
+import { locate, reverseAddress, searchAddress, validCoordinates } from '@/lib/geocoding';
 import { useAuth } from '@/lib/auth-context';
 import type { MapaInteractivoProps, SeleccionMapa } from '../components/map/MapaInteractivo';
 
@@ -46,25 +49,7 @@ const COORDENADAS_DEFECTO: Coordenadas = {
   lng: -75.5812,
 };
 
-function parsearCoordenadas(texto: string): Coordenadas | null {
-  const match = texto
-    .trim()
-    .match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
-  if (!match) return null;
-  const lat = parseFloat(match[1]);
-  const lng = parseFloat(match[2]);
-  if (
-    Number.isNaN(lat) ||
-    Number.isNaN(lng) ||
-    lat < -90 ||
-    lat > 90 ||
-    lng < -180 ||
-    lng > 180
-  ) {
-    return null;
-  }
-  return { lat, lng };
-}
+
 
 function obtenerUrlImagen(url?: string | null): string {
   if (!url) return '';
@@ -113,7 +98,10 @@ function FormularioReportarContenido() {
   const [mensajePago, setMensajePago] = useState<string | null>(null);
   const [verificandoPago, setVerificandoPago] = useState(false);
 
-  const origenFueMapaRef = useRef(false);
+  const geocodeRequest = useRef<AbortController | null>(null);
+  const [ubicacionConfirmada, setUbicacionConfirmada] = useState(false);
+  const [direccionManual, setDireccionManual] = useState(false);
+  const direccionAutocompletada = useRef<string | null>(null);
 
   useEffect(() => {
     setFormData((prev) =>
@@ -197,7 +185,8 @@ function FormularioReportarContenido() {
               esTurbo: true, // Si hay borrador con pago o en proceso Turbo
             });
 
-            if (rep.latitud && rep.longitud) {
+            if (rep.latitud && rep.longitud && validCoordinates({ lat: Number(rep.latitud), lng: Number(rep.longitud) })) {
+              setUbicacionConfirmada(true);
               setUbicacion({
                 lat: Number(rep.latitud),
                 lng: Number(rep.longitud),
@@ -236,108 +225,69 @@ function FormularioReportarContenido() {
     };
   }, [searchParams]);
 
-  const buscarUbicacionEnMapa = async (textoRaw: string, signal?: AbortSignal) => {
-    const consulta = textoRaw.trim();
-    if (consulta.length < 2) {
-      setBuscandoUbicacion(false);
-      return;
-    }
+  const invalidarUbicacion = () => {
+    geocodeRequest.current?.abort();
+    setUbicacionConfirmada(false);
+    setDireccionManual(false);
+    setBuscandoUbicacion(false);
+  };
 
-    const coordsDirectas = parsearCoordenadas(consulta);
-    if (coordsDirectas) {
-      setUbicacion(coordsDirectas);
-      setBuscandoUbicacion(false);
-      return;
-    }
-
+  const resolverUbicacion = async (operation: (signal: AbortSignal) => Promise<void>) => {
+    geocodeRequest.current?.abort();
+    const request = new AbortController();
+    geocodeRequest.current = request;
     setBuscandoUbicacion(true);
+    setUbicacionConfirmada(false);
+    setDireccionManual(false);
+    setErrorValidacion(null);
     try {
-      const yaIncluyeCiudad =
-        consulta.toLowerCase().includes('medellín') ||
-        consulta.toLowerCase().includes('medellin') ||
-        consulta.toLowerCase().includes('colombia');
-
-      const queryCompleta = yaIncluyeCiudad
-        ? consulta
-        : `${consulta}, Medellín, Colombia`;
-
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
-        queryCompleta
-      )}`;
-
-      const res = await fetch(url, {
-        signal,
-        headers: { Accept: 'application/json' },
-      });
-
-      if (!res.ok) throw new Error('Error al consultar geocodificador');
-      const data = await res.json();
-
-      if (Array.isArray(data) && data.length > 0) {
-        const item = data[0];
-        const lat = parseFloat(item.lat);
-        const lng = parseFloat(item.lon);
-        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-          setUbicacion({ lat, lng });
-        }
-      }
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
-        console.warn('Error al buscar dirección en el mapa:', err);
-      }
+      await operation(request.signal);
+      if (!request.signal.aborted) setUbicacionConfirmada(true);
+    } catch (error) {
+      if (!request.signal.aborted) setErrorValidacion(error instanceof Error ? error.message : 'No se pudo confirmar la ubicación.');
     } finally {
-      setBuscandoUbicacion(false);
+      if (!request.signal.aborted) setBuscandoUbicacion(false);
     }
   };
+
+  const buscarUbicacionEnMapa = () => resolverUbicacion(async (signal) => {
+    const texto = [formData.direccion.trim(), formData.barrioSector.trim(), formData.ciudad.trim()].filter(Boolean).join(', ');
+    if (texto.length < 3) throw new Error('Ingresa una dirección o sector para buscar.');
+    const point = await searchAddress(texto, signal);
+    if (!signal.aborted) {
+      setUbicacion({ lat: point.lat, lng: point.lng });
+      direccionAutocompletada.current = point.address;
+      setFormData((prev) => ({ ...prev, direccion: point.address }));
+    }
+  });
 
   const handleBarrioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = e.target.value;
-    setFormData((prev) => ({ ...prev, barrioSector: valor }));
-    if (errorValidacion) setErrorValidacion(null);
+    if (!direccionManual) invalidarUbicacion();
+    setFormData((prev) => ({ ...prev, barrioSector: e.target.value }));
   };
 
-  const handleSeleccionDesdeMapa = async (seleccion: SeleccionMapa) => {
-    const { lat, lng } = seleccion;
-    setUbicacion({ lat, lng });
-
+  const aplicarPunto = async (point: SeleccionMapa, signal: AbortSignal) => {
+    if (signal.aborted) return;
+    if (!validCoordinates(point)) throw new Error('Las coordenadas no son válidas.');
+    setUbicacion(point);
     try {
-      setBuscandoUbicacion(true);
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const address = data?.address || {};
-        const barrio =
-          address.neighbourhood ||
-          address.suburb ||
-          address.residential ||
-          address.quarter ||
-          address.city_district ||
-          '';
-
-        const ciudad = address.city || address.town || address.village || '';
-        const legible = [barrio, ciudad].filter(Boolean).join(', ');
-
-        origenFueMapaRef.current = true;
-        setFormData((prev) => ({
-          ...prev,
-          barrioSector: legible || prev.barrioSector,
-          direccion: data?.display_name || prev.direccion,
-        }));
-      }
-    } catch {
-      origenFueMapaRef.current = true;
+      const result = await reverseAddress(point, signal);
+      if (signal.aborted) return;
+      direccionAutocompletada.current = result.address;
       setFormData((prev) => ({
-        ...prev,
-        barrioSector: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        ...prev, direccion: result.address, barrioSector: result.sector || prev.barrioSector,
       }));
-    } finally {
-      setBuscandoUbicacion(false);
+    } catch {
+      if (signal.aborted) return;
+      const anterior = direccionAutocompletada.current;
+      direccionAutocompletada.current = null;
+      setFormData((prev) => prev.direccion === anterior ? { ...prev, direccion: '' } : prev);
+      setDireccionManual(true);
     }
   };
+
+  const handleSeleccionDesdeMapa = (point: SeleccionMapa) =>
+    resolverUbicacion((signal) => aplicarPunto(point, signal));
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -345,6 +295,10 @@ function FormularioReportarContenido() {
     >
   ) => {
     const { name, value } = e.target;
+    if (name === 'direccion') direccionAutocompletada.current = null;
+    if (name === 'ciudad' || name === 'departamento' || (name === 'direccion' && !direccionManual)) {
+      invalidarUbicacion();
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errorValidacion) setErrorValidacion(null);
   };
@@ -385,6 +339,11 @@ function FormularioReportarContenido() {
 
     if (!formData.barrioSector.trim()) {
       setErrorValidacion('Debes indicar el barrio o sector del suceso o señalarlo en el mapa.');
+      return;
+    }
+
+    if (!ubicacionConfirmada || !validCoordinates(ubicacion)) {
+      setErrorValidacion('Confirma la dirección con Buscar en mapa o selecciona un punto antes de guardar.');
       return;
     }
 
@@ -436,7 +395,7 @@ function FormularioReportarContenido() {
 
         if (checkoutUrlRecibida && typeof checkoutUrlRecibida === 'string') {
           // Redirección directa y segura a Wompi Checkout
-          window.location.href = checkoutUrlRecibida;
+          await abrirCheckoutWompi(checkoutUrlRecibida, '/reportar');
           return;
         }
 
@@ -464,6 +423,8 @@ function FormularioReportarContenido() {
           departamento: formData.departamento.trim() || null,
           ciudad: formData.ciudad.trim() || null,
           direccion: formData.direccion.trim() || null,
+          latitud: String(ubicacion.lat),
+          longitud: String(ubicacion.lng),
           referencia: formData.referencia.trim() || null,
           recompensa: formData.recompensa.trim() || null,
         });
@@ -951,6 +912,12 @@ function FormularioReportarContenido() {
                   type="text"
                   placeholder="Ej. Calle 33 # 74B - 12"
                   value={formData.direccion}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void buscarUbicacionEnMapa();
+                    }
+                  }}
                   onChange={handleChange}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none"
                 />
@@ -971,6 +938,15 @@ function FormularioReportarContenido() {
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={buscarUbicacionEnMapa} disabled={buscandoUbicacion}
+                className="rounded-xl bg-emerald-700 px-3 py-2 text-sm text-white">Buscar en mapa</button>
+              <button type="button" onClick={() => resolverUbicacion(async (signal) => aplicarPunto(await locate(), signal))}
+                disabled={buscandoUbicacion} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">Mi ubicación</button>
+            </div>
+            <p role="status" className="text-xs text-slate-600">
+              {buscandoUbicacion ? 'Consultando ubicación…' : ubicacionConfirmada ? direccionManual ? 'Ubicación confirmada. Puedes indicar la dirección manualmente.' : 'Ubicación confirmada' : 'Selecciona o busca una ubicación.'}
+            </p>
             <p className="text-[11px] text-slate-500 flex items-center gap-1">
               <Crosshair className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Haz clic en el mapa para ajustar las coordenadas exactas.</span>
@@ -989,7 +965,7 @@ function FormularioReportarContenido() {
           {/* BOTÓN PRINCIPAL DE ACCIÓN */}
           <button
             type="submit"
-            disabled={enviando || verificandoPago}
+            disabled={enviando || verificandoPago || buscandoUbicacion}
             className={`w-full py-4 px-6 rounded-2xl font-extrabold text-white shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 ${
               formData.esTurbo && !pagoAprobado
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'

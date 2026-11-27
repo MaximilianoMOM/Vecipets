@@ -5,6 +5,8 @@ import { DataSource } from 'typeorm';
 
 import { Pago } from '../pagos/pago.entity';
 import { IntentoPago } from '../pagos/intento-pago.entity';
+import { AliadoMapa } from '../reportes/aliado-mapa.entity';
+import { Avistamiento } from '../reportes/avistamiento.entity';
 import { Reporte } from '../reportes/reporte.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 import { Jornada } from '../jornadas/jornada.entity';
@@ -26,6 +28,8 @@ const AppDataSource = new DataSource({
     Pago,
     IntentoPago,
     Reporte,
+    Avistamiento,
+    AliadoMapa,
     Usuario,
     Jornada,
     ReservaJornada,

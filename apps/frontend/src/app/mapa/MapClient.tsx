@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import Link from 'next/link';
 
 export interface MapItem {
   id: string;
@@ -13,8 +14,15 @@ export interface MapItem {
   locationName: string;
   lat: number;
   lng: number;
+  filter: 'PERDIDA' | 'HALLAZGO' | 'veterinaria' | 'refugio';
+  href: string;
+  photo?: string;
+  date?: string;
+  turbo?: boolean;
   address?: string;
   phone?: string;
+  hours?: string;
+  services?: string;
 }
 
 interface MapClientProps {
@@ -99,7 +107,7 @@ const getCustomIcon = (category: string, status?: string) => {
     bgColor = 'bg-sky-600';
     emoji = '🏥';
   } else if (category === 'refugio') {
-    bgColor = 'bg-amber-600';
+    bgColor = 'bg-violet-600';
     emoji = '🏠';
   }
 
@@ -165,7 +173,7 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
                       {item.status}
                     </span>
                   )}
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.category === 'veterinaria' ? 'bg-sky-100 text-sky-700' : item.category === 'refugio' ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-700'}`}>
                     {item.category}
                   </span>
                 </div>
@@ -173,12 +181,16 @@ export default function MapClient({ items, selectedItem }: MapClientProps) {
                   <h4 className="font-bold text-gray-900 leading-tight">{item.name}</h4>
                   <p className="text-xs text-gray-500 mt-1">📍 {item.locationName}</p>
                 </div>
-                <button 
-                  onClick={() => alert(`Reporte seleccionado: ${item.name}`)}
-                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition"
-                >
-                  Ver Información
-                </button>
+                {item.photo && <img src={item.photo} alt={item.name} className="max-h-28 w-full rounded-lg object-cover" />}
+                {item.date && <p>Fecha: {item.date}</p>}
+                {item.turbo && <p className="font-semibold text-amber-700">Alerta Turbo vigente</p>}
+                {item.address && <p>{item.address}</p>}
+                {item.phone && <p>{item.phone}</p>}
+                {item.hours && <p>{item.hours}</p>}
+                {item.services && <p>{item.services}</p>}
+                <Link href={item.href} className="block rounded-lg bg-indigo-100 p-2 text-center font-semibold">
+                  Ver más
+                </Link>
               </div>
             </Popup>
           </Marker>

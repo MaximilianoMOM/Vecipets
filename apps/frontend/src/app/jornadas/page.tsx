@@ -28,6 +28,8 @@ import AccountLayout, {
 import TarjetaCampana from './components/TarjetaCampana';
 
 import ModalReservaJornada from './components/ModalReservaJornada';
+import { ModalReservaConfirmada, type ReservaCiudadana } from './components/DatosReserva';
+import Link from 'next/link';
 
 // ==========================================
 // INTERFACES
@@ -163,8 +165,9 @@ export default function PaginaJornadas() {
 
   const [reservasPendientes, setReservasPendientes] = useState<{
     usuarioId: number;
-    reservas: { jornadaId: number; estado: string; expiraEn: string }[];
+    reservas: ReservaCiudadana[];
   } | null>(null);
+  const [reservaConfirmada, setReservaConfirmada] = useState<ReservaCiudadana | null>(null);
   const ciudadanoId = user?.rol === 'CIUDADANO' ? user.id : undefined;
 
   useEffect(() => {
@@ -197,6 +200,12 @@ export default function PaginaJornadas() {
         Date.parse(reserva.expiraEn) > Date.now(),
     ) === true;
 
+  const obtenerReservaConfirmada = (jornadaId: number) =>
+    reservasPendientes?.usuarioId === ciudadanoId
+      ? reservasPendientes?.reservas.find((reserva) => reserva.jornadaId === jornadaId &&
+          reserva.estado === 'CONFIRMADA' && reserva.pagoEstado === 'APROBADO')
+      : undefined;
+
   const intentarReservarCupo = (
     jornada: Jornada,
   ) => {
@@ -212,6 +221,12 @@ export default function PaginaJornadas() {
         'Solo las cuentas de ciudadanos pueden reservar cupos para sus mascotas.',
       );
 
+      return;
+    }
+
+    const confirmada = obtenerReservaConfirmada(jornada.id);
+    if (confirmada) {
+      setReservaConfirmada(confirmada);
       return;
     }
 
@@ -247,6 +262,7 @@ export default function PaginaJornadas() {
     >
       <div className="space-y-8">
 
+        {ciudadanoId !== undefined && <Link href="/jornadas/mis-reservas" className="font-semibold text-indigo-700 underline">Mis reservas</Link>}
         {/* ESTADO DE SESIÓN */}
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -575,9 +591,10 @@ export default function PaginaJornadas() {
 
                   tieneCupos={
                     jornada.activa &&
-                    (jornada.cuposDisponibles > 0 || tieneReservaPendiente(jornada.id))
+                    (jornada.cuposDisponibles > 0 || tieneReservaPendiente(jornada.id) || !!obtenerReservaConfirmada(jornada.id))
                   }
 
+                  tieneReservaConfirmada={!!obtenerReservaConfirmada(jornada.id)}
                   onApartarCupo={() =>
                     intentarReservarCupo(jornada)
                   }
@@ -723,6 +740,8 @@ export default function PaginaJornadas() {
 
       )}
 
+      {reservaConfirmada && ciudadanoId !== undefined &&
+        <ModalReservaConfirmada reserva={reservaConfirmada} onClose={() => setReservaConfirmada(null)} />}
       {/* MODAL DE RESERVA Y WOMPI */}
 
       {jornadaSeleccionada && (

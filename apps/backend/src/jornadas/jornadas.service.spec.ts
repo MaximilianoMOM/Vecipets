@@ -18,18 +18,21 @@ it('reutiliza, solo después de consultar a Wompi, el checkout de una reserva vi
     cuposDisponibles: 0,
     precioProcedimientoCentavos: 5_000_000,
   };
+  const expiraEn = new Date(Date.now() + 60_000);
   const pago = {
     id: 2,
     referencia: 'reserva-existente',
     estado: EstadoPago.PENDIENTE,
     montoCentavos: 1_000_000,
-    checkoutUrl: 'https://checkout.wompi.co/p/?reference=reserva-existente',
+    checkoutUrl: 'https://checkout.wompi.co/p/?' + new URLSearchParams({
+      reference: 'reserva-existente', 'expiration-time': expiraEn.toISOString(),
+    }),
   };
   const reserva = {
     id: 3,
     precioApartadoHistoricoCentavos: pago.montoCentavos,
     estado: EstadoReservaJornada.PENDIENTE,
-    expiraEn: new Date(Date.now() + 60_000),
+    expiraEn,
     jornada,
     pago,
   };
@@ -67,7 +70,7 @@ it('reutiliza, solo después de consultar a Wompi, el checkout de una reserva vi
     } as unknown as PagosService,
   );
 
-  const dto = { jornadaId: 1, nombrePropietario: 'Persona', nombreMascota: 'Mascota' };
+  const dto = { jornadaId: 1, nombrePropietario: 'Persona', nombreMascota: 'Mascota', aceptaCondiciones: true };
   for (const intento of [dto, dto]) {
     const resultado = await service.crearReserva(7, intento);
     expect(resultado).toMatchObject({

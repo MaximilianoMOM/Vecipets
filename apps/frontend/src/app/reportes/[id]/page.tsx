@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { notFound, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -11,24 +10,11 @@ import {
   Zap,
   ArrowLeft,
   User,
-  Phone,
   Mail,
   ShieldCheck,
 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
-import type { MapaInteractivoProps } from '@/app/components/map/MapaInteractivo';
-
-const MapaInteractivoDetalle = dynamic<MapaInteractivoProps>(
-  () => import('@/app/components/map/MapaInteractivo'),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-[360px] bg-slate-100 rounded-2xl border border-slate-200 flex items-center justify-center">
-        <p className="text-xs text-slate-500 font-medium">Cargando mapa con ubicación registrada...</p>
-      </div>
-    ),
-  }
-);
+import Avistamientos from '../components/Avistamientos';
 
 export default function ReporteDetallePage() {
   const params = useParams();
@@ -103,15 +89,21 @@ export default function ReporteDetallePage() {
   }
 
   const esPerdida = (reporte.tipo || reporte.estado || '').toUpperCase() === 'PERDIDA';
+  const caracteristicas = [
+    { etiqueta: 'Color', valor: reporte.color },
+    { etiqueta: 'Tamaño', valor: reporte.tamano },
+    { etiqueta: 'Sexo', valor: reporte.sexo },
+    { etiqueta: 'Edad aprox.', valor: reporte.edad },
+  ].filter(({ valor }) => typeof valor === 'string' && valor.trim() !== '');
   const tieneCoordenadas =
-    reporte.latitud &&
-    reporte.longitud &&
-    !isNaN(Number(reporte.latitud)) &&
-    !isNaN(Number(reporte.longitud));
+    reporte.latitud != null && reporte.latitud !== '' &&
+    reporte.longitud != null && reporte.longitud !== '' &&
+    Number.isFinite(Number(reporte.latitud)) &&
+    Number.isFinite(Number(reporte.longitud));
 
   return (
     <main className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Botón de regreso */}
         <Link
           href="/reportes"
@@ -121,14 +113,14 @@ export default function ReporteDetallePage() {
         </Link>
 
         {/* Tarjeta Principal de la Mascota */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="relative h-72 sm:h-96 w-full bg-slate-900 overflow-hidden">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm md:grid md:grid-cols-[2fr_3fr]">
+          <div className="relative flex h-72 w-full items-center justify-center overflow-hidden bg-slate-100 sm:h-96 md:h-auto md:min-h-96">
             <img
               src={obtenerUrlImagen(reporte.imagenUrl)}
               alt={reporte.nombre}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-contain md:absolute md:inset-0"
             />
-            <div className="absolute top-4 left-4 flex gap-2">
+            <div className="absolute inset-x-4 top-4 flex flex-wrap gap-2">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-black uppercase text-white shadow-md flex items-center gap-1 ${
                   esPerdida ? 'bg-rose-500' : 'bg-emerald-500'
@@ -150,7 +142,7 @@ export default function ReporteDetallePage() {
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-6">
+          <div className="min-w-0 space-y-5 p-5 sm:p-8">
             <div>
               <h1 className="text-3xl font-black text-slate-900">{reporte.nombre}</h1>
               <p className="text-sm font-semibold text-emerald-600 mt-1">
@@ -159,28 +151,20 @@ export default function ReporteDetallePage() {
             </div>
 
             {/* Características de la Mascota */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
-              <div>
-                <span className="text-slate-400 block font-bold uppercase text-[10px]">Color</span>
-                <span className="font-semibold text-slate-800">{reporte.color || 'No especificado'}</span>
+            {caracteristicas.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+                {caracteristicas.map(({ etiqueta, valor }) => (
+                  <div key={etiqueta}>
+                    <span className="text-slate-400 block font-bold uppercase text-[10px]">{etiqueta}</span>
+                    <span className="font-semibold text-slate-800">{valor}</span>
+                  </div>
+                ))}
               </div>
-              <div>
-                <span className="text-slate-400 block font-bold uppercase text-[10px]">Tamaño</span>
-                <span className="font-semibold text-slate-800">{reporte.tamano || 'No especificado'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-bold uppercase text-[10px]">Sexo</span>
-                <span className="font-semibold text-slate-800">{reporte.sexo || 'No especificado'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-bold uppercase text-[10px]">Edad aprox.</span>
-                <span className="font-semibold text-slate-800">{reporte.edad || 'No especificada'}</span>
-              </div>
-            </div>
+            )}
 
             {/* Recompensa */}
             {reporte.recompensa && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-bold text-amber-900 block">Recompensa ofrecida</span>
                   <span className="text-xs text-amber-700">Por información que permita encontrar a {reporte.nombre}</span>
@@ -194,7 +178,7 @@ export default function ReporteDetallePage() {
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                 Descripción detallada
               </h3>
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 {reporte.descripcion}
               </p>
             </div>
@@ -225,7 +209,7 @@ export default function ReporteDetallePage() {
                   {reporte.usuario.correo && (
                     <p className="flex items-center gap-2">
                       <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                      <span><strong>Correo de contacto:</strong> {reporte.usuario.correo}</span>
+                      <span className="break-all"><strong>Correo de contacto:</strong> {reporte.usuario.correo}</span>
                     </p>
                   )}
                 </div>
@@ -234,35 +218,15 @@ export default function ReporteDetallePage() {
           </div>
         </div>
 
-        {/* Mapa con Ubicación Real Registrada */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-emerald-600" /> Ubicación Registrada del Suceso
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {reporte.barrioSector} {reporte.direccion ? `• ${reporte.direccion}` : ''}
-              </p>
-            </div>
-          </div>
-
-          {tieneCoordenadas ? (
-            <div className="h-[360px] w-full rounded-2xl border border-slate-200 overflow-hidden">
-              <MapaInteractivoDetalle
-                lat={Number(reporte.latitud)}
-                lng={Number(reporte.longitud)}
-                etiqueta={`${reporte.nombre} (${reporte.barrioSector})`}
-              />
-            </div>
-          ) : (
-            <div className="h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center p-4">
-              <MapPin className="w-8 h-8 text-slate-300 mb-2" />
-              <p className="text-xs font-bold text-slate-600">Coordenadas no registradas</p>
-              <p className="text-[11px] text-slate-400">El reporte cuenta con sector descriptivo: {reporte.barrioSector}</p>
-            </div>
-          )}
-        </div>
+        <Avistamientos
+          key={reporteId}
+          id={reporteId}
+          activo={!!reporteId && esPerdida && reporte.estado === 'PUBLICO' && reporte.estadoAprobacion === 'APROBADO'}
+          original={tieneCoordenadas ? { lat: Number(reporte.latitud), lng: Number(reporte.longitud) } : undefined}
+          originalLabel={`${reporte.nombre} (${reporte.barrioSector})`}
+          sectorOriginal={reporte.barrioSector}
+          direccionOriginal={reporte.direccion}
+        />
       </div>
     </main>
   );

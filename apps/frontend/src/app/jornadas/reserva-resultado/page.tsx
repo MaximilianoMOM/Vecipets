@@ -187,10 +187,10 @@ function ContenidoResultado() {
               Pago y reserva confirmados
             </span>
             <h1 className="text-3xl font-black text-slate-900">
-              ¡Tu cupo ha sido reservado exitosamente!
+              ¡Pago aprobado exitosamente!
             </h1>
             <p className="text-sm text-slate-600 max-w-md mx-auto">
-              Hemos registrado tu apartado a través de Wompi. Recuerda presentar este comprobante el día de la jornada.
+              Tu cupo ha quedado apartado. Presenta este comprobante el día de la jornada.
             </p>
           </div>
 
@@ -251,6 +251,12 @@ function ContenidoResultado() {
                   )}
                 </div>
 
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  <div><dt className="font-semibold">Estado del pago</dt><dd>Aprobado</dd></div>
+                  <div><dt className="font-semibold">Estado de la reserva</dt><dd>Confirmada</dd></div>
+                  <div><dt className="font-semibold">Valor del procedimiento</dt><dd>{formatearMoneda(reserva.precioProcedimientoCentavos)}</dd></div>
+                  <div><dt className="font-semibold">Instrucciones y requisitos</dt><dd>La veterinaria no publicó información adicional.</dd></div>
+                </dl>
                 <div className="mt-3 rounded-xl bg-white border border-slate-200 p-3.5 flex justify-between items-center text-xs">
                   <div>
                     <span className="text-slate-500 block">Saldo pendiente en la veterinaria:</span>
@@ -267,6 +273,7 @@ function ContenidoResultado() {
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            {reserva && <Link href={'/jornadas/mis-reservas#reserva-' + reserva.id} className={accountSecondary}>Ver mi reserva</Link>}
             <Link href="/jornadas" className={`${accountPrimary} flex items-center gap-2`}>
               <Ticket className="h-4 w-4" />
               Ver jornadas

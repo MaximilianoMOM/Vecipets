@@ -1,7 +1,10 @@
 
 'use client';
 
+import { abrirCheckoutWompi } from '@/lib/wompi-checkout';
+
 import { useState } from 'react';
+import { ModalReservaConfirmada, type ReservaCiudadana } from './DatosReserva';
 import type { FormEvent } from 'react';
 import { isAxiosError } from 'axios';
 import {
@@ -37,18 +40,15 @@ interface Jornada {
 interface RespuestaReserva {
   mensaje: string;
   reutilizado: boolean;
-  reserva: {
-    id: number;
-    codigo: string;
-    estado: string;
-  };
-  checkoutUrl: string;
+  reserva: ReservaCiudadana;
+  checkoutUrl: string | null;
 }
 
 interface Props {
   jornada: Jornada;
   tieneReservaPendiente: boolean;
   onClose: () => void;
+
 }
 
 // ==========================================
@@ -61,6 +61,8 @@ export default function ModalReservaJornada({
   onClose,
 }: Props) {
   const { user } = useAuth();
+  const [aceptaCondiciones, setAceptaCondiciones] = useState(false);
+  const [confirmada, setConfirmada] = useState<ReservaCiudadana | null>(null);
 
   const [nombrePropietario, setNombrePropietario] =
     useState('');
@@ -126,6 +128,10 @@ export default function ModalReservaJornada({
       return;
     }
 
+    if (!aceptaCondiciones) {
+      setError('Debes aceptar las condiciones del apartado.');
+      return;
+    }
     setProcesando(true);
     setReservaEnConsulta(null);
 
@@ -135,6 +141,7 @@ export default function ModalReservaJornada({
           '/jornadas/reservar',
           {
             jornadaId: jornada.id,
+            aceptaCondiciones,
             nombrePropietario:
               nombrePropietario.trim(),
             nombreMascota:
@@ -144,20 +151,13 @@ export default function ModalReservaJornada({
 
       const { reserva, checkoutUrl } = respuesta.data;
 
+      if (reserva?.estado === 'CONFIRMADA' && reserva.pagoEstado === 'APROBADO') {
+        setConfirmada(reserva);
+        return;
+      }
       if (!checkoutUrl || !reserva?.id) {
         throw new Error(
           'No se recibió la información del pago.',
-        );
-      }
-
-      const url = new URL(checkoutUrl);
-
-      if (
-        url.protocol !== 'https:' ||
-        url.hostname !== 'checkout.wompi.co'
-      ) {
-        throw new Error(
-          'La dirección de pago no es válida.',
         );
       }
 
@@ -172,10 +172,10 @@ export default function ModalReservaJornada({
       );
 
       // Redirección real a la pasarela de pago.
-      window.location.assign(url.toString());
+      await abrirCheckoutWompi(checkoutUrl, '/jornadas/reserva-resultado', true);
 
     } catch (err: unknown) {
-      console.error('Error creando reserva:', err);
+
 
       let mensajeError = 'No se pudo iniciar el pago.';
 
@@ -187,13 +187,14 @@ export default function ModalReservaJornada({
         };
 
         setReservaEnConsulta(respuestaData?.reservaId ?? null);
-        const msg = respuestaData?.message || respuestaData?.error || err.message;
+        const msg = respuestaData?.message || 'No pudimos iniciar el apartado. Intenta nuevamente o consulta tu reserva.';
         mensajeError = Array.isArray(msg) ? msg.join('. ') : String(msg);
       } else if (err instanceof Error) {
         mensajeError = err.message;
       }
 
       setError(mensajeError);
+    } finally {
       setProcesando(false);
     }
   };
@@ -201,6 +202,8 @@ export default function ModalReservaJornada({
   // ==========================================
   // INTERFAZ
   // ==========================================
+
+  if (confirmada) return <ModalReservaConfirmada reserva={confirmada} onClose={onClose} />;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -375,6 +378,16 @@ export default function ModalReservaJornada({
 
           </div>
 
+          <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-slate-700">
+            <p>Importante: el valor pagado corresponde al apartado de tu cupo para esta jornada. Si decides no asistir o cancelar voluntariamente tu reserva, el valor del apartado no será reembolsable, salvo cuando corresponda una devolución conforme a la legislación aplicable.</p>
+            <p>Esta condición no aplica a cobros duplicados, errores del sistema ni cancelaciones por parte del organizador.</p>
+            <label className="flex items-start gap-2 font-semibold">
+              <input type="checkbox" className="mt-1" checked={aceptaCondiciones} required
+                onChange={(event) => setAceptaCondiciones(event.target.checked)} disabled={procesando} />
+              He leído y acepto las condiciones del apartado de mi cupo
+            </label>
+          </div>
+
           {/* MENSAJE DE ERROR */}
 
           {error && (
@@ -396,7 +409,7 @@ export default function ModalReservaJornada({
           <button
             type="submit"
             disabled={
-              procesando ||
+              procesando || !aceptaCondiciones ||
               !nombrePropietario.trim() ||
               !nombreMascota.trim() ||
               (jornada.cuposDisponibles <= 0 && !tieneReservaPendiente)

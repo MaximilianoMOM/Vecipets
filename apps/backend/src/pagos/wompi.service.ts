@@ -155,7 +155,16 @@ export class WompiService {
     redirectUrl: string,
     expiraEn?: string,
   ) {
+    const vencimiento = Date.parse(expiraEn ?? '');
+    if (expiraEn !== undefined && (
+      !Number.isFinite(vencimiento) || vencimiento <= Date.now() ||
+      new Date(vencimiento).toISOString() !== expiraEn
+    )) {
+      throw new InternalServerErrorException('La expiración del checkout de Wompi no es válida o ya venció.');
+    }
+
     const checkout = this.obtenerDatosCheckout(referencia, montoCentavos, moneda, redirectUrl, expiraEn);
+    const url = new URL(this.obtenerUrlCheckout());
     const parametros = new URLSearchParams({
       'public-key': checkout.publicKey,
       currency: moneda,
@@ -164,9 +173,9 @@ export class WompiService {
       'signature:integrity': checkout.signature.integrity,
       'redirect-url': redirectUrl,
     });
-    if (expiraEn) parametros.set('expiration-time', expiraEn);
-    const query = parametros.toString().replace('signature%3Aintegrity', 'signature:integrity');
-    return { checkout, checkoutUrl: `${this.obtenerUrlCheckout()}?${query}` };
+    if (expiraEn !== undefined) parametros.set('expiration-time', expiraEn);
+    url.search = parametros.toString();
+    return { checkout, checkoutUrl: url.toString() };
   }
 
   obtenerUrlCheckout(): string {
