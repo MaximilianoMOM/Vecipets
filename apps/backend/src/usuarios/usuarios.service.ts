@@ -190,7 +190,7 @@ export class UsuariosService {
   async verificarCorreo(
     correo: string,
     codigo: string,
-  ): Promise<{ mensaje: string }> {
+  ): Promise<{ mensaje: string; estadoAprobacion?: string }> {
     const correoNormalizado = correo.trim().toLowerCase();
 
     const usuario = await this.usuariosRepository.findOneBy({
@@ -247,7 +247,10 @@ export class UsuariosService {
       intentosVerificacion: 0,
     });
 
-    return { mensaje: 'Correo verificado correctamente.' };
+    return {
+      mensaje: 'Correo verificado correctamente.',
+      estadoAprobacion: usuario.estadoAprobacion,
+    };
   }
 
   // INICIO DE SESIÓN TRADICIONAL

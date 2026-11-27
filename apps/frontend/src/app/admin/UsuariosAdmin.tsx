@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { Search, Users } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
@@ -18,6 +18,12 @@ export default function UsuariosAdmin() {
   const [operacion, setOperacion] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
+  const dialogo = useRef<HTMLDialogElement>(null);
+  const guardando = useRef(false);
+  const [decision, setDecision] = useState<{
+    usuario: User;
+    estado: 'APROBADO' | 'RECHAZADO';
+  } | null>(null);
 
   useEffect(() => {
     let vigente = true;
@@ -28,12 +34,18 @@ export default function UsuariosAdmin() {
     return () => { vigente = false; };
   }, []);
 
+  useEffect(() => {
+    if (decision) dialogo.current?.showModal();
+  }, [decision]);
+
   async function actualizarCuenta(
     usuario: User,
     endpoint: 'suspension' | 'aprobacion',
     cambios: { suspendido: boolean } | { estado: 'APROBADO' | 'RECHAZADO' },
     aviso: string,
   ) {
+    if (guardando.current) return;
+    guardando.current = true;
     setOperacion(usuario.id);
     setError('');
     setMensaje('');
@@ -50,6 +62,7 @@ export default function UsuariosAdmin() {
       const detalle = isAxiosError(err) ? err.response?.data?.message : null;
       setError(typeof detalle === 'string' ? detalle : 'No se pudo actualizar la cuenta. Intenta nuevamente.');
     } finally {
+      guardando.current = false;
       setOperacion(null);
     }
   }
@@ -62,9 +75,15 @@ export default function UsuariosAdmin() {
   }
 
   function moderarAliado(usuario: User, estado: 'APROBADO' | 'RECHAZADO') {
-    if (estado === 'RECHAZADO' && !window.confirm(`¿Rechazar la solicitud de ${usuario.nombre}?`)) return;
+    setDecision({ usuario, estado });
+  }
+
+  function confirmarDecision() {
+    if (!decision || !dialogo.current?.open) return;
+    const { usuario, estado } = decision;
+    dialogo.current.close();
     void actualizarCuenta(usuario, 'aprobacion', { estado },
-      estado === 'APROBADO' ? 'Solicitud aprobada.' : 'Solicitud rechazada.');
+      `Solicitud de ${usuario.nombre} ${estado === 'APROBADO' ? 'aprobada' : 'rechazada'}.`);
   }
 
   const consulta = busqueda.trim().toLowerCase();
@@ -87,6 +106,23 @@ export default function UsuariosAdmin() {
       </div>
       {mensaje && <p role="status" className="mt-4 text-sm text-emerald-700">{mensaje}</p>}
       {error && <p role="alert" className="mt-4 text-sm text-rose-700">{error}</p>}
+      <dialog ref={dialogo} onClose={() => setDecision(null)} aria-labelledby="approval-title" aria-describedby="approval-account"
+        className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl bg-white p-6 text-slate-900 shadow-xl backdrop:bg-slate-900/50">
+        {decision && (
+          <>
+            <h3 id="approval-title" className="text-lg font-bold">
+              {decision.estado === 'APROBADO' ? 'Aprobar solicitud' : 'Rechazar solicitud'}
+            </h3>
+            <p id="approval-account" className="mt-2 break-words text-sm text-slate-600">
+              {decision.usuario.nombre} ({decision.usuario.correo})
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button type="button" autoFocus className={destructiveButton} onClick={() => dialogo.current?.close()}>Cancelar</button>
+              <button type="button" className={accountPrimary} onClick={confirmarDecision}>Confirmar</button>
+            </div>
+          </>
+        )}
+      </dialog>
       {cargando ? (
         <p role="status" className="mt-5 text-sm text-slate-600">Cargando cuentas…</p>
       ) : errorCarga ? (

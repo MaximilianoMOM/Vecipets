@@ -48,6 +48,7 @@ export default function RegistroPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterData>({
     resolver: yupResolver(schema),
@@ -55,6 +56,7 @@ export default function RegistroPage() {
       rol: 'CIUDADANO',
     },
   });
+  const rol = watch('rol');
 
   const onSubmit = async (data: RegisterData) => {
     setApiError(null);
@@ -195,7 +197,7 @@ export default function RegistroPage() {
             >
               <option value="CIUDADANO">Ciudadano</option>
               <option value="REFUGIO">Refugio</option>
-              <option value="VETERINARIA">Veterinaria</option>
+              <option value="VETERINARIA">Veterinaria o clínica</option>
             </select>
             {errors.rol && (
               <p className="mt-1 text-sm text-red-600">
@@ -203,6 +205,12 @@ export default function RegistroPage() {
               </p>
             )}
           </div>
+
+          {(rol === 'REFUGIO' || rol === 'VETERINARIA') && (
+            <p role="status" className="rounded bg-indigo-50 p-3 text-sm text-indigo-900">
+              Verifica tu correo y espera a que VeciPets apruebe tu solicitud. Una vez aprobada, podrás iniciar sesión y publicar.
+            </p>
+          )}
 
           {apiError && (
             <p className="text-center text-sm text-red-600">
