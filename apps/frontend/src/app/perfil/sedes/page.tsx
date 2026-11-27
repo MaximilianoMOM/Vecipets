@@ -15,7 +15,7 @@ const campos = [
   { name: 'horario', label: 'Horario de atención', minLength: 2, maxLength: 140 },
   { name: 'telefono', label: 'Teléfono público, sin espacios', type: 'tel', pattern: '\\+?[0-9]{7,15}' },
 ];
-const input = 'mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-normal text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200';
+const input = 'mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-normal text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200';
 
 export default function MisSedesPage() {
   const { user, loading } = useAuth();

@@ -78,7 +78,7 @@ export default function BotonReportarProtegido({
                             setMostrarModalAuth(false);
                             router.push('/login');
                         }}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition shadow-md"
+                        className="w-full py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-2xl text-sm transition shadow-md"
                     >
                         Iniciar sesión
                     </button>
@@ -89,7 +89,7 @@ export default function BotonReportarProtegido({
                             setMostrarModalAuth(false);
                             router.push('/registro');
                         }}
-                        className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-2xl text-sm transition flex items-center justify-center gap-2"
+                        className="w-full py-2.5 bg-primary-50 hover:bg-primary-100 text-primary-hover font-semibold rounded-2xl text-sm transition flex items-center justify-center gap-2"
                     >
                         <UserPlus className="w-4 h-4" />
                         Registrarse

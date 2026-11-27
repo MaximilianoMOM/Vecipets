@@ -35,7 +35,7 @@ export default function ReservasDeJornadaPage() {
                     <p className="font-bold">{reserva.nombreMascota}</p>
                     <p className="text-sm text-slate-600">{reserva.nombrePropietario} · {reserva.codigo}</p>
                   </div>
-                  <p className="text-sm font-bold text-indigo-700">{reserva.estado}</p>
+                  <p className="text-sm font-bold text-primary-hover">{reserva.estado}</p>
                 </li>
               ))}
             </ul>

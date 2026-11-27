@@ -73,7 +73,7 @@ export default function ModalDetalleAliado({ aliado, alCerrar }: ModalDetalleAli
                         src={aliadoExtendido.imagenUrl}
                         alt={aliadoExtendido.nombre}
                         className="w-full h-full object-cover"
-                    /> : <div className="grid h-full place-items-center bg-indigo-50 text-lg font-bold text-indigo-700">{aliadoExtendido.nombre}</div>}
+                    /> : <div className="grid h-full place-items-center bg-primary-50 text-lg font-bold text-primary-hover">{aliadoExtendido.nombre}</div>}
                     <span className="absolute bottom-4 left-6 bg-slate-900/70 backdrop-blur-md text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-lg">
                         {aliadoExtendido.tipo}
                     </span>
@@ -114,7 +114,7 @@ export default function ModalDetalleAliado({ aliado, alCerrar }: ModalDetalleAli
                         </div>
                         <div>
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Teléfono de Contacto</span>
-                            <span className="text-xs font-semibold text-indigo-600 flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-primary flex items-center gap-1.5">
                                 📞 {aliadoExtendido.telefono}
                             </span>
                         </div>
@@ -124,7 +124,7 @@ export default function ModalDetalleAliado({ aliado, alCerrar }: ModalDetalleAli
                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Servicios y Especialidades</h3>
                         <div className="flex flex-wrap gap-2">
                             {aliadoExtendido.servicios.map((serv, idx) => (
-                                <span key={idx} className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-xl border border-indigo-100">
+                                <span key={idx} className="bg-primary-50 text-primary-hover text-xs font-semibold px-3 py-1 rounded-xl border border-primary-100">
                                     ✓ {serv}
                                 </span>
                             ))}

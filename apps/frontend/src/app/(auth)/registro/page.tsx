@@ -111,7 +111,7 @@ export default function RegistroPage() {
   };
 
   return (
-    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
+    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-100 via-primary-50 to-primary-200 p-4">
       {recaptcha.script}
       <div className="w-full max-w-md rounded-xl bg-white/90 p-8 shadow-lg">
         <h1 className="mb-2 text-center text-2xl font-bold text-gray-800">
@@ -207,7 +207,7 @@ export default function RegistroPage() {
           </div>
 
           {(rol === 'REFUGIO' || rol === 'VETERINARIA') && (
-            <p role="status" className="rounded bg-indigo-50 p-3 text-sm text-indigo-900">
+            <p role="status" className="rounded bg-primary-50 p-3 text-sm text-primary-900">
               Verifica tu correo y espera a que VeciPets apruebe tu solicitud. Una vez aprobada, podrás iniciar sesión y publicar.
             </p>
           )}
@@ -221,7 +221,7 @@ export default function RegistroPage() {
           <button
             type="submit"
             disabled={isSubmitting || !recaptcha.ready}
-            className="w-full rounded bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full rounded bg-primary py-2 font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
           >
             {isSubmitting ? 'Registrando...' : 'Crear cuenta'}
           </button>

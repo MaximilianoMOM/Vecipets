@@ -61,7 +61,7 @@ export default function AdminPage() {
     const { user, loading } = useAuth();
 
     return (
-        <AccountLayout title={<span className="text-indigo-600">Administración</span>} description="Gestiona las cuentas, los reportes y las notificaciones de VeciPets.">
+        <AccountLayout title={<span className="text-primary">Administración</span>} description="Gestiona las cuentas, los reportes y las notificaciones de VeciPets.">
             {loading ? (
                 <p role="status" className={accountCard}>Cargando el panel…</p>
             ) : user?.rol === 'ADMINISTRADOR' ? (
@@ -72,7 +72,7 @@ export default function AdminPage() {
             ) : (
                 <section className={accountCard}>
                     <p>{user ? 'Esta página requiere permisos de administrador.' : 'Inicia sesión para acceder al panel.'}</p>
-                    {!user && <Link href="/login" className="mt-3 inline-block font-bold text-indigo-700 hover:underline">Iniciar sesión</Link>}
+                    {!user && <Link href="/login" className="mt-3 inline-block font-bold text-primary-hover hover:underline">Iniciar sesión</Link>}
                 </section>
             )}
         </AccountLayout>

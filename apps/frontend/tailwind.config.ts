@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import colors from 'tailwindcss/colors';
 
 const config: Config = {
     darkMode: 'class',
@@ -12,8 +13,9 @@ const config: Config = {
             colors: {
                 // Paleta principal orientada a tonos claros y limpios
                 primary: {
-                    DEFAULT: '#2563EB', // Azul moderno y confiable
-                    hover: '#1D4ED8',
+                    ...colors.blue,
+                    DEFAULT: colors.blue[600],
+                    hover: colors.blue[700],
                 },
                 brand: {
                     light: '#F8FAFC',  // Fondo gris muy claro / blanco humo

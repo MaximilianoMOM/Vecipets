@@ -33,7 +33,7 @@ export default function BuscadorFiltros({
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
                     placeholder="Buscar por nombre de refugio, clínica o dirección..."
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                 />
             </div>
 
@@ -46,7 +46,7 @@ export default function BuscadorFiltros({
                             key={cat.id}
                             onClick={() => setCategoriaActiva(cat.id)}
                             className={`px-5 py-2.5 rounded-2xl text-xs font-bold uppercase transition-all whitespace-nowrap ${isActive
-                                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                                    ? 'bg-primary-500 text-white shadow-md shadow-primary-500/20'
                                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200/80'
                                 }`}
                         >

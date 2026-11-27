@@ -171,11 +171,11 @@ function UserLocationControl({
           aria-label="Obtener mi ubicación actual"
         >
           {loading ? (
-            <span className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <span className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           ) : (
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5 text-indigo-600"
+              className="w-5 h-5 text-primary"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -268,7 +268,7 @@ const userIcon = L.divIcon({
   className: 'user-location-marker',
 
   html: `
-    <div class="bg-indigo-600 text-white
+    <div class="bg-primary text-white
       rounded-full w-9 h-9
       flex items-center justify-center
       shadow-2xl border-[3px] border-white
@@ -347,7 +347,7 @@ export default function MapClient({
             icon={userIcon}
           >
             <Popup>
-              <span className="font-bold text-xs text-indigo-600">
+              <span className="font-bold text-xs text-primary">
                 📍 Tu ubicación actual
               </span>
             </Popup>
@@ -487,7 +487,7 @@ export default function MapClient({
                   {enlace && (
                     <Link
                       href={enlace}
-                      className="block w-full rounded-lg bg-indigo-50 py-1.5 text-center text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+                      className="block w-full rounded-lg bg-primary-50 py-1.5 text-center text-xs font-bold text-primary-hover hover:bg-primary-100"
                     >
                       {esAliado
                         ? 'Ver más'

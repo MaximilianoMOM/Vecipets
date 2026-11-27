@@ -96,7 +96,7 @@ export default function Header() {
             className="w-10 h-10 sm:w-11 sm:h-11 object-contain group-hover:scale-105 transition-transform"
           />
 
-          <span className="text-xl sm:text-2xl font-extrabold text-indigo-600 tracking-tight">
+          <span className="text-xl sm:text-2xl font-extrabold text-primary tracking-tight">
             VeciPets
           </span>
         </Link>
@@ -114,8 +114,8 @@ export default function Header() {
                 key={link.name}
                 href={link.href}
                 className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${activo
-                    ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-50'
+                    ? 'bg-primary-50 text-primary'
+                    : 'text-slate-700 hover:text-primary hover:bg-slate-50'
                   }`}
               >
                 {link.name}
@@ -142,9 +142,9 @@ export default function Header() {
                     onClick={() => setDropdownAbierto((prev) => !prev)}
                     aria-expanded={dropdownAbierto}
                     aria-label="Abrir menú de usuario"
-                    className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 py-1.5 px-3 rounded-xl border border-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    className="flex items-center gap-2.5 bg-slate-100 hover:bg-slate-200 py-1.5 px-3 rounded-xl border border-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/30"
                   >
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
                       {usuario.nombre
                         ? usuario.nombre.charAt(0).toUpperCase()
                         : '👤'}
@@ -155,7 +155,7 @@ export default function Header() {
                         {usuario.nombre || 'Mi Perfil'}
                       </span>
 
-                      <span className="text-[10px] font-bold text-indigo-600 uppercase">
+                      <span className="text-[10px] font-bold text-primary uppercase">
                         {usuario.rol}
                       </span>
                     </div>
@@ -189,7 +189,7 @@ export default function Header() {
                         <Link
                           href="/admin"
                           onClick={() => setDropdownAbierto(false)}
-                          className="block px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                          className="block px-4 py-2 text-sm font-semibold text-primary-hover hover:bg-primary-50 transition-colors"
                         >
                           Panel de administración
                         </Link>
@@ -212,14 +212,14 @@ export default function Header() {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/login"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 px-3 py-2 rounded-xl transition-colors"
+                    className="text-sm font-semibold text-slate-700 hover:text-primary px-3 py-2 rounded-xl transition-colors"
                   >
                     Ingresar
                   </Link>
 
                   <Link
                     href="/registro"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-sm transition-all"
+                    className="bg-primary hover:bg-primary-hover text-white text-sm font-semibold py-2 px-4 rounded-xl shadow-sm transition-all"
                   >
                     Regístrate
                   </Link>
@@ -267,7 +267,7 @@ export default function Header() {
                   href={link.href}
                   onClick={() => setMenuMovilAbierto(false)}
                   className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${activo
-                      ? 'bg-indigo-50 text-indigo-600'
+                      ? 'bg-primary-50 text-primary'
                       : 'text-slate-700 hover:bg-slate-50'
                     }`}
                 >
@@ -291,7 +291,7 @@ export default function Header() {
                         {usuario.correo}
                       </p>
 
-                      <p className="text-xs font-bold text-indigo-600 uppercase mt-1">
+                      <p className="text-xs font-bold text-primary uppercase mt-1">
                         {usuario.rol}
                       </p>
                     </div>
@@ -308,7 +308,7 @@ export default function Header() {
                       <Link
                         href="/admin"
                         onClick={() => setMenuMovilAbierto(false)}
-                        className="w-full text-center bg-purple-50 text-purple-700 font-semibold py-2.5 rounded-xl text-sm"
+                        className="w-full text-center bg-primary-50 text-primary-hover font-semibold py-2.5 rounded-xl text-sm"
                       >
                         Panel de administración
                       </Link>
@@ -336,7 +336,7 @@ export default function Header() {
                     <Link
                       href="/registro"
                       onClick={() => setMenuMovilAbierto(false)}
-                      className="flex-1 text-center bg-indigo-600 text-white font-semibold py-2.5 rounded-xl text-sm"
+                      className="flex-1 text-center bg-primary text-white font-semibold py-2.5 rounded-xl text-sm"
                     >
                       Registrarse
                     </Link>

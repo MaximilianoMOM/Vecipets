@@ -35,7 +35,7 @@ export default function PerfilPage() {
   const Icon = details?.icon ?? PawPrint;
 
   return (
-    <AccountLayout title={<>Mi <span className="text-indigo-600">perfil</span></>} description="Consulta tu cuenta y accede a las herramientas de VeciPets.">
+    <AccountLayout title={<>Mi <span className="text-primary">perfil</span></>} description="Consulta tu cuenta y accede a las herramientas de VeciPets.">
       {loading ? (
         <p role="status" className={accountCard}>Cargando tu perfil…</p>
       ) : user && details ? (
@@ -46,7 +46,7 @@ export default function PerfilPage() {
                 <Icon className="h-7 w-7" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-indigo-700">{roleLabels[user.rol]}</p>
+                <p className="text-sm font-bold text-primary-hover">{roleLabels[user.rol]}</p>
                 <h2 id="account-name" className="break-words text-2xl font-black tracking-tight text-slate-900">{user.nombre}</h2>
               </div>
             </div>

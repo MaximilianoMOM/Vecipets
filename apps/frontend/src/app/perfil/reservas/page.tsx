@@ -35,7 +35,7 @@ export default function MisReservasPage() {
             <div className="grid gap-5 md:grid-cols-2">
               {datos.map((reserva) => (
                 <article key={reserva.id} className={accountCard}>
-                  <p className="text-sm font-bold text-indigo-700">{reserva.estado}</p>
+                  <p className="text-sm font-bold text-primary-hover">{reserva.estado}</p>
                   <h2 className="mt-1 text-xl font-black">{reserva.jornadaTitulo ?? 'Jornada veterinaria'}</h2>
                   <p className="mt-2 text-sm text-slate-600">{reserva.nombreMascota} · {reserva.codigo}</p>
                   {reserva.fechaTexto && <p className="mt-1 text-sm text-slate-600">{reserva.fechaTexto} · {reserva.horaTexto}</p>}
