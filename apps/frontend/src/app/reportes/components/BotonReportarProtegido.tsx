@@ -8,11 +8,13 @@ import { useAuth } from '@/lib/auth-context';
 
 interface BotonReportarProps {
     className?: string;
+    permitirOtrosRoles?: boolean;
     children?: React.ReactNode;
 }
 
 export default function BotonReportarProtegido({
     className,
+    permitirOtrosRoles = false,
     children,
 }: BotonReportarProps) {
     const router = useRouter();
@@ -25,7 +27,7 @@ export default function BotonReportarProtegido({
         setMontado(true);
     }, []);
 
-    if (user && user.rol !== 'CIUDADANO') return null;
+    if (!permitirOtrosRoles && user && user.rol !== 'CIUDADANO') return null;
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();

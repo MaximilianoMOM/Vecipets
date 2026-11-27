@@ -468,7 +468,7 @@ export class ReportesService {
     const inicio = (pagina - 1) * limite;
 
     return {
-      datos: filtrados.slice(inicio, inicio + limite).map((reporte) => this.serializarReporte(reporte)),
+      datos: filtrados.slice(inicio, inicio + limite).map((reporte) => this.serializarReportePublico(reporte)),
       total,
       pagina,
       limite,
@@ -521,7 +521,13 @@ export class ReportesService {
       );
     }
 
-    return this.serializarReporte(reporte);
+    return esPropietario || esAdmin
+      ? this.serializarReporte(reporte)
+      : this.serializarReportePublico(reporte);
+  }
+
+  private serializarReportePublico({ usuario, ...reporte }: Reporte) {
+    return { ...reporte, usuario: { id: usuario.id } };
   }
 
   private serializarReporte({ usuario, ...reporte }: Reporte) {
